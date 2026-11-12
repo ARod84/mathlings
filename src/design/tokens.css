@@ -1,0 +1,214 @@
+/*
+ * Design tokens. Values come from the Martians Space Club design bundle
+ * wherever it defines them; the motion durations and easing curves are the
+ * one group the design leaves open, so those are defined here.
+ *
+ * Every value in this file is mirrored in tokens.ts, and
+ * tokens.test.ts fails if the two drift apart.
+ */
+
+:root {
+  /* ---- Color: space backdrop ---- */
+  --color-space: #3a1e63;
+  --color-space-2: #5a2e8c;
+  --color-space-3: #6e3aa0;
+
+  /* ---- Color: gold accent ---- */
+  --color-gold: #ffcb45;
+  --color-gold-deep: #f6b53c;
+
+  /* ---- Color: text ---- */
+  --color-ink: #3b2a4d;
+  --color-ink-2: #6e5680;
+  --color-on-dark: #ffffff;
+  --color-on-dark-muted: #d8ccf2;
+
+  /* ---- Color: surfaces ---- */
+  --color-paper: #ffffff;
+  --color-cream: #fbeff6;
+  --color-sand: #f6e2ee;
+  --color-line: #f0dee9;
+
+  /* ---- Color: brand accents ---- */
+  --color-magenta: #ec4d92;
+  --color-peach: #f59a6b;
+  --color-lavender: #a98ce0;
+  --color-mint: #34c79a;
+
+  /* ---- Color: feedback (encouraging; there is deliberately no red) ---- */
+  --color-correct-bg: #e2f3e8;
+  --color-correct-text: #235c3b;
+  --color-retry-bg: #fbeee2;
+  --color-retry-text: #8a4d1b;
+
+  /*
+   * ---- Color: houses ----
+   * base:   the house color. Decoration only (fills without text, borders,
+   *         glows); white text on it fails WCAG AA for four of five houses.
+   * dark:   gradient partner for the base color.
+   * soft:   pale tint for bubbles and selected states.
+   * strong: text-safe shade, at least 4.5:1 against white. Use it for text
+   *         on light surfaces and for fills that carry white text.
+   */
+  --house-navigators: #7c4def;
+  --house-navigators-dark: #5e2fd0;
+  --house-navigators-soft: #ede6fe;
+  --house-navigators-strong: #5226b5;
+
+  --house-builders: #e86e48;
+  --house-builders-dark: #c4542f;
+  --house-builders-soft: #fce7dc;
+  --house-builders-strong: #a8481f;
+
+  --house-cultivators: #15a589;
+  --house-cultivators-dark: #0e7e68;
+  --house-cultivators-soft: #dbf5ee;
+  --house-cultivators-strong: #0b6b58;
+
+  --house-artisans: #e94e8e;
+  --house-artisans-dark: #cb3a75;
+  --house-artisans-soft: #fce2ee;
+  --house-artisans-strong: #b22c66;
+
+  --house-scientists: #1f9bb5;
+  --house-scientists-dark: #137f97;
+  --house-scientists-soft: #dcf1f6;
+  --house-scientists-strong: #0f6276;
+
+  /* Active house. Overridden by [data-house] below. */
+  --house: var(--house-navigators);
+  --house-dark: var(--house-navigators-dark);
+  --house-soft: var(--house-navigators-soft);
+  --house-strong: var(--house-navigators-strong);
+
+  /* ---- Typography: families ---- */
+  --font-pop: 'Mochiy Pop One', 'M PLUS Rounded 1c', system-ui, sans-serif;
+  --font-display: 'M PLUS Rounded 1c', system-ui, sans-serif;
+  --font-body: 'M PLUS Rounded 1c', system-ui, sans-serif;
+  --font-reading: 'Lexend', system-ui, sans-serif;
+
+  /* ---- Typography: weights ---- */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+  --font-weight-heavy: 800;
+
+  /* ---- Typography: size scale ---- */
+  --font-size-xs: 0.75rem; /* 12 */
+  --font-size-sm: 0.8125rem; /* 13 */
+  --font-size-md: 0.9375rem; /* 15 body */
+  --font-size-lg: 1.0625rem; /* 17 */
+  --font-size-xl: 1.3125rem; /* 21 */
+  --font-size-2xl: 1.625rem; /* 26 */
+  --font-size-3xl: 2.125rem; /* 34 */
+  --font-size-display: 2.5rem; /* 40 */
+
+  /* ---- Typography: line height and tracking ---- */
+  --line-height-tight: 1.1;
+  --line-height-snug: 1.25;
+  --line-height-body: 1.55;
+  --letter-spacing-label: 0.12em;
+
+  /* ---- Spacing (4 px base) ---- */
+  --space-1: 0.25rem; /* 4 */
+  --space-2: 0.5rem; /* 8 */
+  --space-3: 0.75rem; /* 12 */
+  --space-4: 1rem; /* 16 */
+  --space-5: 1.25rem; /* 20 */
+  --space-6: 1.5rem; /* 24 */
+  --space-8: 2rem; /* 32 */
+  --space-10: 2.5rem; /* 40 */
+  --space-12: 3rem; /* 48 */
+  --space-16: 4rem; /* 64 */
+
+  /* ---- Sizing ---- */
+  --size-touch-min: 2.75rem; /* 44 */
+  --size-control: 3.25rem; /* 52 */
+
+  /* ---- Radius ---- */
+  --radius-sm: 0.875rem; /* 14 */
+  --radius-md: 1.125rem; /* 18 */
+  --radius-lg: 1.375rem; /* 22 */
+  --radius-xl: 1.75rem; /* 28 */
+  --radius-pill: 999px;
+
+  /* ---- Shadow ---- */
+  --shadow-tile: 0 6px 14px -10px rgba(34, 23, 57, 0.4);
+  --shadow-soft: 0 10px 24px -10px rgba(34, 23, 57, 0.4);
+  --shadow-card: 0 18px 50px -22px rgba(34, 23, 57, 0.28);
+  --shadow-panel: 0 14px 30px -14px rgba(34, 23, 57, 0.6);
+  --shadow-button: 0 8px 20px -6px color-mix(in srgb, var(--house-strong) 67%, transparent);
+
+  /* ---- Focus ring: gold, with a dark edge so it shows on light surfaces ---- */
+  --focus-ring-width: 3px;
+  --focus-ring-color: var(--color-gold);
+  --focus-ring-edge: var(--color-space);
+
+  /* ---- Motion: durations ---- */
+  --duration-fast: 120ms;
+  --duration-base: 220ms;
+  --duration-slow: 420ms;
+  --duration-celebrate: 900ms;
+  --duration-float: 4500ms;
+  --duration-twinkle: 3000ms;
+
+  /* ---- Motion: easing ---- */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-ambient: ease-in-out;
+}
+
+[data-house='navigators'] {
+  --house: var(--house-navigators);
+  --house-dark: var(--house-navigators-dark);
+  --house-soft: var(--house-navigators-soft);
+  --house-strong: var(--house-navigators-strong);
+}
+
+[data-house='builders'] {
+  --house: var(--house-builders);
+  --house-dark: var(--house-builders-dark);
+  --house-soft: var(--house-builders-soft);
+  --house-strong: var(--house-builders-strong);
+}
+
+[data-house='cultivators'] {
+  --house: var(--house-cultivators);
+  --house-dark: var(--house-cultivators-dark);
+  --house-soft: var(--house-cultivators-soft);
+  --house-strong: var(--house-cultivators-strong);
+}
+
+[data-house='artisans'] {
+  --house: var(--house-artisans);
+  --house-dark: var(--house-artisans-dark);
+  --house-soft: var(--house-artisans-soft);
+  --house-strong: var(--house-artisans-strong);
+}
+
+[data-house='scientists'] {
+  --house: var(--house-scientists);
+  --house-dark: var(--house-scientists-dark);
+  --house-soft: var(--house-scientists-soft);
+  --house-strong: var(--house-scientists-strong);
+}
+
+/* Easy-reading mode from the source design: Lexend replaces every family. */
+[data-reading-font='lexend'] {
+  --font-pop: var(--font-reading);
+  --font-display: var(--font-reading);
+  --font-body: var(--font-reading);
+}
+
+/* Reduced motion: every motion token falls back to roughly zero. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0.01ms;
+    --duration-base: 0.01ms;
+    --duration-slow: 0.01ms;
+    --duration-celebrate: 0.01ms;
+    --duration-float: 0.01ms;
+    --duration-twinkle: 0.01ms;
+  }
+}
