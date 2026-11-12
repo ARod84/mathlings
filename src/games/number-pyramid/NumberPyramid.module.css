@@ -1,0 +1,160 @@
+.game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+/* ---- Pyramid: rows of blocks, centered, like stacked bricks ---- */
+
+.pyramid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 22rem;
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+}
+
+.block {
+  display: grid;
+  place-items: center;
+  /* Share the width between the blocks of the widest row; never wider than 5rem. */
+  width: min(5rem, calc((100% - (var(--rows) - 1) * var(--space-1)) / var(--rows)));
+  height: var(--size-control);
+  padding: 0;
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  font: var(--font-weight-heavy) var(--font-size-2xl) / 1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 3px 0 0 var(--color-outline);
+}
+
+.block[data-kind='given'] {
+  background: var(--house-strong);
+  color: var(--color-on-dark);
+}
+
+button.block {
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+}
+
+/* Empty: a dashed slot waiting for a tile. */
+.block[data-kind='empty'] {
+  border-style: dashed;
+  background: var(--color-cream);
+  box-shadow: none;
+}
+
+/* The slot the next tile goes into: solid outline, house tint, slightly raised. */
+.block[data-kind='empty'][aria-pressed='true'] {
+  border-style: solid;
+  border-color: var(--house-strong);
+  background: var(--house-soft);
+  box-shadow: 0 3px 0 0 var(--house-strong);
+  transform: translateY(-2px);
+}
+
+.block[data-kind='filled'] {
+  background: var(--color-gold);
+  color: var(--color-ink);
+  animation: dropIn var(--duration-base) var(--ease-bounce);
+}
+
+.block[data-kind='filled']:hover {
+  background: var(--color-gold-deep);
+}
+
+.block[data-kind='filled']:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 0 var(--color-outline);
+}
+
+/* ---- Tray of number tiles ---- */
+
+.tray {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding-top: var(--space-5);
+  border-top: 2px dashed var(--color-line);
+}
+
+.tile {
+  min-width: var(--size-control);
+  height: var(--size-control);
+  padding: 0 var(--space-3);
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-md);
+  background: var(--color-gold);
+  color: var(--color-ink);
+  font: var(--font-weight-heavy) var(--font-size-2xl) / 1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  box-shadow: var(--shadow-button);
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+}
+
+.tile:hover {
+  background: var(--color-gold-deep);
+}
+
+.tile:active {
+  transform: translateY(var(--size-press));
+  box-shadow: 0 1px 0 0 var(--color-outline);
+}
+
+/* Placed: the tile leaves an empty, pressed-in slot behind. */
+.tile[aria-disabled='true'] {
+  border-style: dashed;
+  border-color: var(--color-line);
+  background: transparent;
+  color: transparent;
+  box-shadow: none;
+  transform: translateY(var(--size-press));
+  cursor: default;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@keyframes dropIn {
+  from {
+    transform: translateY(-8px) scale(0.92);
+  }
+}
+
+@media (max-width: 480px) {
+  .game {
+    gap: var(--space-6);
+  }
+
+  .block,
+  .tile {
+    font-size: var(--font-size-xl);
+  }
+}

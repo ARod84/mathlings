@@ -4,19 +4,20 @@ Short math-logic puzzle games for kids aged 7–12. This is a standalone precurs
 Martians Space Club site and will be merged into it later, so its visual language comes from that
 site's design.
 
-Right now the project contains the frontend scaffold, the design system and the `GameShell` that
-every game renders inside. There are no real games, routing, backend or persistence yet.
+Right now the project contains the frontend scaffold, the design system, the `GameShell` that
+every game renders inside, and the first game, Number Pyramid. There is no routing, backend or
+persistence yet.
 
 ## Getting started
 
 ```bash
 npm install
-npm run dev        # demo page at http://localhost:5173
+npm run dev        # Number Pyramid at http://localhost:5173
 ```
 
 | Script                 | What it does                                |
 | ---------------------- | ------------------------------------------- |
-| `npm run dev`          | Vite dev server with the shell demo page    |
+| `npm run dev`          | Vite dev server with the game               |
 | `npm test`             | Vitest, single run                          |
 | `npm run test:watch`   | Vitest in watch mode                        |
 | `npm run lint`         | ESLint                                      |
@@ -32,12 +33,42 @@ with React Testing Library, `lucide-react` icons, and fonts self-hosted through 
 src/
   design/   tokens.css, tokens.ts, global.css, contrast helpers and their tests
   shell/    GameShell and its parts (progress, action bar, hint bubble, solved screen, sound hook)
-  dev/      ShellDemo: the review page mounted at the app root for now
+  games/    one folder per game; number-pyramid/ is the first
+  dev/      ShellDemo: the shell review page, at #shell-demo
 ```
+
+## Number Pyramid
+
+`src/games/number-pyramid` is the first game. Every block in the pyramid is the sum of the two
+blocks below it. The child taps an empty block, then a number tile from the tray to drop it in;
+tapping a filled block sends its tile back. Empty blocks are offered bottom row first, so a child
+can also just tap tiles in order.
+
+A round has eight puzzles that get harder (`LEVELS` in `pyramid.ts`):
+
+| Puzzles | Rows | Bottom-row numbers | Blocks given                                 |
+| ------- | ---- | ------------------ | -------------------------------------------- |
+| 1–2     | 3    | 1–5, then 1–9      | The bottom row (adding only)                 |
+| 3–4     | 3    | 1–9, then 1–12     | Three scattered blocks (adding, subtracting) |
+| 5–6     | 4    | 1–5, then 1–9      | The bottom row                               |
+| 7–8     | 4    | 1–9, then 1–12     | Four scattered blocks                        |
+
+- **Puzzles are generated**, not hand-written, from a seed (`generateRound(seed)`). The same seed
+  always gives the same round; the app seeds from the clock. After puzzle 8, Next starts a new
+  round.
+- **No guessing.** A puzzle is only used if every block can be worked out one sum at a time
+  (`canDeduceAll`), which also means it has exactly one solution.
+- **Tiles** are the missing numbers plus two or three near-miss extras.
+- **Hints** (`getHint`) point at the next block that can be worked out and ask the sum ("What is
+  4 + 1?") without giving the answer. If that block already holds a wrong number, ORBI asks for
+  another look at it.
+
+`pyramid.ts` holds all the puzzle logic as pure functions; `NumberPyramid.tsx` is the play area and
+state. Feedback, hints UI, sounds and the completion screen all come from `GameShell`.
 
 ## The demo page
 
-`src/dev/ShellDemo.tsx` renders one dummy puzzle ("Tap the number that makes 10 with 7") inside the
+Open `http://localhost:5173/#shell-demo`. `src/dev/ShellDemo.tsx` renders one dummy puzzle ("Tap the number that makes 10 with 7") inside the
 shell. The dashed dev toolbar above it switches the `house` prop and forces each feedback state, so
 every visual state can be reviewed in all five house colors. Choose **live** to hand control back to
 the puzzle.
