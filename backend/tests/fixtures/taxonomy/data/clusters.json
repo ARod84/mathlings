@@ -1,0 +1,24 @@
+{
+  "version": "fixture-v1",
+  "clusterCount": 3,
+  "clusters": [
+    {
+      "subject": "Mathematics",
+      "domain": "Number",
+      "ageRangeStart": 7,
+      "summary": "Your child is adding bigger numbers."
+    },
+    {
+      "subject": "English",
+      "domain": "Vocabulary",
+      "ageRangeStart": 5,
+      "summary": "Your child is learning number words."
+    },
+    {
+      "subject": "Science",
+      "domain": "Forces",
+      "ageRangeStart": 7,
+      "summary": "Your child is exploring pushes and pulls."
+    }
+  ]
+}

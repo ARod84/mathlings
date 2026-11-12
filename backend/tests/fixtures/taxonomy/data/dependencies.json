@@ -1,0 +1,37 @@
+{
+  "version": "fixture-v1",
+  "note": "`topicId` depends on `prerequisiteId`.",
+  "edgeCount": 5,
+  "dependencies": [
+    {
+      "topicId": "mt_add2",
+      "prerequisiteId": "mt_placevalue",
+      "strength": "hard",
+      "reason": "mt_add2 builds on mt_placevalue."
+    },
+    {
+      "topicId": "mt_placevalue",
+      "prerequisiteId": "mt_count",
+      "strength": "hard",
+      "reason": "mt_placevalue builds on mt_count."
+    },
+    {
+      "topicId": "mt_count",
+      "prerequisiteId": "mt_words",
+      "strength": "soft",
+      "reason": "mt_count builds on mt_words."
+    },
+    {
+      "topicId": "mt_frac",
+      "prerequisiteId": "mt_add2",
+      "strength": "soft",
+      "reason": "mt_frac builds on mt_add2."
+    },
+    {
+      "topicId": "mt_algebra",
+      "prerequisiteId": "mt_add2",
+      "strength": "hard",
+      "reason": "mt_algebra builds on mt_add2."
+    }
+  ]
+}

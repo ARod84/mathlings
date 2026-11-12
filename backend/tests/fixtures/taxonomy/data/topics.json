@@ -1,0 +1,139 @@
+{
+  "version": "fixture-v1",
+  "topicCount": 7,
+  "topics": [
+    {
+      "id": "mt_add2",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Number",
+      "name": "Two-digit addition",
+      "description": "Fixture description of Two-digit addition.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows two-digit addition once",
+        "Explains two-digit addition"
+      ],
+      "assessmentPrompt": "Can {{name}} show two-digit addition and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 7,
+      "ageRangeEnd": 9
+    },
+    {
+      "id": "mt_placevalue",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "Number",
+      "name": "Place value",
+      "description": "Fixture description of Place value.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows place value once",
+        "Explains place value"
+      ],
+      "assessmentPrompt": "Can {{name}} show place value and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 6,
+      "ageRangeEnd": 8
+    },
+    {
+      "id": "mt_frac",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Fractions",
+      "name": "Unit fractions",
+      "description": "Fixture description of Unit fractions.",
+      "centrality": null,
+      "evidence": [
+        "Shows unit fractions once",
+        "Explains unit fractions"
+      ],
+      "assessmentPrompt": "Can {{name}} show unit fractions and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 9,
+      "ageRangeEnd": 11
+    },
+    {
+      "id": "mt_count",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Number",
+      "name": "Counting to twenty",
+      "description": "Fixture description of Counting to twenty.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows counting to twenty once",
+        "Explains counting to twenty"
+      ],
+      "assessmentPrompt": "Can {{name}} show counting to twenty and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 4,
+      "ageRangeEnd": 6
+    },
+    {
+      "id": "mt_words",
+      "type": "LANGUAGE",
+      "subject": "English",
+      "domain": "Vocabulary",
+      "name": "Number words",
+      "description": "Fixture description of Number words.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows number words once",
+        "Explains number words"
+      ],
+      "assessmentPrompt": "Can {{name}} show number words and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 5,
+      "ageRangeEnd": 6
+    },
+    {
+      "id": "mt_algebra",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Algebra",
+      "name": "Solving equations",
+      "description": "Fixture description of Solving equations.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows solving equations once",
+        "Explains solving equations"
+      ],
+      "assessmentPrompt": "Can {{name}} show solving equations and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 13,
+      "ageRangeEnd": 15
+    },
+    {
+      "id": "mt_forces",
+      "type": "CONCEPTUAL",
+      "subject": "Science",
+      "domain": "Forces",
+      "name": "Pushes and pulls",
+      "description": "Fixture description of Pushes and pulls.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows pushes and pulls once",
+        "Explains pushes and pulls"
+      ],
+      "assessmentPrompt": "Can {{name}} show pushes and pulls and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 7,
+      "ageRangeEnd": 9
+    }
+  ]
+}
