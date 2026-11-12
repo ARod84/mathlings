@@ -9,13 +9,14 @@
   border-radius: var(--radius-lg);
   text-align: center;
   color: var(--color-on-dark);
+  border: var(--size-outline) solid var(--color-outline);
   background:
-    radial-gradient(2px 2px at 12% 18%, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 82% 14%, #fff, transparent),
-    radial-gradient(2px 2px at 68% 78%, #cfe, transparent),
-    radial-gradient(1.5px 1.5px at 22% 72%, #fff, transparent),
+    linear-gradient(#fff, #fff) 12% 18% / 4px 4px no-repeat,
+    linear-gradient(#fff, #fff) 82% 14% / 3px 3px no-repeat,
+    linear-gradient(#cfe, #cfe) 68% 78% / 4px 4px no-repeat,
+    linear-gradient(#fff, #fff) 22% 72% / 3px 3px no-repeat,
     linear-gradient(170deg, var(--color-space), var(--color-space-2));
-  box-shadow: var(--shadow-panel);
+  box-shadow: var(--shadow-tile);
   animation: reveal var(--duration-slow) var(--ease-out) both;
 }
 
@@ -41,7 +42,8 @@
   width: 12px;
   height: 12px;
   margin: -6px;
-  border-radius: 3px;
+  border: 2px solid var(--color-outline);
+  border-radius: 2px;
   background: var(--color-gold);
   transform: rotate(var(--angle)) translateY(-78px) rotate(45deg);
   animation: burst var(--duration-celebrate) var(--ease-out) both;
@@ -54,12 +56,12 @@
 
 .spark:nth-child(3n + 2) {
   background: var(--color-mint);
-  border-radius: 50%;
 }
 
 .title {
-  font: var(--font-weight-regular) var(--font-size-display) / 1 var(--font-pop);
+  font: var(--font-weight-heavy) var(--font-size-display) / 1 var(--font-pop);
   color: var(--color-gold);
+  text-shadow: 0 4px 0 var(--color-outline);
   text-wrap: balance;
 }
 
@@ -77,21 +79,26 @@
   min-width: 11rem;
   margin-top: var(--space-4);
   padding: 0 var(--space-8);
-  border: none;
-  border-radius: var(--radius-pill);
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-md);
   background: var(--color-gold);
   color: var(--color-ink);
-  font: var(--font-weight-bold) var(--font-size-xl) / 1 var(--font-display);
+  font: var(--font-weight-heavy) var(--font-size-xl) / 1 var(--font-display);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
-  transition: transform var(--duration-fast) var(--ease-standard);
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
 }
 
 .next:hover {
-  transform: translateY(-2px);
+  background: var(--color-gold-deep);
 }
 
 .next:active {
-  transform: scale(0.97);
+  transform: translateY(var(--size-press));
+  box-shadow: 0 1px 0 0 var(--color-outline);
 }
 
 /* On the dark panel the gold ring gets a light outer edge instead of a dark one. */

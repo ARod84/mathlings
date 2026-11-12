@@ -50,25 +50,42 @@ the puzzle.
 them with types, including the `HouseKey` union. `tokens.test.ts` fails if the two files drift
 apart, so change both together.
 
-Values come from the Martians Space Club design bundle. The one group the design does not define is
-motion timing (transition durations and easing curves), which is defined here.
+Colors, spacing and type sizes come from the Martians Space Club design bundle. Two things are
+defined here instead: motion timing (durations and easing curves), which the design leaves open, and
+the look described under [Visual style](#visual-style).
 
-| Group      | Tokens                                                                                                                                                                                                                                                                                                                                         |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Color      | `--color-space`, `-space-2`, `-space-3` (backdrop) · `--color-gold`, `-gold-deep` · `--color-ink`, `-ink-2`, `-on-dark`, `-on-dark-muted` (text) · `--color-paper`, `-cream`, `-sand`, `-line` (surfaces) · `--color-magenta`, `-peach`, `-lavender`, `-mint` (accents) · `--color-correct-bg/-text`, `--color-retry-bg/-text` (feedback)      |
-| House      | `--house-<key>`, `--house-<key>-dark`, `--house-<key>-soft`, `--house-<key>-strong` for `navigators`, `builders`, `cultivators`, `artisans`, `scientists` · active house: `--house`, `--house-dark`, `--house-soft`, `--house-strong`                                                                                                          |
-| Typography | Families `--font-pop` (Mochiy Pop One), `--font-display` and `--font-body` (M PLUS Rounded 1c), `--font-reading` (Lexend) · weights `--font-weight-regular/medium/bold/heavy` (400/500/700/800) · sizes `--font-size-xs/sm/md/lg/xl/2xl/3xl/display` (12/13/15/17/21/26/34/40 px) · `--line-height-tight/snug/body` · `--letter-spacing-label` |
-| Spacing    | 4 px base: `--space-1/2/3/4/5/6/8/10/12/16` (4/8/12/16/20/24/32/40/48/64 px) · `--size-touch-min` (44 px), `--size-control` (52 px)                                                                                                                                                                                                            |
-| Radius     | `--radius-sm/md/lg/xl` (14/18/22/28 px), `--radius-pill`                                                                                                                                                                                                                                                                                       |
-| Shadow     | `--shadow-tile`, `--shadow-soft`, `--shadow-card`, `--shadow-panel`, `--shadow-button` (house-tinted glow)                                                                                                                                                                                                                                     |
-| Focus      | `--focus-ring-width`, `--focus-ring-color` (gold), `--focus-ring-edge` (dark edge so the ring shows on light surfaces)                                                                                                                                                                                                                         |
-| Motion     | `--duration-fast/base/slow/celebrate` (120/220/420/900 ms), `--duration-float`, `--duration-twinkle` (ambient loops) · `--ease-standard/out/bounce/ambient`                                                                                                                                                                                    |
+| Group      | Tokens                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Color      | `--color-space`, `-space-2`, `-space-3` (backdrop) · `--color-gold`, `-gold-deep` · `--color-ink`, `-ink-2`, `-on-dark`, `-on-dark-muted` (text) · `--color-outline` (block outlines and hard shadows) · `--color-paper`, `-cream`, `-sand`, `-line` (surfaces) · `--color-magenta`, `-peach`, `-lavender`, `-mint` (accents) · `--color-correct-bg/-text`, `--color-retry-bg/-text` (feedback) |
+| House      | `--house-<key>`, `--house-<key>-dark`, `--house-<key>-soft`, `--house-<key>-strong` for `navigators`, `builders`, `cultivators`, `artisans`, `scientists` · active house: `--house`, `--house-dark`, `--house-soft`, `--house-strong`                                                                                                                                                           |
+| Typography | Families `--font-pop` and `--font-display` (Outfit), `--font-body` and `--font-reading` (Lexend) · weights `--font-weight-regular/medium/bold/heavy` (400/500/700/800) · sizes `--font-size-xs/sm/md/lg/xl/2xl/3xl/display` (12/13/15/17/21/26/34/40 px) · `--line-height-tight/snug/body` · `--letter-spacing-label`                                                                           |
+| Spacing    | 4 px base: `--space-1/2/3/4/5/6/8/10/12/16` (4/8/12/16/20/24/32/40/48/64 px) · `--size-touch-min` (44 px), `--size-control` (52 px), `--size-outline` (3 px), `--size-press` (4 px)                                                                                                                                                                                                             |
+| Radius     | `--radius-sm/md/lg/xl` (6/8/12/16 px), `--radius-pill`                                                                                                                                                                                                                                                                                                                                          |
+| Shadow     | `--shadow-tile`, `--shadow-soft`, `--shadow-card`, `--shadow-panel`, `--shadow-button`: all hard-edged, no blur                                                                                                                                                                                                                                                                                 |
+| Focus      | `--focus-ring-width`, `--focus-ring-color` (gold), `--focus-ring-edge` (dark edge so the ring shows on light surfaces)                                                                                                                                                                                                                                                                          |
+| Motion     | `--duration-fast/base/slow/celebrate` (120/220/420/900 ms), `--duration-float`, `--duration-twinkle` (ambient loops) · `--ease-standard/out/bounce/ambient`                                                                                                                                                                                                                                     |
+
+### Visual style
+
+The palette and the space backdrop are the Martians Space Club ones. On top of them sits a
+retro-platformer layer:
+
+- **Type:** modern sans-serif only. Outfit (700/800) for headings, buttons and numbers; Lexend for
+  body text. No rounded or hand-drawn faces.
+- **Blocks:** panels, tiles and buttons have a 3 px dark outline (`--color-outline`,
+  `--size-outline`), small radii and a hard shadow with no blur.
+- **Press:** buttons sit on a 5 px shadow (`--shadow-button`) and sink by `--size-press` when
+  pressed. A selected option stays pressed in.
+- **Details:** square progress blocks that turn gold, square stars on the backdrop, and a hard
+  drop shadow on the big headings.
+
+Build new game controls the same way: outline, hard shadow, press-down.
 
 **Switching house.** Set `data-house="<key>"` on any element and the four active-house variables
 update for everything inside it. `GameShell` does this from its `house` prop.
 
-**Easy-reading mode.** Set `data-reading-font="lexend"` on an ancestor to swap every font family to
-Lexend, as the source design does. Nothing in the UI toggles it yet.
+**Easy-reading mode.** Set `data-reading-font="lexend"` on an ancestor to swap the heading family to
+Lexend as well (body text already uses it). Nothing in the UI toggles it yet.
 
 **Reduced motion.** Under `prefers-reduced-motion: reduce` every `--duration-*` token drops to
 `0.01ms` and looping animations run once. Build animations from the duration tokens and they
@@ -148,7 +165,7 @@ import { GameShell, type FeedbackState } from './shell';
   bar with Hint, Check and Reset always in the same order and place.
 - **Progress:** segments up to 12 puzzles, a single bar beyond that, plus the "3 / 8" count and an
   accessible `progressbar`.
-- **Feedback:** a pulse and glow on the play area for `correct`; a gentle shake, an encouraging
+- **Feedback:** a pulse and a green outline on the play area for `correct`; a gentle shake, an encouraging
   message and a nudge on the Hint button for `incorrect` (no red, no error wording); a full
   completion screen with a celebration and the Next button for `solved`. The play area stays mounted
   behind the completion screen, so a game keeps its state.

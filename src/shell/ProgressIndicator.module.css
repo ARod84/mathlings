@@ -10,10 +10,12 @@
   gap: var(--space-1);
 }
 
+/* Little square blocks that turn gold as puzzles are solved. */
 .segment {
   width: 14px;
-  height: 8px;
-  border-radius: var(--radius-pill);
+  height: 14px;
+  border: 2px solid var(--color-outline);
+  border-radius: 3px;
   background: rgba(255, 255, 255, 0.3);
   transition: background-color var(--duration-base) var(--ease-standard);
 }
@@ -24,8 +26,9 @@
 
 .bar {
   width: 120px;
-  height: 8px;
-  border-radius: var(--radius-pill);
+  height: 14px;
+  border: 2px solid var(--color-outline);
+  border-radius: 3px;
   background: rgba(255, 255, 255, 0.3);
   overflow: hidden;
 }
@@ -33,7 +36,6 @@
 .barFill {
   display: block;
   height: 100%;
-  border-radius: inherit;
   background: var(--color-gold);
   transition: width var(--duration-base) var(--ease-standard);
 }
@@ -47,7 +49,8 @@
 
 @media (max-width: 480px) {
   .segment {
-    width: 8px;
+    width: 10px;
+    height: 10px;
   }
 
   .bar {

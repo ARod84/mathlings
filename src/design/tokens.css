@@ -1,7 +1,9 @@
 /*
- * Design tokens. Values come from the Martians Space Club design bundle
- * wherever it defines them; the motion durations and easing curves are the
- * one group the design leaves open, so those are defined here.
+ * Design tokens. Colors, spacing and type sizes come from the Martians Space
+ * Club design bundle. On top of that sits a retro-platformer layer that is
+ * defined here: modern sans-serif families, blocky radii, a dark outline and
+ * hard-edged shadows. Motion durations and easing curves are also defined
+ * here, since the design leaves them open.
  *
  * Every value in this file is mirrored in tokens.ts, and
  * tokens.test.ts fails if the two drift apart.
@@ -22,6 +24,7 @@
   --color-ink-2: #6e5680;
   --color-on-dark: #ffffff;
   --color-on-dark-muted: #d8ccf2;
+  --color-outline: #221739; /* block outlines and hard shadows */
 
   /* ---- Color: surfaces ---- */
   --color-paper: #ffffff;
@@ -82,9 +85,10 @@
   --house-strong: var(--house-navigators-strong);
 
   /* ---- Typography: families ---- */
-  --font-pop: 'Mochiy Pop One', 'M PLUS Rounded 1c', system-ui, sans-serif;
-  --font-display: 'M PLUS Rounded 1c', system-ui, sans-serif;
-  --font-body: 'M PLUS Rounded 1c', system-ui, sans-serif;
+  /* Modern sans-serif only: no rounded or hand-drawn faces. */
+  --font-pop: 'Outfit', system-ui, sans-serif;
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-body: 'Lexend', system-ui, sans-serif;
   --font-reading: 'Lexend', system-ui, sans-serif;
 
   /* ---- Typography: weights ---- */
@@ -124,20 +128,22 @@
   /* ---- Sizing ---- */
   --size-touch-min: 2.75rem; /* 44 */
   --size-control: 3.25rem; /* 52 */
+  --size-outline: 3px; /* the chunky block outline */
+  --size-press: 4px; /* how far a block sinks when pressed */
 
-  /* ---- Radius ---- */
-  --radius-sm: 0.875rem; /* 14 */
-  --radius-md: 1.125rem; /* 18 */
-  --radius-lg: 1.375rem; /* 22 */
-  --radius-xl: 1.75rem; /* 28 */
+  /* ---- Radius: blocky, retro-platformer corners ---- */
+  --radius-sm: 0.375rem; /* 6 */
+  --radius-md: 0.5rem; /* 8 */
+  --radius-lg: 0.75rem; /* 12 */
+  --radius-xl: 1rem; /* 16 */
   --radius-pill: 999px;
 
-  /* ---- Shadow ---- */
-  --shadow-tile: 0 6px 14px -10px rgba(34, 23, 57, 0.4);
-  --shadow-soft: 0 10px 24px -10px rgba(34, 23, 57, 0.4);
-  --shadow-card: 0 18px 50px -22px rgba(34, 23, 57, 0.28);
-  --shadow-panel: 0 14px 30px -14px rgba(34, 23, 57, 0.6);
-  --shadow-button: 0 8px 20px -6px color-mix(in srgb, var(--house-strong) 67%, transparent);
+  /* ---- Shadow: hard-edged, no blur, like blocks casting onto a backdrop ---- */
+  --shadow-tile: 0 4px 0 0 var(--color-outline);
+  --shadow-soft: 4px 4px 0 0 rgba(34, 23, 57, 0.3);
+  --shadow-card: 6px 6px 0 0 rgba(34, 23, 57, 0.3);
+  --shadow-panel: 8px 8px 0 0 rgba(20, 10, 40, 0.55);
+  --shadow-button: 0 5px 0 0 var(--color-outline);
 
   /* ---- Focus ring: gold, with a dark edge so it shows on light surfaces ---- */
   --focus-ring-width: 3px;
@@ -194,7 +200,7 @@
   --house-strong: var(--house-scientists-strong);
 }
 
-/* Easy-reading mode from the source design: Lexend replaces every family. */
+/* Easy-reading mode: Lexend replaces the heading family too. */
 [data-reading-font='lexend'] {
   --font-pop: var(--font-reading);
   --font-display: var(--font-reading);

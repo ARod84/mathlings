@@ -1,12 +1,9 @@
 /* Self-hosted fonts (latin subsets), bundled by Vite. No font CDN. */
-@import '@fontsource/mochiy-pop-one/latin-400.css';
-@import '@fontsource/m-plus-rounded-1c/latin-400.css';
-@import '@fontsource/m-plus-rounded-1c/latin-500.css';
-@import '@fontsource/m-plus-rounded-1c/latin-700.css';
-@import '@fontsource/m-plus-rounded-1c/latin-800.css';
+@import '@fontsource/outfit/latin-700.css';
+@import '@fontsource/outfit/latin-800.css';
 @import '@fontsource/lexend/latin-400.css';
 @import '@fontsource/lexend/latin-500.css';
-@import '@fontsource/lexend/latin-600.css';
+@import '@fontsource/lexend/latin-700.css';
 @import './tokens.css';
 
 *,
@@ -28,14 +25,15 @@ body {
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-body);
   color: var(--color-on-dark);
+  /* Square "pixel" stars over the space gradient. */
   background:
-    radial-gradient(2px 2px at 8% 12%, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 27% 31%, #fff, transparent),
-    radial-gradient(2px 2px at 64% 9%, #cfe, transparent),
-    radial-gradient(1.5px 1.5px at 86% 26%, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 44% 58%, #fff, transparent),
-    radial-gradient(2px 2px at 92% 71%, var(--color-gold-deep), transparent),
-    radial-gradient(1.5px 1.5px at 13% 82%, #fff, transparent),
+    linear-gradient(#fff, #fff) 8% 12% / 4px 4px no-repeat,
+    linear-gradient(#fff, #fff) 27% 31% / 3px 3px no-repeat,
+    linear-gradient(#cfe, #cfe) 64% 9% / 4px 4px no-repeat,
+    linear-gradient(#fff, #fff) 86% 26% / 3px 3px no-repeat,
+    linear-gradient(#fff, #fff) 44% 58% / 3px 3px no-repeat,
+    linear-gradient(var(--color-gold-deep), var(--color-gold-deep)) 92% 71% / 4px 4px no-repeat,
+    linear-gradient(#fff, #fff) 13% 82% / 3px 3px no-repeat,
     linear-gradient(180deg, var(--color-space), var(--color-space-2));
   background-color: var(--color-space);
   background-attachment: fixed;

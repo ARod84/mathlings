@@ -4,7 +4,7 @@
   gap: var(--space-3);
   padding: var(--space-4) var(--space-6) var(--space-6);
   background: var(--color-paper);
-  border-top: 1px solid var(--color-line);
+  border-top: var(--size-outline) solid var(--color-outline);
 }
 
 .bar[hidden] {
@@ -19,18 +19,21 @@
   min-height: var(--size-control);
   min-width: var(--size-touch-min);
   padding: 0 var(--space-4);
-  border: 2.5px solid transparent;
-  border-radius: var(--radius-pill);
-  font: var(--font-weight-bold) var(--font-size-lg) / 1 var(--font-display);
+  /* A chunky block: dark outline, hard shadow underneath, sinks when pressed. */
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-md);
+  font: var(--font-weight-heavy) var(--font-size-lg) / 1 var(--font-display);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
   transition:
     transform var(--duration-fast) var(--ease-standard),
-    background-color var(--duration-fast) var(--ease-standard),
-    border-color var(--duration-fast) var(--ease-standard);
+    box-shadow var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
 }
 
 .button:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: translateY(var(--size-press));
+  box-shadow: 0 1px 0 0 var(--color-outline);
 }
 
 .button:disabled {
@@ -39,20 +42,18 @@
   box-shadow: none;
 }
 
-/* Hint: outlined in the house color. */
+/* Hint: gold, the "bonus" block. Ink on gold is text-safe. */
 .hint {
-  background: var(--color-paper);
-  border-color: var(--house-strong);
-  color: var(--house-strong);
+  background: var(--color-gold);
+  color: var(--color-ink);
 }
 
 .hint:hover:not(:disabled) {
-  background: var(--house-soft);
+  background: var(--color-gold-deep);
 }
 
 /* After a wrong answer the Hint button gently asks to be noticed. */
 .hint[data-nudge] {
-  background: var(--house-soft);
   animation: nudge var(--duration-celebrate) var(--ease-standard) 2;
 }
 
@@ -60,7 +61,6 @@
 .check {
   background: var(--house-strong);
   color: var(--color-on-dark);
-  box-shadow: var(--shadow-button);
 }
 
 .check:hover:not(:disabled) {
@@ -70,12 +70,11 @@
 /* Reset: quiet. */
 .reset {
   background: var(--color-paper);
-  border-color: var(--color-line);
-  color: var(--color-ink-2);
+  color: var(--color-ink);
 }
 
 .reset:hover:not(:disabled) {
-  border-color: var(--color-ink-2);
+  background: var(--color-sand);
 }
 
 @keyframes nudge {

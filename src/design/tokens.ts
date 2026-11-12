@@ -34,6 +34,7 @@ export const color = {
   ink2: '#6e5680',
   onDark: '#ffffff',
   onDarkMuted: '#d8ccf2',
+  outline: '#221739',
   paper: '#ffffff',
   cream: '#fbeff6',
   sand: '#f6e2ee',
@@ -57,9 +58,9 @@ export const house: Record<HouseKey, HousePalette> = {
 };
 
 export const fontFamily = {
-  pop: "'Mochiy Pop One', 'M PLUS Rounded 1c', system-ui, sans-serif",
-  display: "'M PLUS Rounded 1c', system-ui, sans-serif",
-  body: "'M PLUS Rounded 1c', system-ui, sans-serif",
+  pop: "'Outfit', system-ui, sans-serif",
+  display: "'Outfit', system-ui, sans-serif",
+  body: "'Lexend', system-ui, sans-serif",
   reading: "'Lexend', system-ui, sans-serif",
 } as const;
 
@@ -108,22 +109,25 @@ export const space = {
 export const size = {
   touchMin: '2.75rem',
   control: '3.25rem',
+  outline: '3px',
+  press: '4px',
 } as const;
 
 export const radius = {
-  sm: '0.875rem',
-  md: '1.125rem',
-  lg: '1.375rem',
-  xl: '1.75rem',
+  sm: '0.375rem',
+  md: '0.5rem',
+  lg: '0.75rem',
+  xl: '1rem',
   pill: '999px',
 } as const;
 
+/** Hard-edged, no blur. */
 export const shadow = {
-  tile: '0 6px 14px -10px rgba(34, 23, 57, 0.4)',
-  soft: '0 10px 24px -10px rgba(34, 23, 57, 0.4)',
-  card: '0 18px 50px -22px rgba(34, 23, 57, 0.28)',
-  panel: '0 14px 30px -14px rgba(34, 23, 57, 0.6)',
-  button: '0 8px 20px -6px color-mix(in srgb, var(--house-strong) 67%, transparent)',
+  tile: '0 4px 0 0 var(--color-outline)',
+  soft: '4px 4px 0 0 rgba(34, 23, 57, 0.3)',
+  card: '6px 6px 0 0 rgba(34, 23, 57, 0.3)',
+  panel: '8px 8px 0 0 rgba(20, 10, 40, 0.55)',
+  button: '0 5px 0 0 var(--color-outline)',
 } as const;
 
 /** Durations in milliseconds. Under prefers-reduced-motion the CSS variables drop to ~0. */

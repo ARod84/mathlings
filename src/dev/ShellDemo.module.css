@@ -84,7 +84,7 @@
 }
 
 .sum {
-  font: var(--font-weight-bold) var(--font-size-3xl) / 1 var(--font-display);
+  font: var(--font-weight-heavy) var(--font-size-3xl) / 1 var(--font-display);
   color: var(--color-ink);
   font-variant-numeric: tabular-nums;
 }
@@ -94,6 +94,7 @@
   place-items: center;
   min-width: 1.6em;
   padding: var(--space-1) var(--space-2);
+  border: var(--size-outline) solid var(--color-outline);
   border-radius: var(--radius-sm);
   background: var(--house-soft);
   color: var(--house-strong);
@@ -109,30 +110,31 @@
 .option {
   flex: 1;
   height: 5.25rem;
-  border: 2.5px solid var(--color-line);
+  border: var(--size-outline) solid var(--color-outline);
   border-radius: var(--radius-lg);
   background: var(--color-paper);
   color: var(--color-space);
-  font: var(--font-weight-bold) var(--font-size-3xl) / 1 var(--font-display);
+  font: var(--font-weight-heavy) var(--font-size-3xl) / 1 var(--font-display);
   cursor: pointer;
-  box-shadow: var(--shadow-tile);
+  box-shadow: var(--shadow-button);
   transition:
-    transform var(--duration-fast) var(--ease-bounce),
-    border-color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
     background-color var(--duration-fast) var(--ease-standard);
 }
 
 .option:hover {
-  border-color: var(--house);
+  background: var(--house-soft);
 }
 
-.option:active {
-  transform: scale(0.96);
+/* Selected: the block stays pressed in, filled with the house shade. */
+.option:active,
+.option[aria-pressed='true'] {
+  transform: translateY(var(--size-press));
+  box-shadow: 0 1px 0 0 var(--color-outline);
 }
 
 .option[aria-pressed='true'] {
-  border-color: var(--house);
-  background: var(--house-soft);
-  color: var(--house-strong);
-  transform: translateY(-3px);
+  background: var(--house-strong);
+  color: var(--color-on-dark);
 }
