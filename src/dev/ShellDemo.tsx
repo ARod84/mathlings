@@ -12,7 +12,7 @@ import styles from './ShellDemo.module.css';
 const OPTIONS = [2, 3, 4] as const;
 const ANSWER = 3;
 const HINT = 'Start at 7 and count up to 10: 8… 9… 10. How many jumps was that?';
-const FEEDBACK_STATES: FeedbackState[] = ['idle', 'correct', 'incorrect', 'solved'];
+const FEEDBACK_STATES: FeedbackState[] = ['idle', 'correct', 'incorrect', 'solved', 'complete'];
 
 export function ShellDemo() {
   const [house, setHouse] = useState<HouseKey>('navigators');

@@ -29,7 +29,7 @@ describe('ShellDemo', () => {
     await user.click(screen.getByRole('button', { name: 'cultivators' }));
     expect(shell()).toHaveAttribute('data-house', 'cultivators');
 
-    for (const state of ['correct', 'incorrect', 'solved', 'idle'] as const) {
+    for (const state of ['correct', 'incorrect', 'solved', 'complete', 'idle'] as const) {
       await user.click(screen.getByRole('button', { name: state }));
       expect(shell()).toHaveAttribute('data-feedback', state);
     }

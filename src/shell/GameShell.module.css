@@ -142,7 +142,8 @@
   min-height: 3rem;
 }
 
-.shell[data-feedback='solved'] .feedback {
+.shell[data-feedback='solved'] .feedback,
+.shell[data-feedback='complete'] .feedback {
   min-height: 0;
 }
 

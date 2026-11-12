@@ -54,8 +54,7 @@ A round has eight puzzles that get harder (`LEVELS` in `pyramid.ts`):
 | 7–8     | 4    | 1–9, then 1–12     | Four scattered blocks                        |
 
 - **Puzzles are generated**, not hand-written, from a seed (`generateRound(seed)`). The same seed
-  always gives the same round; the app seeds from the clock. After puzzle 8, Next starts a new
-  round.
+  always gives the same round; the app seeds from the clock. Puzzle 8 ends on the round-complete screen, and Play again starts a new round.
 - **No guessing.** A puzzle is only used if every block can be worked out one sum at a time
   (`canDeduceAll`), which also means it has exactly one solution.
 - **Tiles** are the missing numbers plus two or three near-miss extras.
@@ -169,22 +168,23 @@ import { GameShell, type FeedbackState } from './shell';
 </GameShell>;
 ```
 
-| Prop                           | Type                                             | Notes                                                 |
-| ------------------------------ | ------------------------------------------------ | ----------------------------------------------------- |
-| `title`                        | `string`                                         | Small, top left                                       |
-| `instruction`                  | `string`                                         | The one instruction on screen; rendered as the `<h1>` |
-| `house`                        | `HouseKey`                                       | Accent color for the whole shell                      |
-| `progress`                     | `{ current: number; total: number }`             | `current` is 1-based                                  |
-| `feedback`                     | `'idle' \| 'correct' \| 'incorrect' \| 'solved'` | Drives all shared feedback                            |
-| `hint`                         | `string \| null` (optional)                      | Shown in ORBI's bubble when present                   |
-| `onHint`, `onCheck`, `onReset` | `() => void` (optional)                          | A button without a handler is disabled, never removed |
-| `onNext`                       | `() => void` (optional)                          | "Next" on the solved screen; omitted means no button  |
-| `children`                     | `ReactNode`                                      | The play area                                         |
+| Prop                           | Type                                                           | Notes                                                                                           |
+| ------------------------------ | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `title`                        | `string`                                                       | Small, top left                                                                                 |
+| `instruction`                  | `string`                                                       | The one instruction on screen; rendered as the `<h1>`                                           |
+| `house`                        | `HouseKey`                                                     | Accent color for the whole shell                                                                |
+| `progress`                     | `{ current: number; total: number }`                           | `current` is 1-based                                                                            |
+| `feedback`                     | `'idle' \| 'correct' \| 'incorrect' \| 'solved' \| 'complete'` | Drives all shared feedback                                                                      |
+| `hint`                         | `string \| null` (optional)                                    | Shown in ORBI's bubble when present                                                             |
+| `onHint`, `onCheck`, `onReset` | `() => void` (optional)                                        | A button without a handler is disabled, never removed                                           |
+| `onNext`                       | `() => void` (optional)                                        | "Next" on the solved screen, "Play again" on the round-complete screen; omitted means no button |
+| `children`                     | `ReactNode`                                                    | The play area                                                                                   |
 
 ### What a game provides
 
 - The play area, as `children`, and all puzzle logic and state.
-- The current `feedback` state. Set it back to `'idle'` when the child changes their answer, so the
+- The current `feedback` state. For the last puzzle of a round, set `'complete'` instead of
+  `'solved'`; `onNext` then means "play again". Set it back to `'idle'` when the child changes their answer, so the
   next result animates and is announced again.
 - The `hint` text when the child asks for one (`onHint`), and `null` to clear it.
 - Its own controls inside the play area: touch targets of at least 44×44 px (`--size-touch-min`),
@@ -198,7 +198,7 @@ import { GameShell, type FeedbackState } from './shell';
   accessible `progressbar`.
 - **Feedback:** a pulse and a green outline on the play area for `correct`; a gentle shake, an encouraging
   message and a nudge on the Hint button for `incorrect` (no red, no error wording); a full
-  completion screen with a celebration and the Next button for `solved`. The play area stays mounted
+  completion screen with a celebration and the Next button for `solved`; a round-complete screen for `complete`, with a bigger celebration, one gold block per puzzle and a Play again button. The play area stays mounted
   behind the completion screen, so a game keeps its state.
 - **Sound:** short synthesized tones for each feedback state (`useFeedbackSound`, Web Audio API, no
   audio files) and the mute toggle in the header. Sound starts muted and turns on at the first tap
@@ -206,7 +206,7 @@ import { GameShell, type FeedbackState } from './shell';
 - **Hints:** ORBI's speech bubble. ORBI is placeholder art in
   `src/shell/orbi/OrbiPlaceholder.tsx`; replace the SVG there and nothing else changes.
 - **Accessibility:** feedback announced through an always-mounted `aria-live="polite"` region,
-  hints announced through a second one, keyboard focus moved to Next on the solved screen, icons
+  hints announced through a second one, keyboard focus moved to Next or Play again on the completion screens, icons
   paired with text labels, and reduced-motion support through the motion tokens.
 
 Games should never draw their own feedback banners, completion screens, hint UI or sounds.

@@ -8,7 +8,12 @@ import { SolvedScreen } from './SolvedScreen';
 import type { FeedbackState, GameShellProps } from './types';
 import { SOUND_TOGGLE_ATTRIBUTE, useFeedbackSound } from './useFeedbackSound';
 
-function feedbackMessage(feedback: FeedbackState, canHint: boolean, hintShown: boolean): string {
+function feedbackMessage(
+  feedback: FeedbackState,
+  canHint: boolean,
+  hintShown: boolean,
+  total: number,
+): string {
   switch (feedback) {
     case 'correct':
       return 'That’s right!';
@@ -18,6 +23,8 @@ function feedbackMessage(feedback: FeedbackState, canHint: boolean, hintShown: b
       return 'Not quite. Have another go!';
     case 'solved':
       return 'Puzzle solved!';
+    case 'complete':
+      return `Round complete! You solved all ${total} puzzles.`;
     case 'idle':
       return '';
   }
@@ -54,9 +61,10 @@ export function GameShell({
     if (feedback !== 'idle') play(feedback);
   }, [feedback, play]);
 
-  const solved = feedback === 'solved';
+  // Either completion screen is up: the play area and the action bar step aside.
+  const solved = feedback === 'solved' || feedback === 'complete';
   const hintText = hint?.trim() ? hint : null;
-  const message = feedbackMessage(feedback, Boolean(onHint), hintText !== null);
+  const message = feedbackMessage(feedback, Boolean(onHint), hintText !== null, progress.total);
 
   return (
     <section
@@ -96,7 +104,13 @@ export function GameShell({
           </div>
         </div>
 
-        {solved && <SolvedScreen onNext={onNext} />}
+        {solved && (
+          <SolvedScreen
+            variant={feedback === 'complete' ? 'round' : 'puzzle'}
+            total={progress.total}
+            onNext={onNext}
+          />
+        )}
 
         {/* Always mounted, so screen readers announce every change. */}
         <div className={styles.feedback} role="status" aria-live="polite">

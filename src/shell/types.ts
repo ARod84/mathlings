@@ -6,11 +6,14 @@ import type { HouseKey } from '../design/tokens';
  * - correct:   the last check was right (play area pulses).
  * - incorrect: the last check was wrong (gentle shake, nudge toward the hint).
  * - solved:    the puzzle is finished (completion screen replaces the play area).
+ * - complete:  the last puzzle of the round is finished (round-complete screen,
+ *              with a bigger celebration and "Play again"). Use it instead of
+ *              'solved' for the final puzzle.
  *
  * Set the state back to 'idle' when the child changes their answer, so the
  * next 'correct' or 'incorrect' animates and is announced again.
  */
-export type FeedbackState = 'idle' | 'correct' | 'incorrect' | 'solved';
+export type FeedbackState = 'idle' | 'correct' | 'incorrect' | 'solved' | 'complete';
 
 export interface GameProgress {
   /** 1-based position of the current puzzle. */
@@ -33,7 +36,7 @@ export interface GameShellProps {
   onHint?: () => void;
   onCheck?: () => void;
   onReset?: () => void;
-  /** Used by the "Next" button on the solved screen. */
+  /** Used by "Next" on the solved screen and by "Play again" on the round-complete screen. */
   onNext?: () => void;
   /** The play area. */
   children: ReactNode;

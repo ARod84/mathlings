@@ -58,6 +58,47 @@
   background: var(--color-mint);
 }
 
+/* ---- Round complete: a wider double ring of sparks and a row of gold blocks ---- */
+
+.solved[data-variant='round'] .celebration {
+  width: 220px;
+  height: 176px;
+}
+
+.solved[data-variant='round'] .spark {
+  --angle: calc(var(--spark-index) * 18deg);
+  --reach: -98px;
+  transform: rotate(var(--angle)) translateY(var(--reach)) rotate(45deg);
+  animation-name: burstFar;
+  animation-delay: calc(var(--spark-index) * 25ms);
+}
+
+/* Every other spark stops short, which makes the inner ring. */
+.solved[data-variant='round'] .spark:nth-child(even) {
+  --reach: -70px;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px;
+}
+
+.trophies {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.trophy {
+  width: 22px;
+  height: 22px;
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: 4px;
+  background: linear-gradient(#ffe08a 0 4px, var(--color-gold) 4px);
+  box-shadow: 0 3px 0 0 var(--color-outline);
+  animation: popIn var(--duration-slow) var(--ease-bounce) both;
+  animation-delay: calc(var(--duration-slow) + var(--trophy-index) * var(--duration-fast));
+}
+
 .title {
   font: var(--font-weight-heavy) var(--font-size-display) / 1 var(--font-pop);
   color: var(--color-gold);
@@ -120,6 +161,23 @@
   }
   60% {
     opacity: 1;
+  }
+}
+
+@keyframes burstFar {
+  from {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateY(0) rotate(45deg) scale(0.2);
+  }
+  60% {
+    opacity: 1;
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.4);
   }
 }
 

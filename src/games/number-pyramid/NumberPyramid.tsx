@@ -41,15 +41,17 @@ export function NumberPyramid({ seed, house = 'builders' }: NumberPyramidProps) 
   const [hint, setHint] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<FeedbackState>('idle');
 
-  // Show "correct" for a moment, then the completion screen.
+  const lastPuzzle = index === puzzles.length - 1;
+
+  // Show "correct" for a moment, then the completion screen (the round one after the last puzzle).
   useEffect(() => {
     if (feedback !== 'correct') return;
-    const timer = window.setTimeout(() => setFeedback('solved'), 1100);
+    const timer = window.setTimeout(() => setFeedback(lastPuzzle ? 'complete' : 'solved'), 1100);
     return () => window.clearTimeout(timer);
-  }, [feedback]);
+  }, [feedback, lastPuzzle]);
 
   const entries = placements.map((tile) => (tile === null ? null : at(puzzle.tiles, tile)));
-  const locked = feedback === 'correct' || feedback === 'solved';
+  const locked = feedback !== 'idle' && feedback !== 'incorrect';
   const complete = firstEmpty(puzzle, placements) === null;
   const usedTiles = new Set(placements.filter((tile) => tile !== null));
 
@@ -92,12 +94,12 @@ export function NumberPyramid({ seed, house = 'builders' }: NumberPyramidProps) 
   const check = () => setFeedback(isSolved(puzzle, entries) ? 'correct' : 'incorrect');
 
   const next = () => {
-    if (index + 1 < puzzles.length) {
+    if (!lastPuzzle) {
       setIndex(index + 1);
       start(at(puzzles, index + 1));
       return;
     }
-    // Last puzzle done: start a new round with fresh puzzles.
+    // "Play again" on the round-complete screen: a new round with fresh puzzles.
     const nextRound = round + 1;
     setRound(nextRound);
     setIndex(0);

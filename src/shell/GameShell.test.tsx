@@ -159,6 +159,32 @@ describe('GameShell feedback states', () => {
     expect(screen.queryByRole('button', { name: 'Check' })).not.toBeInTheDocument();
   });
 
+  it('complete: shows the round-complete screen with Play again instead of the solved screen', () => {
+    renderShell({
+      feedback: 'complete',
+      progress: { current: 8, total: 8 },
+      onNext: vi.fn(),
+      onCheck: vi.fn(),
+    });
+    const complete = screen.getByTestId('round-complete-screen');
+    expect(within(complete).getByRole('heading', { name: 'Round complete!' })).toBeVisible();
+    expect(within(complete).getByText('You solved all 8 puzzles. Stellar work!')).toBeVisible();
+    expect(within(complete).getByRole('button', { name: 'Play again' })).toHaveFocus();
+    expect(screen.queryByTestId('solved-screen')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('play-area')).not.toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Check' })).not.toBeInTheDocument();
+    expect(liveRegion()).toHaveTextContent('Round complete! You solved all 8 puzzles.');
+  });
+
+  it('complete: Play again calls onNext', async () => {
+    const user = userEvent.setup();
+    const onNext = vi.fn();
+    renderShell({ feedback: 'complete', onNext });
+    await user.click(screen.getByRole('button', { name: 'Play again' }));
+    expect(onNext).toHaveBeenCalledTimes(1);
+  });
+
   it('solved: keeps the play area mounted so the game keeps its state', () => {
     const { rerenderShell } = renderShell();
     const child = within(screen.getByTestId('play-area')).getByRole('button', { name: '3' });

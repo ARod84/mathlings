@@ -94,15 +94,21 @@ describe('NumberPyramid', () => {
     expect(tray().getAllByRole('button', { name: `Place ${value}` })).toHaveLength(copies);
   });
 
-  it('starts a new round after the last puzzle', async () => {
+  it('celebrates the whole round after the last puzzle, then starts a new one', async () => {
     const user = userEvent.setup();
     render(<NumberPyramid seed={SEED} />);
 
-    for (const puzzle of round) {
+    for (const puzzle of round.slice(0, -1)) {
       await solve(user, puzzle);
       const solved = await screen.findByTestId('solved-screen', {}, { timeout: 3000 });
       await user.click(within(solved).getByRole('button', { name: /next/i }));
     }
+
+    await solve(user, at(round, round.length - 1));
+    const complete = await screen.findByTestId('round-complete-screen', {}, { timeout: 3000 });
+    expect(screen.queryByTestId('solved-screen')).not.toBeInTheDocument();
+    expect(within(complete).getByText(/all 8 puzzles/)).toBeInTheDocument();
+    await user.click(within(complete).getByRole('button', { name: 'Play again' }));
 
     expect(screen.getByText('1 / 8')).toBeInTheDocument();
     expect(emptyBlocks()).toHaveLength(missing(at(generateRound(SEED + 1), 0)).length);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export type FeedbackSound = 'correct' | 'incorrect' | 'solved';
+export type FeedbackSound = 'correct' | 'incorrect' | 'solved' | 'complete';
 
 interface Tone {
   /** Frequency in Hz. */
@@ -46,6 +46,20 @@ const RECIPES: Record<FeedbackSound, SoundRecipe> = {
       { frequency: 659.25, at: 0.11, length: 0.14 },
       { frequency: 783.99, at: 0.22, length: 0.14 },
       { frequency: 1046.5, at: 0.33, length: 0.34 },
+    ],
+  },
+  // A longer fanfare for the end of a round: the arpeggio, a step back, then a held top note.
+  complete: {
+    wave: 'triangle',
+    peak: 0.12,
+    tones: [
+      { frequency: 523.25, at: 0, length: 0.13 },
+      { frequency: 659.25, at: 0.1, length: 0.13 },
+      { frequency: 783.99, at: 0.2, length: 0.13 },
+      { frequency: 1046.5, at: 0.3, length: 0.22 },
+      { frequency: 783.99, at: 0.5, length: 0.13 },
+      { frequency: 1046.5, at: 0.62, length: 0.16 },
+      { frequency: 1318.51, at: 0.76, length: 0.6 },
     ],
   },
 };
