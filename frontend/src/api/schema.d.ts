@@ -987,9 +987,8 @@ export interface components {
             /**
              * Seed
              * @description Fixes the puzzle. Leave out for a random one.
-             * @default null
              */
-            seed: number | null;
+            seed?: number | null;
         };
     };
     responses: never;

@@ -513,6 +513,12 @@ def test_openapi_has_both_games_told_apart_by_game(client: TestClient):
         ]
     }
     assert set(schemas["NewSequenceRequest"]["properties"]) == {"level", "seed"}
+    # An optional field is optional the same way in every game's request: not
+    # required, and without a null default, which client generators read as
+    # "always sent". NewPuzzleRequest is written by FastAPI, the other by hand.
+    for name in ("NewPuzzleRequest", "NewSequenceRequest"):
+        assert schemas[name]["required"] == ["level"], name
+        assert "default" not in schemas[name]["properties"]["seed"], name
     assert schemas["SequencePublic"]["properties"]["game"]["const"] == "sequences"
     assert schemas["SequencePublic"]["properties"]["terms"]["items"] == {
         "anyOf": [{"type": "integer"}, {"type": "null"}]

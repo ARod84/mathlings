@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { components, paths } from './schema';
+import type { components } from './schema';
 
 /*
  * Typed calls to the puzzle API. Each returns an ApiResult, so components
@@ -27,17 +27,6 @@ export type Level = 1 | 2 | 3;
 export const isLevel = (value: number): value is Level => value === 1 || value === 2 || value === 3;
 
 /**
- * A request body in which every field that may be null may also be left out.
- * That is how the API treats them (null is their default), but the generated
- * type of a body the backend documents by hand marks them as required.
- */
-type NullableOptional<T> = {
-  [K in keyof T as null extends T[K] ? never : K]: T[K];
-} & {
-  [K in keyof T as null extends T[K] ? K : never]?: T[K];
-};
-
-/**
  * What each game sends to start a puzzle, and what it gets back. The key is
  * the game's name in the URL. A new backend puzzle type gets an entry here.
  */
@@ -48,7 +37,7 @@ export interface GameShapes {
   };
   /** "Next in Line". The backend serves it; its screen is still to come. */
   sequences: {
-    request: NullableOptional<components['schemas']['NewSequenceRequest']>;
+    request: components['schemas']['NewSequenceRequest'];
     puzzle: components['schemas']['SequencePublic'];
   };
 }
@@ -57,10 +46,6 @@ export interface GameShapes {
 export type GameId = keyof GameShapes;
 export type NewPuzzleRequest<G extends GameId> = GameShapes[G]['request'];
 export type PuzzleOf<G extends GameId> = GameShapes[G]['puzzle'];
-/** The body of a new-puzzle request as the API document has it: any game's. */
-type AnyNewPuzzleBody = NonNullable<
-  paths['/api/v1/puzzles/{game}']['post']['requestBody']
->['content']['application/json'];
 /** A puzzle of any game. Its `game` field says which. */
 export type AnyPuzzle = PuzzleOf<GameId>;
 
@@ -97,13 +82,13 @@ export function newPuzzle<G extends GameId>(
   request: NewPuzzleRequest<G>,
   signal?: AbortSignal,
 ): Promise<ApiResult<PuzzleOf<G>>> {
-  // The server picks the body it expects and the shape it answers with from
-  // the game in the path. The API document can only say "one of the games'",
-  // so both narrowings to this game are stated here, once, for every caller.
+  // The server picks the response shape from the game in the path. The API
+  // document can only say "one of the games' puzzles", so the narrowing to
+  // this game's puzzle is stated here, once, for every caller.
   return toResult(
     api.POST('/api/v1/puzzles/{game}', {
       params: { path: { game } },
-      body: request as AnyNewPuzzleBody,
+      body: request,
       signal,
     }),
   ) as Promise<ApiResult<PuzzleOf<G>>>;

@@ -511,6 +511,9 @@ def test_openapi_tells_the_games_apart(client: TestClient):
     }
     assert set(schemas["DummyNewPuzzle"]["properties"]) == {"level", "seed", "digits"}
     assert schemas["DummyNewPuzzle"]["additionalProperties"] is False
+    assert "default" not in schemas["DummyNewPuzzle"]["properties"]["seed"]
+    # A default that is a value stays: only a null one is dropped.
+    assert schemas["DummyNewPuzzle"]["properties"]["digits"]["default"] == 1
     assert "404" in new_puzzle["responses"] and "422" in new_puzzle["responses"]
 
     # The first route stays, marked as deprecated.

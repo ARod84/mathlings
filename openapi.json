@@ -2937,7 +2937,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "description": "Fixes the puzzle. Leave out for a random one.",
             "title": "Seed"
           }

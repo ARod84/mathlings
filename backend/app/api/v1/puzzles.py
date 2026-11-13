@@ -95,14 +95,31 @@ def add_request_schemas(document: dict[str, Any], registry: PuzzleRegistry) -> N
     FastAPI only lists the models it sees in a route's signature, and the
     body of POST /puzzles/{game} is validated by hand (it depends on the
     path), so the models it refers to are added here. Safe to call twice.
+
+    They are written the way FastAPI writes the ones it lists itself: a field
+    whose default is null carries no `default` at all. Client generators read
+    a `default` as "always there", and would mark an optional `seed` as required.
     """
     schemas = document.setdefault("components", {}).setdefault("schemas", {})
     for puzzle_type in registry:
         model = puzzle_type.request_model
-        schema = model.model_json_schema(ref_template=_SCHEMA_REF)
+        schema = _without_null_defaults(model.model_json_schema(ref_template=_SCHEMA_REF))
         for name, definition in schema.pop("$defs", {}).items():
             schemas.setdefault(name, definition)
         schemas.setdefault(model.__name__, schema)
+
+
+def _without_null_defaults(schema: Any) -> Any:
+    """A JSON schema with every `"default": null` taken out, at any depth."""
+    if isinstance(schema, list):
+        return [_without_null_defaults(item) for item in schema]
+    if not isinstance(schema, dict):
+        return schema
+    return {
+        key: _without_null_defaults(value)
+        for key, value in schema.items()
+        if not (key == "default" and value is None)
+    }
 
 
 def build_router(registry: PuzzleRegistry) -> APIRouter:
