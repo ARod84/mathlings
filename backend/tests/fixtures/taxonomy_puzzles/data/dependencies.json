@@ -1,0 +1,55 @@
+{
+  "version": "fixture-v1",
+  "note": "`topicId` depends on `prerequisiteId`.",
+  "edgeCount": 8,
+  "dependencies": [
+    {
+      "topicId": "mt_add2",
+      "prerequisiteId": "mt_placevalue",
+      "strength": "hard",
+      "reason": "mt_add2 builds on mt_placevalue."
+    },
+    {
+      "topicId": "mt_placevalue",
+      "prerequisiteId": "mt_count",
+      "strength": "hard",
+      "reason": "mt_placevalue builds on mt_count."
+    },
+    {
+      "topicId": "mt_count",
+      "prerequisiteId": "mt_words",
+      "strength": "soft",
+      "reason": "mt_count builds on mt_words."
+    },
+    {
+      "topicId": "mt_frac",
+      "prerequisiteId": "mt_add2",
+      "strength": "soft",
+      "reason": "mt_frac builds on mt_add2."
+    },
+    {
+      "topicId": "mt_algebra",
+      "prerequisiteId": "mt_add2",
+      "strength": "hard",
+      "reason": "mt_algebra builds on mt_add2."
+    },
+    {
+      "topicId": "mt_3JgrHY221M",
+      "prerequisiteId": "mt_oIzycTBeE4",
+      "strength": "hard",
+      "reason": "mt_3JgrHY221M builds on mt_oIzycTBeE4."
+    },
+    {
+      "topicId": "mt_3JgrHY221M",
+      "prerequisiteId": "mt_ehGS_uVSJv",
+      "strength": "soft",
+      "reason": "mt_3JgrHY221M builds on mt_ehGS_uVSJv."
+    },
+    {
+      "topicId": "mt_XuHmIn2xje",
+      "prerequisiteId": "mt_yTWxkzzoOZ",
+      "strength": "hard",
+      "reason": "mt_XuHmIn2xje builds on mt_yTWxkzzoOZ."
+    }
+  ]
+}

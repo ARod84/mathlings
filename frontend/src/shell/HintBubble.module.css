@@ -1,0 +1,68 @@
+.hint {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+  animation: arrive var(--duration-slow) var(--ease-out) both;
+}
+
+.orbi {
+  flex: none;
+  animation: float var(--duration-float) var(--ease-ambient) infinite;
+}
+
+.bubble {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-lg);
+  background: var(--house-soft);
+  box-shadow: var(--shadow-tile);
+}
+
+/* Speech-bubble tail pointing at ORBI: a square on its corner, outlined on the two outer sides. */
+.bubble::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  bottom: 20px;
+  width: 16px;
+  height: 16px;
+  border-left: var(--size-outline) solid var(--color-outline);
+  border-bottom: var(--size-outline) solid var(--color-outline);
+  background: var(--house-soft);
+  transform: rotate(45deg);
+}
+
+.label {
+  position: relative;
+  font: var(--font-weight-bold) var(--font-size-xs) / 1 var(--font-body);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--house-strong);
+}
+
+.text {
+  position: relative;
+  margin-top: var(--space-2);
+  font: var(--font-weight-bold) var(--font-size-lg) / var(--line-height-body) var(--font-body);
+  color: var(--house-strong);
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}

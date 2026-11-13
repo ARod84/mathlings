@@ -1,0 +1,317 @@
+.game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+/* ---- The chain: solved steps above, faded; the current step below, big ---- */
+
+.chain {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-heavy);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--color-space);
+}
+
+.step[data-state='solved'] {
+  font-size: var(--font-size-xl);
+  opacity: 0.55;
+}
+
+.step[data-state='current'] {
+  padding: var(--space-2) var(--space-3);
+  font-size: clamp(var(--font-size-2xl), 8vw, var(--font-size-display));
+  animation: slideIn var(--duration-slow) var(--ease-out);
+}
+
+.equation {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+}
+
+.tokenGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+}
+
+.symbol {
+  color: var(--color-ink-2);
+}
+
+.number {
+  padding: 0.1em 0.15em;
+  border-radius: var(--radius-sm);
+}
+
+/* The number the child just found, turning up in the next equation. */
+.number[data-linked] {
+  box-shadow: inset 0 -0.18em 0 0 var(--color-gold);
+  animation: linked var(--duration-celebrate) var(--ease-out);
+}
+
+.box {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.7em;
+  height: 1.5em;
+  padding: 0 0.2em;
+  border: var(--size-outline) dashed var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--color-cream);
+}
+
+.box[data-state='filled'] {
+  border-style: solid;
+  background: var(--color-gold);
+  color: var(--color-ink);
+  box-shadow: 0 3px 0 0 var(--color-outline);
+  animation: dropIn var(--duration-base) var(--ease-bounce);
+}
+
+.box[data-state='solved'] {
+  border-style: solid;
+  border-color: var(--color-correct-text);
+  background: var(--color-correct-bg);
+  color: var(--color-correct-text);
+}
+
+.step[data-state='solved'] .box {
+  border-width: 2px;
+}
+
+/* ---- Option tiles ---- */
+
+.options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 28rem;
+}
+
+.option {
+  min-height: 4.25rem;
+  padding: 0 var(--space-2);
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-lg);
+  background: var(--color-paper);
+  color: var(--color-space);
+  font: var(--font-weight-heavy) var(--font-size-2xl) / 1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  box-shadow: var(--shadow-button);
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+}
+
+.option:hover:not(:disabled) {
+  background: var(--house-soft);
+}
+
+/* Picked: the tile stays pressed in, filled with the house shade. */
+.option:active:not(:disabled),
+.option[aria-pressed='true'] {
+  transform: translateY(var(--size-press));
+  box-shadow: 0 1px 0 0 var(--color-outline);
+}
+
+.option[aria-pressed='true'] {
+  background: var(--house-strong);
+  color: var(--color-on-dark);
+}
+
+.option:disabled {
+  cursor: default;
+}
+
+.option:disabled:not([aria-pressed='true']) {
+  opacity: 0.5;
+}
+
+/* ---- Start screen: three big level buttons ---- */
+
+.levels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 22rem;
+}
+
+.level {
+  min-height: 4.5rem;
+  padding: 0 var(--space-6);
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-lg);
+  background: var(--house-strong);
+  color: var(--color-on-dark);
+  font: var(--font-weight-heavy) var(--font-size-2xl) / 1 var(--font-display);
+  cursor: pointer;
+  box-shadow: var(--shadow-button);
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+}
+
+.level:hover {
+  background: var(--house-dark);
+}
+
+.level:active {
+  transform: translateY(var(--size-press));
+  box-shadow: 0 1px 0 0 var(--color-outline);
+}
+
+/* ---- Loading: three blocks taking turns, never a blank screen ---- */
+
+.loading {
+  display: grid;
+  place-items: center;
+  min-height: 9rem;
+}
+
+.loadingBlocks {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.loadingBlocks span {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--house-soft);
+  animation: wait var(--duration-celebrate) var(--ease-ambient) infinite;
+}
+
+.loadingBlocks span:nth-child(2) {
+  animation-delay: 150ms;
+}
+
+.loadingBlocks span:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+/* ---- Friendly problem message ---- */
+
+.problem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  max-width: 24rem;
+  text-align: center;
+}
+
+.problemText {
+  font: var(--font-weight-bold) var(--font-size-lg) / var(--line-height-body) var(--font-body);
+  color: var(--color-ink);
+}
+
+.tryAgain {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--size-control);
+  padding: 0 var(--space-6);
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-md);
+  background: var(--color-gold);
+  color: var(--color-ink);
+  font: var(--font-weight-heavy) var(--font-size-lg) / 1 var(--font-display);
+  cursor: pointer;
+  box-shadow: var(--shadow-button);
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+}
+
+.tryAgain:hover {
+  background: var(--color-gold-deep);
+}
+
+.tryAgain:active {
+  transform: translateY(var(--size-press));
+  box-shadow: 0 1px 0 0 var(--color-outline);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes dropIn {
+  from {
+    transform: translateY(-8px) scale(0.92);
+  }
+}
+
+@keyframes linked {
+  0%,
+  60% {
+    background: var(--color-gold);
+    transform: scale(1.12);
+  }
+  100% {
+    background: transparent;
+    transform: scale(1);
+  }
+}
+
+@keyframes wait {
+  0%,
+  100% {
+    transform: translateY(0);
+    background: var(--house-soft);
+  }
+  40% {
+    transform: translateY(-8px);
+    background: var(--color-gold);
+  }
+}
+
+@media (max-width: 480px) {
+  .game {
+    gap: var(--space-6);
+  }
+
+  .options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

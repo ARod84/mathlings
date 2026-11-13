@@ -1,164 +1,81 @@
 # Mathlings
 
-Short math-logic puzzle games for kids aged 7–12. This is a standalone precursor to the
-Martians Space Club site and will be merged into it later, so its visual language comes from that
-site's design.
+Short math-logic puzzle games for kids aged 7–12. A standalone precursor to the Martians Space
+Club site, to be merged into it later.
 
-Right now the project contains the frontend scaffold, the design system and the `GameShell` that
-every game renders inside. There are no real games, routing, backend or persistence yet.
+| Folder                  | What it is                                                                |
+| ----------------------- | ------------------------------------------------------------------------- |
+| [`frontend/`](frontend) | The games: Vite, React and TypeScript. Design system, `GameShell`, games. |
+| [`backend/`](backend)   | Python API (FastAPI): the topic database, puzzle generation and checking. |
+| [`shared/`](shared)     | Data both apps read: which taxonomy topics each game practises.           |
 
-## Getting started
+Each folder has its own README with setup and commands.
+
+## Running both apps together
+
+The frontend calls the backend, so run both. Two terminals:
 
 ```bash
+# terminal 1: the API on http://localhost:8000
+cd backend
+uv sync
+./scripts/fetch_taxonomy.ps1            # first time only (use fetch_taxonomy.sh on macOS or Linux)
+uv run alembic upgrade head             # first time only
+uv run python -m app.taxonomy.importer  # first time only
+uv run uvicorn app.main:app --reload
+
+# terminal 2: the games on http://localhost:5173
+cd frontend
 npm install
-npm run dev        # demo page at http://localhost:5173
+npm run dev
 ```
 
-| Script                 | What it does                                |
-| ---------------------- | ------------------------------------------- |
-| `npm run dev`          | Vite dev server with the shell demo page    |
-| `npm test`             | Vitest, single run                          |
-| `npm run test:watch`   | Vitest in watch mode                        |
-| `npm run lint`         | ESLint                                      |
-| `npm run typecheck`    | TypeScript (strict), no emit                |
-| `npm run format`       | Prettier, write                             |
-| `npm run format:check` | Prettier, check only                        |
-| `npm run build`        | Typecheck, then production build to `dist/` |
+Open `http://localhost:5173`. The Vite dev server passes every `/api` request on to port 8000, so the
+browser only talks to one origin. Number Pyramid works without the backend; Missing Number Chains
+needs it, and shows a "Try again" message when it cannot reach it.
 
-Stack: Vite, React, TypeScript (strict), plain CSS with custom properties and CSS Modules, Vitest
-with React Testing Library, `lucide-react` icons, and fonts self-hosted through `@fontsource/*`.
+## The games
 
-```
-src/
-  design/   tokens.css, tokens.ts, global.css, contrast helpers and their tests
-  shell/    GameShell and its parts (progress, action bar, hint bubble, solved screen, sound hook)
-  dev/      ShellDemo: the review page mounted at the app root for now
-```
+- **Number Pyramid.** Every block is the sum of the two blocks below it; the child drops number
+  tiles into the empty blocks. Eight generated puzzles per round, made in the browser.
+- **Missing Number Chains.** Equations with one missing number, linked in a chain: the number found
+  in one step turns up in the next. Three levels (up to 20, 100 or 1000), five puzzles per round.
+  The puzzles, the answer checks and the hints come from the backend.
 
-## The demo page
+## The API
 
-`src/dev/ShellDemo.tsx` renders one dummy puzzle ("Tap the number that makes 10 with 7") inside the
-shell. The dashed dev toolbar above it switches the `house` prop and forces each feedback state, so
-every visual state can be reviewed in all five house colors. Choose **live** to hand control back to
-the puzzle.
+`backend/` serves a JSON API under `/api/v1`, with interactive docs at
+`http://localhost:8000/docs`. `openapi.json` at the repo root is the exported contract.
 
-## Design system
+| Area     | Routes                                                                                                                                                             |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Taxonomy | `GET /domains`, `/topics`, `/topics/{id}` and its `/prerequisites`, `/unlocks`, `/step-back`, `/error-patterns`, `/research`; `GET /meta/source`                   |
+| Puzzles  | `POST /puzzles/missing-number`, `GET /puzzles/{puzzle_id}`, `POST /puzzles/{puzzle_id}/steps/{index}/check`, `GET /puzzles/{puzzle_id}/steps/{index}/hints/{tier}` |
+| Health   | `GET /health`                                                                                                                                                      |
 
-### Tokens
+### Puzzles are stateless
 
-`src/design/tokens.css` defines every token as a CSS custom property. `src/design/tokens.ts` mirrors
-them with types, including the `HouseKey` union. `tokens.test.ts` fails if the two files drift
-apart, so change both together.
+Nothing about a puzzle is stored. A `puzzle_id` such as `mnc-1-1-3-2-b555` spells out the generator
+version, level, number of steps and seed, plus a short checksum. On every request the server builds
+the puzzle again from the id and verifies it before using it. Two consequences:
 
-Values come from the Martians Space Club design bundle. The one group the design does not define is
-motion timing (transition durations and easing curves), which is defined here.
+- An id that was tampered with fails its checksum and gets a 404.
+- An id from an older generator version gets a `410 Gone` with the current version, and the
+  frontend starts a new puzzle.
 
-| Group      | Tokens                                                                                                                                                                                                                                                                                                                                         |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Color      | `--color-space`, `-space-2`, `-space-3` (backdrop) · `--color-gold`, `-gold-deep` · `--color-ink`, `-ink-2`, `-on-dark`, `-on-dark-muted` (text) · `--color-paper`, `-cream`, `-sand`, `-line` (surfaces) · `--color-magenta`, `-peach`, `-lavender`, `-mint` (accents) · `--color-correct-bg/-text`, `--color-retry-bg/-text` (feedback)      |
-| House      | `--house-<key>`, `--house-<key>-dark`, `--house-<key>-soft`, `--house-<key>-strong` for `navigators`, `builders`, `cultivators`, `artisans`, `scientists` · active house: `--house`, `--house-dark`, `--house-soft`, `--house-strong`                                                                                                          |
-| Typography | Families `--font-pop` (Mochiy Pop One), `--font-display` and `--font-body` (M PLUS Rounded 1c), `--font-reading` (Lexend) · weights `--font-weight-regular/medium/bold/heavy` (400/500/700/800) · sizes `--font-size-xs/sm/md/lg/xl/2xl/3xl/display` (12/13/15/17/21/26/34/40 px) · `--line-height-tight/snug/body` · `--letter-spacing-label` |
-| Spacing    | 4 px base: `--space-1/2/3/4/5/6/8/10/12/16` (4/8/12/16/20/24/32/40/48/64 px) · `--size-touch-min` (44 px), `--size-control` (52 px)                                                                                                                                                                                                            |
-| Radius     | `--radius-sm/md/lg/xl` (14/18/22/28 px), `--radius-pill`                                                                                                                                                                                                                                                                                       |
-| Shadow     | `--shadow-tile`, `--shadow-soft`, `--shadow-card`, `--shadow-panel`, `--shadow-button` (house-tinted glow)                                                                                                                                                                                                                                     |
-| Focus      | `--focus-ring-width`, `--focus-ring-color` (gold), `--focus-ring-edge` (dark edge so the ring shows on light surfaces)                                                                                                                                                                                                                         |
-| Motion     | `--duration-fast/base/slow/celebrate` (120/220/420/900 ms), `--duration-float`, `--duration-twinkle` (ambient loops) · `--ease-standard/out/bounce/ambient`                                                                                                                                                                                    |
+### Answers are not secrets
 
-**Switching house.** Set `data-house="<key>"` on any element and the four active-house variables
-update for everything inside it. `GameShell` does this from its `house` prop.
+The browser receives a cut-down puzzle: equations, four answer options per step and the number of
+hint tiers. It does not receive answers, mistake-rule names, error-pattern ids or hint text, and a
+wrong check never says what the right answer was.
 
-**Easy-reading mode.** Set `data-reading-font="lexend"` on an ancestor to swap every font family to
-Lexend, as the source design does. Nothing in the UI toggles it yet.
+One thing is known and accepted: in a chain, each step shows the previous step's answer as a
+visible number, because that is how the puzzle works. The frontend reveals steps one at a time.
+This is a practice game for children, not an exam. The aim is to keep the answer out of the way
+until the child has tried, not to make it impossible to find, so please do not "fix" this by hiding
+later steps or encrypting anything.
 
-**Reduced motion.** Under `prefers-reduced-motion: reduce` every `--duration-*` token drops to
-`0.01ms` and looping animations run once. Build animations from the duration tokens and they
-respect the setting automatically.
+## Data and licenses
 
-### Color contrast
-
-White text on the base house color fails WCAG AA at normal text size for four of the five houses.
-Each house therefore has a `-strong` shade that is safe for text:
-
-| House       | Base      | White on base | Strong    | White on strong |
-| ----------- | --------- | ------------- | --------- | --------------- |
-| navigators  | `#7C4DEF` | 5.04          | `#5226B5` | 9.12            |
-| builders    | `#E86E48` | 3.11          | `#A8481F` | 5.81            |
-| cultivators | `#15A589` | 3.10          | `#0B6B58` | 6.45            |
-| artisans    | `#E94E8E` | 3.53          | `#B22C66` | 6.10            |
-| scientists  | `#1F9BB5` | 3.27          | `#0F6276` | 6.93            |
-
-Rules of use:
-
-- `--house`: decoration only (borders, glows, swatches, fills with no text on them).
-- `--house-strong`: text on light surfaces, and fills that carry white text.
-- `--house-soft`: pale background for `--house-strong` text.
-- Gold carries ink text, never white. Gold text belongs on the space backdrop only.
-
-`src/design/contrast.test.ts` computes the ratios and fails if any text pairing drops below 4.5:1.
-It covers body text on the backdrop, text on light surfaces, text on gold, the feedback messages,
-and each house's strong, dark and soft pairings.
-
-## GameShell contract
-
-`GameShell` (`src/shell`) is the one layout every game uses.
-
-```tsx
-import { GameShell, type FeedbackState } from './shell';
-
-<GameShell
-  title="Make Ten"
-  instruction="Tap the number that makes 10 with 7"
-  house="navigators"
-  progress={{ current: 3, total: 8 }}
-  feedback={feedback}
-  hint={hint}
-  onHint={showHint}
-  onCheck={check}
-  onReset={reset}
-  onNext={next}
->
-  {/* the play area */}
-</GameShell>;
-```
-
-| Prop                           | Type                                             | Notes                                                 |
-| ------------------------------ | ------------------------------------------------ | ----------------------------------------------------- |
-| `title`                        | `string`                                         | Small, top left                                       |
-| `instruction`                  | `string`                                         | The one instruction on screen; rendered as the `<h1>` |
-| `house`                        | `HouseKey`                                       | Accent color for the whole shell                      |
-| `progress`                     | `{ current: number; total: number }`             | `current` is 1-based                                  |
-| `feedback`                     | `'idle' \| 'correct' \| 'incorrect' \| 'solved'` | Drives all shared feedback                            |
-| `hint`                         | `string \| null` (optional)                      | Shown in ORBI's bubble when present                   |
-| `onHint`, `onCheck`, `onReset` | `() => void` (optional)                          | A button without a handler is disabled, never removed |
-| `onNext`                       | `() => void` (optional)                          | "Next" on the solved screen; omitted means no button  |
-| `children`                     | `ReactNode`                                      | The play area                                         |
-
-### What a game provides
-
-- The play area, as `children`, and all puzzle logic and state.
-- The current `feedback` state. Set it back to `'idle'` when the child changes their answer, so the
-  next result animates and is announced again.
-- The `hint` text when the child asks for one (`onHint`), and `null` to clear it.
-- Its own controls inside the play area: touch targets of at least 44×44 px (`--size-touch-min`),
-  reachable by keyboard, styled with tokens. The global gold focus ring applies automatically.
-
-### What the shell handles
-
-- **Layout:** title and progress at the top, one instruction heading, the play area, and the action
-  bar with Hint, Check and Reset always in the same order and place.
-- **Progress:** segments up to 12 puzzles, a single bar beyond that, plus the "3 / 8" count and an
-  accessible `progressbar`.
-- **Feedback:** a pulse and glow on the play area for `correct`; a gentle shake, an encouraging
-  message and a nudge on the Hint button for `incorrect` (no red, no error wording); a full
-  completion screen with a celebration and the Next button for `solved`. The play area stays mounted
-  behind the completion screen, so a game keeps its state.
-- **Sound:** short synthesized tones for each feedback state (`useFeedbackSound`, Web Audio API, no
-  audio files) and the mute toggle in the header. Sound starts muted and turns on at the first tap
-  or key press, unless the user has set the toggle themselves.
-- **Hints:** ORBI's speech bubble. ORBI is placeholder art in
-  `src/shell/orbi/OrbiPlaceholder.tsx`; replace the SVG there and nothing else changes.
-- **Accessibility:** feedback announced through an always-mounted `aria-live="polite"` region,
-  hints announced through a second one, keyboard focus moved to Next on the solved screen, icons
-  paired with text labels, and reduced-motion support through the motion tokens.
-
-Games should never draw their own feedback banners, completion screens, hint UI or sounds.
+The backend's topic data comes from the open Marble Skill Taxonomy. See [NOTICE.md](NOTICE.md) for
+what we use from it and its licenses.

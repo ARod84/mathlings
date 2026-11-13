@@ -1,0 +1,24 @@
+{
+  "_names": {
+    "mt__t4afSyZRm": "Fluent adding and subtracting within 20",
+    "mt_3JgrHY221M": "Unknown in Addition & Subtraction",
+    "mt_ehGS_uVSJv": "Inverse: addition undoes subtraction",
+    "mt_glPPG-kTQY": "Adding within 100",
+    "mt_oIzycTBeE4": "What the equals sign means",
+    "mt_XuHmIn2xje": "Missing number problems (age 7+)"
+  },
+  "number-pyramid": {
+    "byLevel": {
+      "addOnly": ["mt__t4afSyZRm"],
+      "mixed": ["mt_3JgrHY221M", "mt_ehGS_uVSJv"],
+      "fourRows": ["mt_glPPG-kTQY"]
+    }
+  },
+  "missing-number": {
+    "byLevel": {
+      "1": ["mt_3JgrHY221M", "mt_oIzycTBeE4"],
+      "2": ["mt_3JgrHY221M", "mt_oIzycTBeE4"],
+      "3": ["mt_XuHmIn2xje", "mt_ehGS_uVSJv"]
+    }
+  }
+}

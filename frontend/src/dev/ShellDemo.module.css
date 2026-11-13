@@ -1,0 +1,140 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 100dvh;
+  padding: var(--space-4);
+}
+
+/* ---- Dev toolbar: deliberately plain, so it never reads as part of the game ---- */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-6);
+  width: 100%;
+  max-width: 45rem;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4);
+  border: 1.5px dashed rgba(255, 255, 255, 0.35);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.badge {
+  font: var(--font-weight-bold) var(--font-size-xs) / 1 var(--font-body);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-gold);
+}
+
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.groupLabel {
+  font: var(--font-weight-bold) var(--font-size-sm) / 1 var(--font-body);
+  color: var(--color-on-dark-muted);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--size-touch-min);
+  padding: 0 var(--space-3);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-on-dark);
+  font: var(--font-weight-bold) var(--font-size-sm) / 1 var(--font-body);
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.chip[aria-pressed='true'] {
+  border-color: var(--color-gold);
+  background: var(--color-gold);
+  color: var(--color-ink);
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--house);
+  box-shadow: 0 0 0 1.5px var(--color-paper);
+}
+
+/* ---- Dummy puzzle ---- */
+
+.puzzle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  width: 100%;
+}
+
+.sum {
+  font: var(--font-weight-heavy) var(--font-size-3xl) / 1 var(--font-display);
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.blank {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.6em;
+  padding: var(--space-1) var(--space-2);
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--house-soft);
+  color: var(--house-strong);
+}
+
+.options {
+  display: flex;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 26rem;
+}
+
+.option {
+  flex: 1;
+  height: 5.25rem;
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-lg);
+  background: var(--color-paper);
+  color: var(--color-space);
+  font: var(--font-weight-heavy) var(--font-size-3xl) / 1 var(--font-display);
+  cursor: pointer;
+  box-shadow: var(--shadow-button);
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+}
+
+.option:hover {
+  background: var(--house-soft);
+}
+
+/* Selected: the block stays pressed in, filled with the house shade. */
+.option:active,
+.option[aria-pressed='true'] {
+  transform: translateY(var(--size-press));
+  box-shadow: 0 1px 0 0 var(--color-outline);
+}
+
+.option[aria-pressed='true'] {
+  background: var(--house-strong);
+  color: var(--color-on-dark);
+}

@@ -1,0 +1,2041 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mathlings API",
+    "description": "The learning topics behind the Mathlings games (what each topic requires first, and the mistakes children typically make) and the puzzles built on them.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Meta"
+        ],
+        "summary": "Service health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/domains": {
+      "get": {
+        "tags": [
+          "Topics"
+        ],
+        "summary": "Domains with topic counts",
+        "operationId": "list_domains_api_v1_domains_get",
+        "parameters": [
+          {
+            "name": "in_scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "true: mathematics for ages 7-12. false: prerequisite-only topics.",
+              "default": true,
+              "title": "In Scope"
+            },
+            "description": "true: mathematics for ages 7-12. false: prerequisite-only topics."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DomainCount"
+                  },
+                  "title": "Response List Domains Api V1 Domains Get"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The taxonomy has not been imported yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/topics": {
+      "get": {
+        "tags": [
+          "Topics"
+        ],
+        "summary": "Search and page through topics",
+        "operationId": "list_topics_api_v1_topics_get",
+        "parameters": [
+          {
+            "name": "domain",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Exact domain name.",
+              "title": "Domain"
+            },
+            "description": "Exact domain name."
+          },
+          {
+            "name": "in_scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "true: mathematics for ages 7-12. false: prerequisite-only topics.",
+              "default": true,
+              "title": "In Scope"
+            },
+            "description": "true: mathematics for ages 7-12. false: prerequisite-only topics."
+          },
+          {
+            "name": "age",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 18,
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Topics whose age range contains this age.",
+              "title": "Age"
+            },
+            "description": "Topics whose age range contains this age."
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "CONCEPTUAL",
+                    "PROCEDURAL",
+                    "REPRESENTATIONAL",
+                    "LANGUAGE",
+                    "META"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Case-insensitive search in name and description.",
+              "title": "Q"
+            },
+            "description": "Case-insensitive search in name and description."
+          },
+          {
+            "name": "has_research",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Research"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicPage"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The taxonomy has not been imported yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/topics/{topic_id}": {
+      "get": {
+        "tags": [
+          "Topics"
+        ],
+        "summary": "One topic in full",
+        "operationId": "get_topic_api_v1_topics__topic_id__get",
+        "parameters": [
+          {
+            "name": "topic_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Topic Id"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 50
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Child's name for the assessment prompt.",
+              "title": "Name"
+            },
+            "description": "Child's name for the assessment prompt."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicDetail"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The taxonomy has not been imported yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown topic id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicNotFoundBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/topics/{topic_id}/prerequisites": {
+      "get": {
+        "tags": [
+          "Prerequisite graph"
+        ],
+        "summary": "What the topic requires first",
+        "operationId": "get_prerequisites_api_v1_topics__topic_id__prerequisites_get",
+        "parameters": [
+          {
+            "name": "topic_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Topic Id"
+            }
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "direct",
+                "all"
+              ],
+              "type": "string",
+              "description": "direct: one step. all: the whole chain, nearest first.",
+              "default": "direct",
+              "title": "Depth"
+            },
+            "description": "direct: one step. all: the whole chain, nearest first."
+          },
+          {
+            "name": "strength",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "hard",
+                    "soft"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Follow only edges of this strength.",
+              "title": "Strength"
+            },
+            "description": "Follow only edges of this strength."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PrerequisiteItem"
+                  },
+                  "title": "Response Get Prerequisites Api V1 Topics  Topic Id  Prerequisites Get"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The taxonomy has not been imported yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown topic id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicNotFoundBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/topics/{topic_id}/unlocks": {
+      "get": {
+        "tags": [
+          "Prerequisite graph"
+        ],
+        "summary": "Topics that directly depend on this one",
+        "operationId": "get_unlocks_api_v1_topics__topic_id__unlocks_get",
+        "parameters": [
+          {
+            "name": "topic_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Topic Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UnlockItem"
+                  },
+                  "title": "Response Get Unlocks Api V1 Topics  Topic Id  Unlocks Get"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The taxonomy has not been imported yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown topic id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicNotFoundBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/topics/{topic_id}/step-back": {
+      "get": {
+        "tags": [
+          "Prerequisite graph"
+        ],
+        "summary": "Where to step back to, best candidate first",
+        "operationId": "get_step_back_api_v1_topics__topic_id__step_back_get",
+        "parameters": [
+          {
+            "name": "topic_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Topic Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PrerequisiteItem"
+                  },
+                  "title": "Response Get Step Back Api V1 Topics  Topic Id  Step Back Get"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The taxonomy has not been imported yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown topic id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicNotFoundBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/topics/{topic_id}/error-patterns": {
+      "get": {
+        "tags": [
+          "Teaching"
+        ],
+        "summary": "Typical mistakes and what to do about them",
+        "operationId": "get_error_patterns_api_v1_topics__topic_id__error_patterns_get",
+        "parameters": [
+          {
+            "name": "topic_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Topic Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ErrorPatternOut"
+                  },
+                  "title": "Response Get Error Patterns Api V1 Topics  Topic Id  Error Patterns Get"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The taxonomy has not been imported yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown topic id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicNotFoundBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/topics/{topic_id}/research": {
+      "get": {
+        "tags": [
+          "Teaching"
+        ],
+        "summary": "Trimmed teaching research",
+        "operationId": "get_research_api_v1_topics__topic_id__research_get",
+        "parameters": [
+          {
+            "name": "topic_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Topic Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicResearch"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The taxonomy has not been imported yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown topic id, or the topic has no research",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicNotFoundBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meta/source": {
+      "get": {
+        "tags": [
+          "Meta"
+        ],
+        "summary": "Dataset version and attribution",
+        "operationId": "get_source_api_v1_meta_source_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceInfo"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The taxonomy has not been imported yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/puzzles/missing-number": {
+      "post": {
+        "tags": [
+          "Puzzles"
+        ],
+        "summary": "Start a new missing-number chain",
+        "operationId": "new_missing_number_puzzle_api_v1_puzzles_missing_number_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewPuzzleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzlePublic"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Puzzles cannot be served right now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/puzzles/{puzzle_id}": {
+      "get": {
+        "tags": [
+          "Puzzles"
+        ],
+        "summary": "Rebuild a puzzle from its id",
+        "operationId": "get_puzzle_api_v1_puzzles__puzzle_id__get",
+        "parameters": [
+          {
+            "name": "puzzle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Puzzle Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzlePublic"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Puzzles cannot be served right now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown puzzle id, step or hint tier",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzleNotFoundBody"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The puzzle is from an older generator version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzleGoneBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/puzzles/{puzzle_id}/steps/{index}/check": {
+      "post": {
+        "tags": [
+          "Puzzles"
+        ],
+        "summary": "Check an answer to one step",
+        "operationId": "check_step_api_v1_puzzles__puzzle_id__steps__index__check_post",
+        "parameters": [
+          {
+            "name": "puzzle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Puzzle Id"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Index"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckResult"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Puzzles cannot be served right now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown puzzle id, step or hint tier",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzleNotFoundBody"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The puzzle is from an older generator version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzleGoneBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/puzzles/{puzzle_id}/steps/{index}/hints/{tier}": {
+      "get": {
+        "tags": [
+          "Puzzles"
+        ],
+        "summary": "One hint tier for a step",
+        "operationId": "get_hint_api_v1_puzzles__puzzle_id__steps__index__hints__tier__get",
+        "parameters": [
+          {
+            "name": "puzzle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Puzzle Id"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Index"
+            }
+          },
+          {
+            "name": "tier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HintOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Puzzles cannot be served right now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown puzzle id, step or hint tier",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzleNotFoundBody"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The puzzle is from an older generator version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzleGoneBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CheckRequest": {
+        "properties": {
+          "answer": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Answer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "answer"
+        ],
+        "title": "CheckRequest"
+      },
+      "CheckResult": {
+        "properties": {
+          "correct": {
+            "type": "boolean",
+            "title": "Correct"
+          },
+          "feedback": {
+            "type": "string",
+            "enum": [
+              "correct",
+              "try_again"
+            ],
+            "title": "Feedback"
+          },
+          "diagnosis": {
+            "$ref": "#/components/schemas/DiagnosisPublic"
+          },
+          "next_step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Step",
+            "description": "Index of the next step after a correct answer; null on the last step and after a wrong answer."
+          }
+        },
+        "type": "object",
+        "required": [
+          "correct",
+          "feedback",
+          "diagnosis",
+          "next_step"
+        ],
+        "title": "CheckResult"
+      },
+      "DiagnosisPublic": {
+        "properties": {
+          "matched_rules": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Matched Rules",
+            "description": "Names of the known mistakes that give this answer. For analytics and development; not for showing to a child."
+          },
+          "unrecognized": {
+            "type": "boolean",
+            "title": "Unrecognized",
+            "description": "Wrong, and no known mistake explains it."
+          },
+          "reteach_topic": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReteachTopic"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where to step back to, if anywhere."
+          }
+        },
+        "type": "object",
+        "required": [
+          "matched_rules",
+          "unrecognized",
+          "reteach_topic"
+        ],
+        "title": "DiagnosisPublic"
+      },
+      "DomainCount": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "domain": {
+            "type": "string",
+            "title": "Domain"
+          },
+          "topic_count": {
+            "type": "integer",
+            "title": "Topic Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject",
+          "domain",
+          "topic_count"
+        ],
+        "title": "DomainCount"
+      },
+      "Equation": {
+        "properties": {
+          "left": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/NumberToken"
+                },
+                {
+                  "$ref": "#/components/schemas/OperatorToken"
+                },
+                {
+                  "$ref": "#/components/schemas/UnknownToken"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "kind",
+                "mapping": {
+                  "number": "#/components/schemas/NumberToken",
+                  "operator": "#/components/schemas/OperatorToken",
+                  "unknown": "#/components/schemas/UnknownToken"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Left"
+          },
+          "right": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/NumberToken"
+                },
+                {
+                  "$ref": "#/components/schemas/OperatorToken"
+                },
+                {
+                  "$ref": "#/components/schemas/UnknownToken"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "kind",
+                "mapping": {
+                  "number": "#/components/schemas/NumberToken",
+                  "operator": "#/components/schemas/OperatorToken",
+                  "unknown": "#/components/schemas/UnknownToken"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Right"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "left",
+          "right"
+        ],
+        "title": "Equation",
+        "description": "`left = right`, as tokens, so a frontend can draw the box as a real box."
+      },
+      "ErrorBody": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorBody"
+      },
+      "ErrorPatternOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position",
+            "description": "Place in the topic's list of error patterns, from 0. With the topic id it identifies the pattern across re-imports."
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "pattern": {
+            "type": "string",
+            "title": "Pattern"
+          },
+          "next_move": {
+            "type": "string",
+            "title": "Next Move"
+          },
+          "distractor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distractor"
+          },
+          "revealed_by": {
+            "type": "string",
+            "title": "Revealed By"
+          },
+          "reteach_prerequisite": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TopicSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "position",
+          "kind",
+          "pattern",
+          "next_move",
+          "distractor",
+          "revealed_by",
+          "reteach_prerequisite"
+        ],
+        "title": "ErrorPatternOut"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status",
+            "default": "ok"
+          },
+          "taxonomy_loaded": {
+            "type": "boolean",
+            "title": "Taxonomy Loaded"
+          },
+          "topic_count": {
+            "type": "integer",
+            "title": "Topic Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "taxonomy_loaded",
+          "topic_count"
+        ],
+        "title": "Health"
+      },
+      "HintOut": {
+        "properties": {
+          "tier": {
+            "type": "integer",
+            "title": "Tier"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tier",
+          "text"
+        ],
+        "title": "HintOut"
+      },
+      "LinkedToken": {
+        "properties": {
+          "side": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right"
+            ],
+            "title": "Side"
+          },
+          "index": {
+            "type": "integer",
+            "title": "Index",
+            "description": "0-based position within that side's token list."
+          }
+        },
+        "type": "object",
+        "required": [
+          "side",
+          "index"
+        ],
+        "title": "LinkedToken",
+        "description": "Where a token sits in an equation: which side, and its place on that side."
+      },
+      "NewPuzzleRequest": {
+        "properties": {
+          "level": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Level"
+          },
+          "length": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Length",
+            "description": "Number of steps.",
+            "default": 3
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 9.223372036854776e+18,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "description": "Fixes the puzzle. Leave out for a random one."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "level"
+        ],
+        "title": "NewPuzzleRequest"
+      },
+      "NumberToken": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "number",
+            "title": "Kind",
+            "default": "number"
+          },
+          "value": {
+            "type": "integer",
+            "title": "Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "title": "NumberToken"
+      },
+      "OperatorToken": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "operator",
+            "title": "Kind",
+            "default": "operator"
+          },
+          "symbol": {
+            "type": "string",
+            "enum": [
+              "+",
+              "-"
+            ],
+            "title": "Symbol"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol"
+        ],
+        "title": "OperatorToken"
+      },
+      "PrerequisiteItem": {
+        "properties": {
+          "topic": {
+            "$ref": "#/components/schemas/TopicSummary"
+          },
+          "strength": {
+            "type": "string",
+            "enum": [
+              "hard",
+              "soft"
+            ],
+            "title": "Strength"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "distance": {
+            "type": "integer",
+            "title": "Distance",
+            "description": "1 for a direct prerequisite, 2 for one of its own, etc."
+          },
+          "required_by": {
+            "type": "string",
+            "title": "Required By",
+            "description": "Id of the topic that directly needs this one. For a direct prerequisite that is the topic asked about."
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic",
+          "strength",
+          "reason",
+          "distance",
+          "required_by"
+        ],
+        "title": "PrerequisiteItem"
+      },
+      "PuzzleGoneBody": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "current_version": {
+            "type": "string",
+            "title": "Current Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail",
+          "current_version"
+        ],
+        "title": "PuzzleGoneBody"
+      },
+      "PuzzleNotFoundBody": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "puzzle_id": {
+            "type": "string",
+            "title": "Puzzle Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail",
+          "puzzle_id"
+        ],
+        "title": "PuzzleNotFoundBody"
+      },
+      "PuzzlePublic": {
+        "properties": {
+          "puzzle_id": {
+            "type": "string",
+            "title": "Puzzle Id"
+          },
+          "level": {
+            "type": "integer",
+            "title": "Level"
+          },
+          "length": {
+            "type": "integer",
+            "title": "Length"
+          },
+          "topic_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Topic Ids",
+            "description": "Taxonomy topics practised, primary first."
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/PuzzleStepPublic"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "puzzle_id",
+          "level",
+          "length",
+          "topic_ids",
+          "steps"
+        ],
+        "title": "PuzzlePublic"
+      },
+      "PuzzleStepPublic": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index",
+            "description": "0-based position in the chain."
+          },
+          "equation": {
+            "$ref": "#/components/schemas/Equation"
+          },
+          "options": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Options",
+            "description": "The answer and three wrong answers, in an order that is fixed for the puzzle."
+          },
+          "hint_tiers": {
+            "type": "integer",
+            "title": "Hint Tiers",
+            "description": "How many hint tiers can be asked for.",
+            "default": 3
+          },
+          "linked_token": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkedToken"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The visible number that is the previous step's answer. Null for the first step. Says which one when the same value appears twice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "equation",
+          "options"
+        ],
+        "title": "PuzzleStepPublic"
+      },
+      "ResearchActivity": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "learner_actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Learner Actions"
+          },
+          "intended_insight": {
+            "type": "string",
+            "title": "Intended Insight"
+          },
+          "feedback": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Feedback"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "learner_actions",
+          "intended_insight",
+          "feedback"
+        ],
+        "title": "ResearchActivity"
+      },
+      "ReteachTopic": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ReteachTopic"
+      },
+      "SourceInfo": {
+        "properties": {
+          "commit_sha": {
+            "type": "string",
+            "title": "Commit Sha"
+          },
+          "taxonomy_version": {
+            "type": "string",
+            "title": "Taxonomy Version"
+          },
+          "imported_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Imported At"
+          },
+          "attribution": {
+            "type": "string",
+            "title": "Attribution"
+          }
+        },
+        "type": "object",
+        "required": [
+          "commit_sha",
+          "taxonomy_version",
+          "imported_at",
+          "attribution"
+        ],
+        "title": "SourceInfo"
+      },
+      "TopicDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "domain": {
+            "type": "string",
+            "title": "Domain"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "age_range_start": {
+            "type": "integer",
+            "title": "Age Range Start"
+          },
+          "age_range_end": {
+            "type": "integer",
+            "title": "Age Range End"
+          },
+          "in_scope": {
+            "type": "boolean",
+            "title": "In Scope",
+            "description": "True for mathematics topics for ages 7-12. False for topics that are only here because an in-scope topic needs them first."
+          },
+          "has_research": {
+            "type": "boolean",
+            "title": "Has Research"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "centrality": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Centrality"
+          },
+          "assessment_prompt": {
+            "type": "string",
+            "title": "Assessment Prompt",
+            "description": "The assessment prompt with the child's name filled in, or worded to 'you' when no name is given."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "subject",
+          "domain",
+          "type",
+          "age_range_start",
+          "age_range_end",
+          "in_scope",
+          "has_research",
+          "description",
+          "evidence",
+          "centrality",
+          "assessment_prompt"
+        ],
+        "title": "TopicDetail"
+      },
+      "TopicNotFoundBody": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "topic_id": {
+            "type": "string",
+            "title": "Topic Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail",
+          "topic_id"
+        ],
+        "title": "TopicNotFoundBody"
+      },
+      "TopicPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TopicSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Number of topics matching the filters, before paging."
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "TopicPage"
+      },
+      "TopicResearch": {
+        "properties": {
+          "topic_id": {
+            "type": "string",
+            "title": "Topic Id"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchActivity"
+            },
+            "type": "array",
+            "title": "Activities"
+          },
+          "common_misconceptions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Common Misconceptions"
+          },
+          "key_representations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Key Representations"
+          },
+          "confidence": {
+            "type": "string",
+            "title": "Confidence"
+          },
+          "research_note": {
+            "type": "string",
+            "title": "Research Note",
+            "default": "Agent-authored research; sources not independently verified."
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic_id",
+          "summary",
+          "activities",
+          "common_misconceptions",
+          "key_representations",
+          "confidence"
+        ],
+        "title": "TopicResearch"
+      },
+      "TopicSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "domain": {
+            "type": "string",
+            "title": "Domain"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "age_range_start": {
+            "type": "integer",
+            "title": "Age Range Start"
+          },
+          "age_range_end": {
+            "type": "integer",
+            "title": "Age Range End"
+          },
+          "in_scope": {
+            "type": "boolean",
+            "title": "In Scope",
+            "description": "True for mathematics topics for ages 7-12. False for topics that are only here because an in-scope topic needs them first."
+          },
+          "has_research": {
+            "type": "boolean",
+            "title": "Has Research"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "subject",
+          "domain",
+          "type",
+          "age_range_start",
+          "age_range_end",
+          "in_scope",
+          "has_research"
+        ],
+        "title": "TopicSummary"
+      },
+      "UnknownToken": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "unknown",
+            "title": "Kind",
+            "default": "unknown"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "UnknownToken",
+        "description": "The box the child fills in."
+      },
+      "UnlockItem": {
+        "properties": {
+          "topic": {
+            "$ref": "#/components/schemas/TopicSummary"
+          },
+          "strength": {
+            "type": "string",
+            "enum": [
+              "hard",
+              "soft"
+            ],
+            "title": "Strength"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic",
+          "strength",
+          "reason"
+        ],
+        "title": "UnlockItem"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Topics",
+      "description": "Browse and read the learning topics."
+    },
+    {
+      "name": "Prerequisite graph",
+      "description": "What a topic requires first, what it unlocks, and where to step back to."
+    },
+    {
+      "name": "Teaching",
+      "description": "Typical mistakes and teaching research for a topic."
+    },
+    {
+      "name": "Puzzles",
+      "description": "Missing-number chains. Stateless: a puzzle is rebuilt from its id."
+    },
+    {
+      "name": "Meta",
+      "description": "Service health, dataset version and attribution."
+    }
+  ]
+}

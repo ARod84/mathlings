@@ -1,0 +1,74 @@
+/* Self-hosted fonts (latin subsets), bundled by Vite. No font CDN. */
+@import '@fontsource/outfit/latin-700.css';
+@import '@fontsource/outfit/latin-800.css';
+@import '@fontsource/lexend/latin-400.css';
+@import '@fontsource/lexend/latin-500.css';
+@import '@fontsource/lexend/latin-700.css';
+@import './tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-family: var(--font-body);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+  color: var(--color-on-dark);
+  /* Square "pixel" stars over the space gradient. */
+  background:
+    linear-gradient(#fff, #fff) 8% 12% / 4px 4px no-repeat,
+    linear-gradient(#fff, #fff) 27% 31% / 3px 3px no-repeat,
+    linear-gradient(#cfe, #cfe) 64% 9% / 4px 4px no-repeat,
+    linear-gradient(#fff, #fff) 86% 26% / 3px 3px no-repeat,
+    linear-gradient(#fff, #fff) 44% 58% / 3px 3px no-repeat,
+    linear-gradient(var(--color-gold-deep), var(--color-gold-deep)) 92% 71% / 4px 4px no-repeat,
+    linear-gradient(#fff, #fff) 13% 82% / 3px 3px no-repeat,
+    linear-gradient(180deg, var(--color-space), var(--color-space-2));
+  background-color: var(--color-space);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* One focus treatment everywhere: gold ring, dark edge for light surfaces. */
+html :focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 calc(var(--focus-ring-width) + 4px) var(--focus-ring-edge);
+}
+
+/*
+ * The duration tokens already collapse to ~0 under reduced motion. Looping
+ * animations must also stop repeating, or a ~0 duration loop would flicker.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

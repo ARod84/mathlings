@@ -1,0 +1,22 @@
+{
+  "dataset": "Fixture taxonomy",
+  "taxonomyVersion": "fixture-v1",
+  "files": {
+    "topics.json": {
+      "bytes": 8462,
+      "sha256": "39a0e1c3f8d51decf7da8a5836f69976af7be593ad2e436b39e869f1efb9f2bc"
+    },
+    "dependencies.json": {
+      "bytes": 1408,
+      "sha256": "ca7a8c2f4246ee8b89bc56e7d97331d408f94ea5b1b166940503c8b803145613"
+    },
+    "teaching-research.json": {
+      "bytes": 11731,
+      "sha256": "0a76f7ff6a0700ee510e848ab9567af3af55bab606bd489342d57d1a7d8b8d11"
+    },
+    "clusters.json": {
+      "bytes": 531,
+      "sha256": "b8d1574f55448db71117530f1323145f0f835550051862d1091d8496748ce790"
+    }
+  }
+}
