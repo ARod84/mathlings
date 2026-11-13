@@ -1,6 +1,6 @@
 {
   "version": "fixture-v1",
-  "topicCount": 24,
+  "topicCount": 30,
   "topics": [
     {
       "id": "mt_add2",
@@ -452,6 +452,120 @@
         "Explains addition and subtraction within 20"
       ],
       "assessmentPrompt": "Can {{name}} show addition and subtraction within 20 and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 6,
+      "ageRangeEnd": 8
+    },
+    {
+      "id": "mt_Zx1xZM-RbX",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Addition & Subtraction",
+      "name": "Adding Three Small Numbers",
+      "description": "Fixture description of Adding Three Small Numbers.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows adding three small numbers once",
+        "Explains adding three small numbers"
+      ],
+      "assessmentPrompt": "Can {{name}} show adding three small numbers and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 6,
+      "ageRangeEnd": 7
+    },
+    {
+      "id": "mt_SrrsLiJkr3",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Addition & Subtraction",
+      "name": "Adding and subtracting (age 7+)",
+      "description": "Fixture description of Adding and subtracting (age 7+).",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows adding and subtracting (age 7+) once",
+        "Explains adding and subtracting (age 7+)"
+      ],
+      "assessmentPrompt": "Can {{name}} show adding and subtracting (age 7+) and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 7,
+      "ageRangeEnd": 9
+    },
+    {
+      "id": "mt_ewmuMMPAzP",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Addition & Subtraction",
+      "name": "Addition and subtraction within 1000",
+      "description": "Fixture description of Addition and subtraction within 1000.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows addition and subtraction within 1000 once",
+        "Explains addition and subtraction within 1000"
+      ],
+      "assessmentPrompt": "Can {{name}} show addition and subtraction within 1000 and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 7,
+      "ageRangeEnd": 9
+    },
+    {
+      "id": "mt_THl9GLxwoL",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "Number Representation & Place Value",
+      "name": "The two digits of a two-digit number",
+      "description": "Fixture description of The two digits of a two-digit number.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows the two digits of a two-digit number once",
+        "Explains the two digits of a two-digit number"
+      ],
+      "assessmentPrompt": "Can {{name}} show the two digits of a two-digit number and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 3,
+      "ageRangeEnd": 8
+    },
+    {
+      "id": "mt_e8CZ7E5qW7",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Addition & Subtraction",
+      "name": "Number bonds to 9",
+      "description": "Fixture description of Number bonds to 9.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows number bonds to 9 once",
+        "Explains number bonds to 9"
+      ],
+      "assessmentPrompt": "Can {{name}} show number bonds to 9 and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 4,
+      "ageRangeEnd": 7
+    },
+    {
+      "id": "mt_T76hKqXf0z",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "Addition & Subtraction",
+      "name": "Grouping numbers to add",
+      "description": "Fixture description of Grouping numbers to add.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows grouping numbers to add once",
+        "Explains grouping numbers to add"
+      ],
+      "assessmentPrompt": "Can {{name}} show grouping numbers to add and explain how they did it?",
       "standards": [
         "fixture-curriculum:FX-1"
       ],

@@ -35,10 +35,15 @@ export interface GameShapes {
     request: components['schemas']['NewPuzzleRequest'];
     puzzle: PuzzlePublic;
   };
-  /** "Next in Line". The backend serves it; its screen is still to come. */
+  /** "Next in Line". */
   sequences: {
     request: components['schemas']['NewSequenceRequest'];
     puzzle: components['schemas']['SequencePublic'];
+  };
+  /** Sum Grid. The backend serves it; its screen is still to come. */
+  'sum-grid': {
+    request: components['schemas']['NewSumGridRequest'];
+    puzzle: components['schemas']['SumGridPublic'];
   };
 }
 

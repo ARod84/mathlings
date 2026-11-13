@@ -298,6 +298,54 @@ PUZZLE_TOPICS += [
     ),
 ]
 
+# Topics Sum Grid is tagged with (two are above already), and the topics their
+# error patterns step back to.
+PUZZLE_TOPICS += [
+    topic(
+        "mt_Zx1xZM-RbX",
+        "Mathematics",
+        "Addition & Subtraction",
+        "Adding Three Small Numbers",
+        6,
+        7,
+    ),
+    topic(
+        "mt_SrrsLiJkr3",
+        "Mathematics",
+        "Addition & Subtraction",
+        "Adding and subtracting (age 7+)",
+        7,
+        9,
+    ),
+    topic(
+        "mt_ewmuMMPAzP",
+        "Mathematics",
+        "Addition & Subtraction",
+        "Addition and subtraction within 1000",
+        7,
+        9,
+    ),
+    topic(
+        "mt_THl9GLxwoL",
+        "Mathematics",
+        "Number Representation & Place Value",
+        "The two digits of a two-digit number",
+        3,
+        8,
+        kind="CONCEPTUAL",
+    ),
+    topic("mt_e8CZ7E5qW7", "Mathematics", "Addition & Subtraction", "Number bonds to 9", 4, 7),
+    topic(
+        "mt_T76hKqXf0z",
+        "Mathematics",
+        "Addition & Subtraction",
+        "Grouping numbers to add",
+        6,
+        8,
+        kind="CONCEPTUAL",
+    ),
+]
+
 PUZZLE_DEPENDENCIES = [
     edge("mt_3JgrHY221M", "mt_oIzycTBeE4"),
     edge("mt_3JgrHY221M", "mt_ehGS_uVSJv", "soft"),
@@ -310,6 +358,12 @@ PUZZLE_DEPENDENCIES = [
     edge("mt_hBZwbst0ow", "mt_A-FyLLLLzy", "soft"),
     edge("mt_vXRzMbiPff", "mt_M2v1A9OEuM"),
     edge("mt_fZTn0W_iZR", "mt_m1W6nTQJ2b", "soft"),
+    edge("mt__t4afSyZRm", "mt_m1W6nTQJ2b"),
+    edge("mt_Zx1xZM-RbX", "mt_T76hKqXf0z", "soft"),
+    edge("mt_Zx1xZM-RbX", "mt_e8CZ7E5qW7", "soft"),
+    edge("mt_SrrsLiJkr3", "mt_ewmuMMPAzP"),
+    edge("mt_glPPG-kTQY", "mt_THl9GLxwoL"),
+    edge("mt_glPPG-kTQY", "mt_m1W6nTQJ2b"),
 ]
 
 
@@ -445,6 +499,77 @@ PUZZLE_RESEARCH = [
                 pattern(
                     "Zero-as-smallest — believes 0 is the least possible number.",
                     "Use a context that clearly goes below zero.",
+                ),
+            ]
+        ),
+    ),
+    # The Sum Grid topics, each with every pattern of the real topic in the real order.
+    research(
+        "mt_Zx1xZM-RbX",
+        puzzle_assess(
+            [
+                pattern(
+                    "Adds strictly left-to-right, never scanning for a make-ten pair",
+                    "Prompt 'can you see two that make ten?'",
+                    "mt_e8CZ7E5qW7",
+                ),
+                pattern(
+                    "'You have to add them in the order they're written'",
+                    "Remind that any two may be added first.",
+                    "mt_T76hKqXf0z",
+                ),
+                pattern(
+                    "Makes ten with a pair but then loses or double-counts the third addend.",
+                    "Physically set the third tile aside and bring it in last.",
+                ),
+            ]
+        ),
+    ),
+    research(
+        "mt_SrrsLiJkr3",
+        puzzle_assess(
+            [
+                pattern(
+                    "Place-value misalignment — writes the digits ragged",
+                    "Provide a column grid and rebuild.",
+                    "mt_ewmuMMPAzP",
+                ),
+                pattern(
+                    "Smaller-from-larger — in 502−276 does 6−2 in the ones rather than exchanging",
+                    "Return to concrete decomposition.",
+                    "mt_ewmuMMPAzP",
+                ),
+                pattern(
+                    "Carry omitted or misplaced — in 347+185 forgets to add the carried ten",
+                    "Have the child write the small carried digit explicitly.",
+                ),
+                pattern(
+                    "Borrow-across-zero — in 502−276 tries to take a ten from the empty column",
+                    "Model the cascade with counters.",
+                    "mt_ewmuMMPAzP",
+                ),
+            ]
+        ),
+    ),
+    research(
+        "mt_glPPG-kTQY",
+        puzzle_assess(
+            [
+                pattern(
+                    "Treats a multiple of ten as ones — 'thirty-eight plus forty is forty-two' "
+                    "(adds the 4, not 40)",
+                    "Rebuild with ten-rods: forty is four tens.",
+                    "mt_THl9GLxwoL",
+                ),
+                pattern(
+                    "Doesn't bridge the ten — '46 plus 7: six and seven is thirteen, "
+                    "so forty-three'",
+                    "Return to make-ten within 20 on a bead string.",
+                    "mt_m1W6nTQJ2b",
+                ),
+                pattern(
+                    "Counts on in ones by finger or tally rather than using place value",
+                    "Do NOT ban the counting.",
                 ),
             ]
         ),

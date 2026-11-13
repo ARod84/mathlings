@@ -16,35 +16,24 @@ them. `quoted_numbers` says which numbers tier 2 shows for a blank; the
 generator leaves alone any blank whose answer is among them, and the verifier
 checks the finished text.
 
+How a number is written and read back is shared by every puzzle type:
+app/puzzles/core/hint_text.py.
+
 Templates for now; a tutor model can replace them later using SequenceStep.hint_source.
 """
 
-import re
 from collections.abc import Sequence
 
+from app.puzzles.core.hint_text import MINUS, show, written_numbers
 from app.puzzles.types.sequences.levels import Kind
 
-MINUS = "−"
-# A number as `show` writes it. "0 − 3" is 0 and 3; "−3" is −3.
-_NUMBER = re.compile(rf"[{MINUS}-]?\d+")
-
 LOOK = "Look at how much each number changes from one to the next."
-
-
-def show(value: int) -> str:
-    """A number as a child reads it: −3, not -3."""
-    return f"{MINUS}{-value}" if value < 0 else str(value)
 
 
 def _growing_steps(terms: Sequence[int]) -> tuple[int, int, int, int]:
     """The first three steps of a growing sequence, and how much the step grows."""
     first, second, third = (terms[i + 1] - terms[i] for i in range(3))
     return first, second, third, second - first
-
-
-def written_numbers(text: str) -> set[int]:
-    """Every number written in a hint. A minus sign right before the digits makes it negative."""
-    return {int(match.replace(MINUS, "-")) for match in _NUMBER.findall(text)}
 
 
 def quoted_numbers(terms: Sequence[int], position: int, kind: Kind) -> set[int]:
@@ -86,3 +75,6 @@ def build_hints(terms: Sequence[int], position: int, kind: Kind) -> list[str]:
         f"Each time it goes down by {step}. What is {show(before)} {MINUS} {step}?",
         worked,
     ]
+
+
+__all__ = ["LOOK", "MINUS", "build_hints", "quoted_numbers", "show", "written_numbers"]

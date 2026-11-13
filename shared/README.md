@@ -18,6 +18,8 @@ the adaptive work to come.
 - `sequences.byLevel` ("Next in Line"): one list per level. At level 3 the topics of a step
   depend on the kind of sequence (through zero, or a growing step); the list is both kinds' topics,
   through-zero first. The backend decides in `backend/app/puzzles/types/sequences/levels.py`.
+- `sum-grid.byLevel` (Sum Grid): one list per level, primary topic first. Every step of a level
+  practises both topics. The backend decides in `backend/app/puzzles/types/sum_grid/levels.py`.
 - Any other game the backend has a puzzle type for: the same shape, `byLevel` with one list per
   level number. A backend test compares every registered puzzle type's `levels` with its entry.
 

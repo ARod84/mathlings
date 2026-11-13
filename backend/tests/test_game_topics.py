@@ -47,10 +47,12 @@ def topic_names(engine) -> dict[str, str]:
 def test_file_shape():
     data = load()
 
-    assert set(games(data)) == {"number-pyramid", "missing-number", "sequences"}
+    # Number Pyramid is made in the browser; the others are the backend's puzzle types.
+    assert set(games(data)) == {"number-pyramid", *default_registry().games}
     assert set(data["number-pyramid"]["byLevel"]) == {"addOnly", "mixed", "fourRows"}
     assert set(data["missing-number"]["byLevel"]) == {"1", "2", "3"}
-    assert set(data["sequences"]["byLevel"]) == {"1", "2", "3"}
+    for game in default_registry().games:
+        assert set(data[game]["byLevel"]) == {"1", "2", "3"}, game
     for game in games(data).values():
         for ids in game["byLevel"].values():
             assert ids, "a level needs at least one topic"
@@ -100,7 +102,7 @@ def test_every_topic_id_exists_in_the_fixture_taxonomy(tmp_path: Path):
     for topic_id, name in data["_names"].items():
         assert known[topic_id] == name, topic_id
     # In scope, so the taxonomy API lists them without extra flags.
-    assert len(all_ids(data)) == 11
+    assert len(all_ids(data)) == 13
 
 
 @pytest.mark.slow

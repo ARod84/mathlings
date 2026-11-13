@@ -859,13 +859,17 @@
                     },
                     {
                       "$ref": "#/components/schemas/SequencePublic"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SumGridPublic"
                     }
                   ],
                   "discriminator": {
                     "propertyName": "game",
                     "mapping": {
                       "missing-number": "#/components/schemas/PuzzlePublic",
-                      "sequences": "#/components/schemas/SequencePublic"
+                      "sequences": "#/components/schemas/SequencePublic",
+                      "sum-grid": "#/components/schemas/SumGridPublic"
                     }
                   },
                   "title": "Response New Puzzle Api V1 Puzzles  Game  Post"
@@ -906,7 +910,7 @@
         },
         "requestBody": {
           "required": true,
-          "description": "The body for the game named in the path. Each game has its own: `missing-number` takes NewPuzzleRequest, `sequences` takes NewSequenceRequest.",
+          "description": "The body for the game named in the path. Each game has its own: `missing-number` takes NewPuzzleRequest, `sequences` takes NewSequenceRequest, `sum-grid` takes NewSumGridRequest.",
           "content": {
             "application/json": {
               "schema": {
@@ -916,6 +920,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/NewSequenceRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NewSumGridRequest"
                   }
                 ]
               }
@@ -973,13 +980,17 @@
                     },
                     {
                       "$ref": "#/components/schemas/SequencePublic"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SumGridPublic"
                     }
                   ],
                   "discriminator": {
                     "propertyName": "game",
                     "mapping": {
                       "missing-number": "#/components/schemas/PuzzlePublic",
-                      "sequences": "#/components/schemas/SequencePublic"
+                      "sequences": "#/components/schemas/SequencePublic",
+                      "sum-grid": "#/components/schemas/SumGridPublic"
                     }
                   },
                   "title": "Response Get Puzzle Api V1 Puzzles  Puzzle Id  Get"
@@ -1330,7 +1341,8 @@
             "schema": {
               "enum": [
                 "missing-number",
-                "sequences"
+                "sequences",
+                "sum-grid"
               ],
               "type": "string",
               "description": "The game to recommend for. Only Missing Number Chains adapts so far; any other game gets its default, with reason_code `no_policy`.",
@@ -1436,12 +1448,32 @@
   },
   "components": {
     "schemas": {
+      "Cell": {
+        "properties": {
+          "row": {
+            "type": "integer",
+            "title": "Row"
+          },
+          "col": {
+            "type": "integer",
+            "title": "Col"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "row",
+          "col"
+        ],
+        "title": "Cell",
+        "description": "A place in the grid, counted from 0."
+      },
       "CheckRequest": {
         "properties": {
           "answer": {
             "type": "integer",
             "title": "Answer",
-            "description": "A whole number. Each game has its own bounds (PuzzleType.answer_min and answer_max): 0 to 10000 for missing-number, -1000 to 10000 for sequences. An answer outside the bounds of the puzzle's game is a 422."
+            "description": "A whole number. Each game has its own bounds (PuzzleType.answer_min and answer_max): 0 to 10000 for missing-number, -1000 to 10000 for sequences, 0 to 1000 for sum-grid. An answer outside the bounds of the puzzle's game is a 422."
           }
         },
         "additionalProperties": false,
@@ -1739,6 +1771,30 @@
           "text"
         ],
         "title": "HintOut"
+      },
+      "Line": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "row",
+              "col"
+            ],
+            "title": "Kind"
+          },
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "index"
+        ],
+        "title": "Line",
+        "description": "A row or a column, counted from 0."
       },
       "LinkedToken": {
         "properties": {
@@ -2458,6 +2514,138 @@
         ],
         "title": "SourceInfo"
       },
+      "SumGridPublic": {
+        "properties": {
+          "game": {
+            "type": "string",
+            "const": "sum-grid",
+            "title": "Game",
+            "description": "Which game the puzzle belongs to. Always sent; tells the shapes apart.",
+            "default": "sum-grid"
+          },
+          "puzzle_id": {
+            "type": "string",
+            "title": "Puzzle Id"
+          },
+          "level": {
+            "type": "integer",
+            "title": "Level"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size",
+            "description": "The grid is this many cells by this many."
+          },
+          "length": {
+            "type": "integer",
+            "title": "Length",
+            "description": "Number of blanks, which is the number of steps."
+          },
+          "topic_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Topic Ids",
+            "description": "Taxonomy topics practised, primary first."
+          },
+          "cells": {
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Cells",
+            "description": "The grid, row by row. Null where a cell is blank. A blank stays null here after it is solved: the browser fills in what the child found."
+          },
+          "row_targets": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Row Targets",
+            "description": "What each row must add up to, top to bottom."
+          },
+          "col_targets": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Col Targets",
+            "description": "What each column must add up to, left to right."
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/SumGridStepPublic"
+            },
+            "type": "array",
+            "title": "Steps",
+            "description": "One per blank, in the order they can be worked out without guessing."
+          }
+        },
+        "type": "object",
+        "required": [
+          "puzzle_id",
+          "level",
+          "size",
+          "length",
+          "topic_ids",
+          "cells",
+          "row_targets",
+          "col_targets",
+          "steps"
+        ],
+        "title": "SumGridPublic",
+        "description": "A grid with blanks and a target for every row and column, as the browser gets it."
+      },
+      "SumGridStepPublic": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index",
+            "description": "0-based position in the order the blanks are solved in."
+          },
+          "cell": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Which cell this blank is: row and column, from 0."
+          },
+          "line": {
+            "$ref": "#/components/schemas/Line",
+            "description": "The row or column in which this blank is the only unknown when its turn comes. Follows from the visible grid."
+          },
+          "options": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Options",
+            "description": "The answer and three wrong answers, in an order that is fixed for the puzzle."
+          },
+          "hint_tiers": {
+            "type": "integer",
+            "title": "Hint Tiers",
+            "description": "How many hint tiers can be asked for.",
+            "default": 3
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "cell",
+          "line",
+          "options"
+        ],
+        "title": "SumGridStepPublic"
+      },
       "TopicDetail": {
         "properties": {
           "id": {
@@ -2945,6 +3133,37 @@
           "level"
         ],
         "title": "NewSequenceRequest",
+        "type": "object"
+      },
+      "NewSumGridRequest": {
+        "additionalProperties": false,
+        "description": "The body of POST /puzzles/sum-grid. The seed decides everything but the level.",
+        "properties": {
+          "level": {
+            "maximum": 3,
+            "minimum": 1,
+            "title": "Level",
+            "type": "integer"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fixes the puzzle. Leave out for a random one.",
+            "title": "Seed"
+          }
+        },
+        "required": [
+          "level"
+        ],
+        "title": "NewSumGridRequest",
         "type": "object"
       }
     }

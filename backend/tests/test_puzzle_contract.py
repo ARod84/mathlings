@@ -43,6 +43,9 @@ from tests.test_api import count_statements
 from tests.test_players import HEADER, PLAYERS, as_player, attempts_of
 
 PUZZLES = "/api/v1/puzzles"
+# Whatever the real app serves, then the two test types the fixture adds.
+REAL_GAMES = default_registry().games
+ALL_GAMES = [*REAL_GAMES, "dummy", "dummy-unloadable"]
 NEXT = f"{PLAYERS}/me/next"
 
 
@@ -190,10 +193,9 @@ def test_an_unknown_game_is_404_with_a_clear_detail(client: TestClient):
 
         assert response.status_code == 404
         assert response.json() == {
-            "detail": "Unknown game: sudoku. Known games: missing-number, sequences, dummy, "
-            "dummy-unloadable.",
+            "detail": f"Unknown game: sudoku. Known games: {', '.join(ALL_GAMES)}.",
             "game": "sudoku",
-            "games": ["missing-number", "sequences", "dummy", "dummy-unloadable"],
+            "games": ALL_GAMES,
         }
 
 
@@ -408,7 +410,7 @@ def test_an_id_from_a_version_the_type_never_had_is_404_not_410(client: TestClie
 
 def test_a_type_that_cannot_load_is_503_and_the_others_keep_working(client: TestClient):
     runtime = client.app.state.puzzles
-    assert set(runtime.types) == {"missing-number", "sequences", "dummy"}
+    assert set(runtime.types) == {*REAL_GAMES, "dummy"}
     assert "mt_not_a_topic" in runtime.errors["dummy-unloadable"]
 
     response = client.post(f"{PUZZLES}/dummy-unloadable", json={"level": 1})
@@ -427,7 +429,7 @@ def test_a_type_that_cannot_load_is_503_and_the_others_keep_working(client: Test
 
 
 def test_the_registry_finds_types_by_game_and_by_id_prefix(registry: PuzzleRegistry):
-    assert registry.games == ["missing-number", "sequences", "dummy", "dummy-unloadable"]
+    assert registry.games == ALL_GAMES
     assert registry.by_game("dummy") is DummyType
     assert registry.by_code("dum") is DummyType
     assert registry.by_code("nope") is None
@@ -458,7 +460,8 @@ def test_the_registry_refuses_a_second_type_with_the_same_code_or_game():
 
 
 def test_the_real_app_knows_nothing_about_the_dummy():
-    assert default_registry().games == ["missing-number", "sequences"]
+    assert "missing-number" in REAL_GAMES
+    assert not {"dummy", "dummy-unloadable"} & set(REAL_GAMES)
     assert default_registry().by_code("dum") is None
 
 
@@ -492,23 +495,21 @@ def test_openapi_tells_the_games_apart(client: TestClient):
         success = "201" if "201" in operation["responses"] else "200"
         schema = operation["responses"][success]["content"]["application/json"]["schema"]
         assert schema["discriminator"]["propertyName"] == "game"
-        assert schema["discriminator"]["mapping"] == {
-            "missing-number": "#/components/schemas/PuzzlePublic",
-            "sequences": "#/components/schemas/SequencePublic",
-            "dummy": "#/components/schemas/DummyPublic",
-            "dummy-unloadable": "#/components/schemas/UnloadableDummyPublic",
-        }
+        mapping = schema["discriminator"]["mapping"]
+        assert list(mapping) == ALL_GAMES
+        assert mapping["missing-number"] == "#/components/schemas/PuzzlePublic"
+        assert mapping["dummy"] == "#/components/schemas/DummyPublic"
+        assert mapping["dummy-unloadable"] == "#/components/schemas/UnloadableDummyPublic"
     assert schemas["DummyPublic"]["properties"]["game"]["const"] == "dummy"
 
     # The request body is one of the games' request models, and each is in the document.
     body = new_puzzle["requestBody"]["content"]["application/json"]["schema"]
-    assert body == {
-        "oneOf": [
-            {"$ref": "#/components/schemas/NewPuzzleRequest"},
-            {"$ref": "#/components/schemas/NewSequenceRequest"},
-            {"$ref": "#/components/schemas/DummyNewPuzzle"},
-        ]
-    }
+    # One per game, in order; the two dummies share a model, which is listed once.
+    assert len(body["oneOf"]) == len(REAL_GAMES) + 1
+    assert body["oneOf"][0] == {"$ref": "#/components/schemas/NewPuzzleRequest"}
+    assert body["oneOf"][-1] == {"$ref": "#/components/schemas/DummyNewPuzzle"}
+    for reference in body["oneOf"]:
+        assert reference["$ref"].rsplit("/", 1)[-1] in schemas
     assert set(schemas["DummyNewPuzzle"]["properties"]) == {"level", "seed", "digits"}
     assert schemas["DummyNewPuzzle"]["additionalProperties"] is False
     assert "default" not in schemas["DummyNewPuzzle"]["properties"]["seed"]
@@ -524,4 +525,4 @@ def test_openapi_tells_the_games_apart(client: TestClient):
     # /next lists every registered game.
     parameters = document["paths"][NEXT]["get"]["parameters"]
     game = next(p for p in parameters if p["name"] == "game")
-    assert game["schema"]["enum"] == ["missing-number", "sequences", "dummy", "dummy-unloadable"]
+    assert game["schema"]["enum"] == ALL_GAMES

@@ -14,7 +14,8 @@ class CheckRequest(BaseModel):
 
     answer: int = Field(
         description="A whole number. Each game has its own bounds (PuzzleType.answer_min and "
-        "answer_max): 0 to 10000 for missing-number, -1000 to 10000 for sequences. An answer "
+        "answer_max): 0 to 10000 for missing-number, -1000 to 10000 for sequences, 0 to 1000 for "
+        "sum-grid. An answer "
         "outside the bounds of the puzzle's game is a 422."
     )
 

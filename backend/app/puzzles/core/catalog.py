@@ -142,13 +142,17 @@ def explain[RuleT: StrEnum](
     catalog: RuleCatalog[RuleT],
     primary_topic_id: str,
     step_back: Callable[[str], str | None],
+    topic_ids: Sequence[str] = (),
 ) -> Explanation[RuleT]:
     """Order the rules that give a wrong answer, and say where to step back to.
 
     `matched` is every rule that gives exactly the child's answer, in the
-    type's rule order; it must not be empty. `step_back(topic_id)` is only
-    called when no pattern on the step's own topic names a topic to reteach.
+    type's rule order; it must not be empty. `topic_ids` are the topics the
+    step practises, if it has more than its primary one. `step_back(topic_id)`
+    is only called when no pattern on one of the step's own topics names a
+    topic to reteach.
     """
+    own_topics = {primary_topic_id, *topic_ids}
     # Stable sort: linked rules move to the front, each group keeps rule order.
     ordered = sorted(matched, key=lambda rule: not catalog.is_linked(rule))
     pattern = next(
@@ -160,11 +164,9 @@ def explain[RuleT: StrEnum](
         None,
     )
     # A pattern written for another level's topic names a reteach topic for
-    # that level, so it is only followed when it belongs to this step's topic.
+    # that level, so it is only followed when it belongs to one of this step's topics.
     reteach = (
-        pattern.reteach_topic_id
-        if pattern is not None and pattern.topic_id == primary_topic_id
-        else None
+        pattern.reteach_topic_id if pattern is not None and pattern.topic_id in own_topics else None
     )
     return Explanation(
         matched_rules=ordered,

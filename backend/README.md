@@ -173,12 +173,14 @@ app/puzzles/
     taxonomy_link.py  "is this a topic?" and "where to step back to?", from the graph
     arithmetic.py   written sums done wrongly (no carrying, no exchanging), for mistake rules
     options.py      the fixed shuffle of a step's answer options
+    hint_text.py    how a number is written in a hint, and read back out of one
   registry.py       type code and game name -> puzzle type; default_registry()
   service.py        PuzzleService and PuzzleRuntime: the pipeline, for any registered type
   report.py         quality reports: --game picks the type's own report
   types/
     missing_number/ the first type: generator, verifier, rules, diagnoser, hints, ...
     sequences/      "Next in Line": a row of numbers with one or two blanks
+    sum_grid/       Sum Grid: a grid with a target for every row and column
 ```
 
 | Piece                                 | Knows about chains? | Job                                                                                                   |
@@ -576,6 +578,144 @@ How to read it:
 - **Level 3 growing is 94.2%, not 100%,** because `CONSTANT_GAP` needs two terms before the blank,
   and a blank at the second term has one.
 
+### Sum Grid
+
+`app/puzzles/types/sum_grid` is the third puzzle type (game `sum-grid`, id prefix `sg`): a small
+grid of numbers with a target sum at the end of every row and at the bottom of every column. Some
+cells are blank. The child fills them one at a time, always the blank that can be worked out now:
+the only unknown left in its row or in its column. Each blank is one step, with four options.
+
+```
+ 3 | □ |  9        □ is the only blank in the top row: 9 − 3 = 6
+ □ | 5 |  7
+ 5  11             column targets
+```
+
+| Level | Grid | Cell values | Targets   | Blanks | Topics of a step                                                                                           |
+| ----- | ---- | ----------- | --------- | ------ | ---------------------------------------------------------------------------------------------------------- |
+| 1     | 2×2  | 1 to 9      | up to 18  | 2      | `mt__t4afSyZRm` Fluent adding and subtracting within 20, `mt_3JgrHY221M` Unknown in Addition & Subtraction |
+| 2     | 3×3  | 1 to 9      | up to 27  | 3 or 4 | `mt_Zx1xZM-RbX` Adding Three Small Numbers, `mt_3JgrHY221M`                                                |
+| 3     | 3×3  | 10 to 60    | up to 100 | 4 or 5 | `mt_SrrsLiJkr3` Adding and subtracting (age 7+), `mt_glPPG-kTQY` Adding within 100                         |
+
+Every row and every column keeps at least one visible number, which is the same thing as saying
+no line is blank from end to end. Wrong options that come from a mistake rule go up to 40, 60 and
+200 at the three levels and never below zero.
+
+**The order.** The generator builds a full grid, then picks which cells to blank from the ways
+that leave a deduction order: at each step, the first blank in reading order that is the only
+unknown in its row or in its column. If both lines would do, the row is the one recorded. The
+order is stored with the puzzle, each step with its cell and the line it is solved from, and both
+are in the public shape: the line is not a secret, it follows from the visible grid.
+
+**The verifier answers two questions, separately.**
+
+- _Exactly one solution._ `verifier.count_solutions` tries numbers in the blanks, a blank at a
+  time, within the level's range, and counts the ways that meet every target, stopping at the
+  second. Exactly one must exist, and it must be the stored answers. A 3×3 whose four blanks are
+  the corners of a rectangle is the standard counter-example: every line through them has two
+  unknowns, so 1 can be added to two opposite corners and taken from the other two.
+- _No guessing._ The stored order is replayed on the visible grid. At each step the recorded line
+  must have exactly one cell still unknown, and it must be the step's own. This is Number
+  Pyramid's "can every block be worked out" check, here on the server.
+
+It uses neither the generator's arithmetic nor its deduction code; a test reads the source to
+make sure.
+
+**Mistake rules.** Each is a pure function of what the child sees at that step: the line's target
+T, the other cells of the line (visible or solved earlier) with sum K, and the other line's target
+X (`rules.py` has the full table). The mapping was checked against the real database:
+
+| Rule                                  | What the child does                                      | Value               | Error pattern     | Reteach, from the pattern            |
+| ------------------------------------- | -------------------------------------------------------- | ------------------- | ----------------- | ------------------------------------ |
+| `ADD_VISIBLE`                         | Adds instead of finding the missing part                 | T + K               | `mt_3JgrHY221M#0` | What the equals sign means           |
+| `FORGOT_ONE`                          | 3×3: takes away one known cell and loses the other       | T − the larger cell | `mt_Zx1xZM-RbX#2` | none: the graph decides              |
+| `PLACE_VALUE_SLIP`                    | Level 3: subtracts column by column, smaller from larger | T ⊖ K               | `mt_SrrsLiJkr3#1` | Addition and subtraction within 1000 |
+| `CARRY_DROPPED`                       | Level 3: adds the two known cells without the carry      | T − (a ⊕ b)         | `mt_SrrsLiJkr3#2` | none: the graph decides              |
+| `TENS_AS_ONES`                        | Level 3: reads a known multiple of ten as ones (20 as 2) | T − K, with 20 as 2 | `mt_glPPG-kTQY#0` | The two digits of a two-digit number |
+| `WRONG_LINE`                          | Uses the other line's target                             | X − K, if 0 or more | not linked        |                                      |
+| `OFF_BY_ONE_OVER`, `OFF_BY_ONE_UNDER` | One more, one less                                       | ±1                  | not linked        |                                      |
+
+Two things differ from a plain reading of that list. The place-value slip is two rules, because
+the taxonomy has two patterns for it (one in the subtraction, one in the addition) with different
+things to reteach, and one rule could only name one of them. And among linked rules, the ones
+whose pattern is on one of the level's own topics get an option slot first: at level 3 that puts
+the place-value mistakes ahead of `ADD_VISIBLE` and `FORGOT_ONE`, whose patterns belong to easier
+topics.
+
+A reteach topic written into a pattern is followed when the pattern is on any topic the step
+practises, not only the primary one (`core/catalog.explain`). That is what lets `TENS_AS_ONES`,
+whose pattern is on the level's second topic, name "the two digits of a two-digit number".
+
+**Hints.** Three tiers per blank. Lines are named in words, not by number: "Look at the top row.
+Only one number is missing there." Then "The top row must make 18. The other numbers make 12. What
+do you add to 12 to make 18?", then the worked step. "Row 1" would put a 1 on show for a blank
+whose answer is 1, and at the first two levels answers are that small. A line that is a double
+(6 + □ = 12) is never asked about, because "the other number is 6" would say the answer.
+
+#### Quality report
+
+```bash
+uv run python -m app.puzzles.report --game sum-grid --all --count 5000
+uv run python -m app.puzzles.report --game sum-grid --samples 2     # example grids
+uv run python -m app.puzzles.report --game sum-grid --catalog       # rule -> error pattern
+```
+
+**Generator version:** `1` (sum grid). 5000 seeds per level, against the real taxonomy. No targets
+were set for this type; these are the numbers as they came out.
+
+|                                                    | Level 1   | Level 2       | Level 3       |
+| -------------------------------------------------- | --------- | ------------- | ------------- |
+| Verified on the first try                          | 100.0%    | 100.0%        | 100.0%        |
+| Average retries                                    | 0         | 0             | 0             |
+| Verifier search: numbers tried per puzzle, average | 2.00      | 4.37          | 22.94         |
+| Verifier search: most in one puzzle                | 2         | 18            | 146           |
+| Steps (blanks)                                     | 10,000    | 17,517        | 22,517        |
+| Steps solved from a row / from a column            | 100% / 0% | 72.7% / 27.3% | 62.8% / 37.2% |
+| Steps with at least one taxonomy-linked distractor | 100.0%    | 100.0%        | 100.0%        |
+| Slowest generation (best of 3)                     | 0.67 ms   | 19.99 ms      | 7.40 ms       |
+| Steps where `TENS_AS_ONES` could apply             |           |               | 91.8%         |
+| Steps that offer the `TENS_AS_ONES` answer         |           |               | 91.8%         |
+
+Distractor share by rule:
+
+| Rule                 | Level 1 | Level 2 | Level 3 |
+| -------------------- | ------- | ------- | ------- |
+| `ADD_VISIBLE`        | 33.3%   | 33.3%   | 32.4%   |
+| `FORGOT_ONE`         | 0.0%    | 33.3%   | 26.4%   |
+| `PLACE_VALUE_SLIP`   | 0.0%    | 0.0%    | 8.5%    |
+| `CARRY_DROPPED`      | 0.0%    | 0.0%    | 1.4%    |
+| `TENS_AS_ONES`       | 0.0%    | 0.0%    | 30.6%   |
+| `WRONG_LINE`         | 23.9%   | 22.6%   | 0.6%    |
+| `OFF_BY_ONE_OVER`    | 30.2%   | 9.3%    | 0.1%    |
+| `OFF_BY_ONE_UNDER`   | 12.7%   | 1.5%    | 0.0%    |
+| `NEAR_MISS` (filler) | 0.0%    | 0.0%    | 0.0%    |
+
+How to read it:
+
+- **No retries, by construction.** The generator only blanks cells for which its own deduction
+  order exists, and a grid solved without guessing has one solution. The verifier reaches the
+  same conclusion from the other side, by counting.
+- **The search is small.** A blank's range is narrowed by what its row and column still have to
+  make, so a blank that is alone in a line has one candidate. Level 1 always tries exactly two
+  numbers. Level 3 averages 23 and never passed 146 in 5000 puzzles, with cells from 10 to 60.
+- **Level 1 is never solved from a column.** A 2×2 with two blanks can only have them on a
+  diagonal, each alone in its row, and the row is preferred. The column direction starts at
+  level 2. This follows from the rules as given; whether level 1 should alternate is a design
+  question, not a bug.
+- **Every step has a linked option, at every level,** because `ADD_VISIBLE` always applies. At
+  level 3 it is the third choice, after the two place-value rules when they apply.
+- **`TENS_AS_ONES` can apply on 91.8% of level 3 steps** and is offered every time it can but 19,
+  where its value collides with another rule's. That is the effect of two preferences: 40% of
+  level 3 cells are drawn as multiples of ten, and blank sets are preferred where the known cells
+  of each step's line include one. A side effect: level 3 has many answers of 10, 20 or 30.
+- **`PLACE_VALUE_SLIP` and `CARRY_DROPPED` are rarer than one might expect** (8.5% and 1.4% of
+  options). The same multiples of ten that feed `TENS_AS_ONES` make the ones column trivial, so
+  fewer subtractions need an exchange and fewer sums have a carry. The two aims pull against each
+  other; lowering the share of multiples of ten would trade one for the other.
+- **Level 2 is the slowest to generate** (20 ms at worst): it lists every way to blank 3 or 4 of 9
+  cells and builds the hints of each to check them. Level 3 does the same and is quicker at worst
+  only because fewer of its blank sets survive.
+
 ### Puzzle API
 
 `app/puzzles/service.py` (`PuzzleService`, no FastAPI) and the thin routes in
@@ -593,10 +733,13 @@ routes are the same for every game.
 For `game` = `missing-number` the body is `{ level: 1–3, length: 1–4 (default 3), seed?, focus? }`
 and the puzzle is `PuzzlePublic`. For `game` = `sequences` the body is `{ level: 1–3, seed? }` and
 the puzzle is `SequencePublic`: `terms` (the row, with `null` at each blank) and one step per blank
-with its `position` and four `options`.
+with its `position` and four `options`. For `game` = `sum-grid` the body is `{ level: 1–3, seed? }`
+and the puzzle is `SumGridPublic`: `size`, `cells` (rows of numbers, `null` at each blank),
+`row_targets`, `col_targets`, and one step per blank with its `cell`, the `line` it is solved from
+and four `options`.
 
 - **Answer bounds.** What a check accepts is the puzzle type's own (`answer_min`, `answer_max`):
-  0 to 10000 for `missing-number`, −1000 to 10000 for `sequences`. The service checks them as soon
+  0 to 10000 for `missing-number`, −1000 to 10000 for `sequences`, 0 to 1000 for `sum-grid`. The service checks them as soon
   as the id says which type it is, before the puzzle is rebuilt. Outside them: 422, in the same
   shape as any other body that fails validation, and nothing is stored or logged as a check.
 - **Which game.** `POST /{game}` takes the game from the path; an unknown one is a 404 that lists
@@ -688,6 +831,8 @@ Shared pieces to use, not copy:
 - `core/taxonomy_link.py`: `topic_exists` and `first_step_back`, for the verifier and the diagnoser.
 - `core/arithmetic.py`: `add_without_carry` and `subtract_without_exchange`.
 - `core/options.py`: `shuffled_options`, so a reload shows the options in the same order.
+- `core/hint_text.py`: `show` and `written_numbers`, to write a number in a hint and to check that
+  an early hint does not contain the answer.
 - `answer_min` and `answer_max` on the type: the bounds of a checked answer. Set `answer_min`
   below zero if an answer can be negative.
 - A `report.py` in the type's folder, added to `REPORTS` in `app/puzzles/report.py`.

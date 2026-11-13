@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "version": "fixture-v1",
   "exportedAt": "2026-01-01T00:00:00.000Z",
-  "topicFileSha256": "bbde67be87e43210e8a6e338c279024aa196e7dbe2a6f3c02e3661f4b964f80c",
-  "recordCount": 9,
+  "topicFileSha256": "957ae8e76046adad02f1dc67d92444aab3d9c4d2d57a24f5ac0f2ce9ff59c58a",
+  "recordCount": 12,
   "coverage": {},
   "notes": [],
   "records": [
@@ -641,6 +641,278 @@
             "kind": "misconception",
             "pattern": "Zero-as-smallest — believes 0 is the least possible number.",
             "nextMove": "Use a context that clearly goes below zero.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": null
+          }
+        ],
+        "responseLevels": {
+          "secure": "Explains the trade"
+        },
+        "diagnosticPrompt": "What is 43 + 28?",
+        "whatMakesItDiscriminate": "Needs a trade in the ones column."
+      },
+      "sources": [
+        {
+          "title": "Fixture source",
+          "url": "https://example.org/fixture"
+        }
+      ],
+      "confidence": "high",
+      "provenance": {
+        "author": "fixture"
+      },
+      "publicationNotes": {}
+    },
+    {
+      "topicId": "mt_Zx1xZM-RbX",
+      "pedagogy": {
+        "summary": "How to teach mt_Zx1xZM-RbX.",
+        "bestPractices": [
+          "Use concrete materials first"
+        ],
+        "keyRepresentations": [
+          "Base-ten blocks"
+        ],
+        "commonMisconceptions": [
+          "Digits are added without regard to place"
+        ]
+      },
+      "learn": {
+        "summary": "A short activity sequence.",
+        "activities": [
+          {
+            "title": "Build it",
+            "feedback": [
+              "If the trade is skipped, count the ones together."
+            ],
+            "rationale": "Concrete before abstract.",
+            "sourceClaims": [
+              "A fixture claim"
+            ],
+            "learnerActions": [
+              "Make both numbers with blocks",
+              "Trade ten ones for a ten"
+            ],
+            "intendedInsight": "Ten ones are worth one ten."
+          }
+        ],
+        "constraints": [],
+        "reviewNotes": [],
+        "schemaVersion": 1
+      },
+      "assess": {
+        "method": "diagnostic question",
+        "poeTask": null,
+        "probeDeeper": [
+          "Ask how they know"
+        ],
+        "correctAnswer": "71",
+        "errorPatterns": [
+          {
+            "kind": "misconception",
+            "pattern": "Adds strictly left-to-right, never scanning for a make-ten pair",
+            "nextMove": "Prompt 'can you see two that make ten?'",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": "mt_e8CZ7E5qW7"
+          },
+          {
+            "kind": "misconception",
+            "pattern": "'You have to add them in the order they're written'",
+            "nextMove": "Remind that any two may be added first.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": "mt_T76hKqXf0z"
+          },
+          {
+            "kind": "misconception",
+            "pattern": "Makes ten with a pair but then loses or double-counts the third addend.",
+            "nextMove": "Physically set the third tile aside and bring it in last.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": null
+          }
+        ],
+        "responseLevels": {
+          "secure": "Explains the trade"
+        },
+        "diagnosticPrompt": "What is 43 + 28?",
+        "whatMakesItDiscriminate": "Needs a trade in the ones column."
+      },
+      "sources": [
+        {
+          "title": "Fixture source",
+          "url": "https://example.org/fixture"
+        }
+      ],
+      "confidence": "high",
+      "provenance": {
+        "author": "fixture"
+      },
+      "publicationNotes": {}
+    },
+    {
+      "topicId": "mt_SrrsLiJkr3",
+      "pedagogy": {
+        "summary": "How to teach mt_SrrsLiJkr3.",
+        "bestPractices": [
+          "Use concrete materials first"
+        ],
+        "keyRepresentations": [
+          "Base-ten blocks"
+        ],
+        "commonMisconceptions": [
+          "Digits are added without regard to place"
+        ]
+      },
+      "learn": {
+        "summary": "A short activity sequence.",
+        "activities": [
+          {
+            "title": "Build it",
+            "feedback": [
+              "If the trade is skipped, count the ones together."
+            ],
+            "rationale": "Concrete before abstract.",
+            "sourceClaims": [
+              "A fixture claim"
+            ],
+            "learnerActions": [
+              "Make both numbers with blocks",
+              "Trade ten ones for a ten"
+            ],
+            "intendedInsight": "Ten ones are worth one ten."
+          }
+        ],
+        "constraints": [],
+        "reviewNotes": [],
+        "schemaVersion": 1
+      },
+      "assess": {
+        "method": "diagnostic question",
+        "poeTask": null,
+        "probeDeeper": [
+          "Ask how they know"
+        ],
+        "correctAnswer": "71",
+        "errorPatterns": [
+          {
+            "kind": "misconception",
+            "pattern": "Place-value misalignment — writes the digits ragged",
+            "nextMove": "Provide a column grid and rebuild.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": "mt_ewmuMMPAzP"
+          },
+          {
+            "kind": "misconception",
+            "pattern": "Smaller-from-larger — in 502−276 does 6−2 in the ones rather than exchanging",
+            "nextMove": "Return to concrete decomposition.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": "mt_ewmuMMPAzP"
+          },
+          {
+            "kind": "misconception",
+            "pattern": "Carry omitted or misplaced — in 347+185 forgets to add the carried ten",
+            "nextMove": "Have the child write the small carried digit explicitly.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": null
+          },
+          {
+            "kind": "misconception",
+            "pattern": "Borrow-across-zero — in 502−276 tries to take a ten from the empty column",
+            "nextMove": "Model the cascade with counters.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": "mt_ewmuMMPAzP"
+          }
+        ],
+        "responseLevels": {
+          "secure": "Explains the trade"
+        },
+        "diagnosticPrompt": "What is 43 + 28?",
+        "whatMakesItDiscriminate": "Needs a trade in the ones column."
+      },
+      "sources": [
+        {
+          "title": "Fixture source",
+          "url": "https://example.org/fixture"
+        }
+      ],
+      "confidence": "high",
+      "provenance": {
+        "author": "fixture"
+      },
+      "publicationNotes": {}
+    },
+    {
+      "topicId": "mt_glPPG-kTQY",
+      "pedagogy": {
+        "summary": "How to teach mt_glPPG-kTQY.",
+        "bestPractices": [
+          "Use concrete materials first"
+        ],
+        "keyRepresentations": [
+          "Base-ten blocks"
+        ],
+        "commonMisconceptions": [
+          "Digits are added without regard to place"
+        ]
+      },
+      "learn": {
+        "summary": "A short activity sequence.",
+        "activities": [
+          {
+            "title": "Build it",
+            "feedback": [
+              "If the trade is skipped, count the ones together."
+            ],
+            "rationale": "Concrete before abstract.",
+            "sourceClaims": [
+              "A fixture claim"
+            ],
+            "learnerActions": [
+              "Make both numbers with blocks",
+              "Trade ten ones for a ten"
+            ],
+            "intendedInsight": "Ten ones are worth one ten."
+          }
+        ],
+        "constraints": [],
+        "reviewNotes": [],
+        "schemaVersion": 1
+      },
+      "assess": {
+        "method": "diagnostic question",
+        "poeTask": null,
+        "probeDeeper": [
+          "Ask how they know"
+        ],
+        "correctAnswer": "71",
+        "errorPatterns": [
+          {
+            "kind": "misconception",
+            "pattern": "Treats a multiple of ten as ones — 'thirty-eight plus forty is forty-two' (adds the 4, not 40)",
+            "nextMove": "Rebuild with ten-rods: forty is four tens.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": "mt_THl9GLxwoL"
+          },
+          {
+            "kind": "misconception",
+            "pattern": "Doesn't bridge the ten — '46 plus 7: six and seven is thirteen, so forty-three'",
+            "nextMove": "Return to make-ten within 20 on a bead string.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": "mt_m1W6nTQJ2b"
+          },
+          {
+            "kind": "misconception",
+            "pattern": "Counts on in ones by finger or tally rather than using place value",
+            "nextMove": "Do NOT ban the counting.",
             "distractor": null,
             "revealedBy": "Seen in the written answer",
             "reteachPrerequisiteId": null

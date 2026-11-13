@@ -18,11 +18,14 @@ from app.puzzles.types.missing_number import report as missing_number_report
 from app.puzzles.types.missing_number.levels import GAME as MISSING_NUMBER
 from app.puzzles.types.sequences import report as sequences_report
 from app.puzzles.types.sequences.levels import GAME as SEQUENCES
+from app.puzzles.types.sum_grid import report as sum_grid_report
+from app.puzzles.types.sum_grid.levels import GAME as SUM_GRID
 
 # A new puzzle type adds its report here.
 REPORTS: dict[str, Callable[[list[str] | None], int]] = {
     MISSING_NUMBER: missing_number_report.main,
     SEQUENCES: sequences_report.main,
+    SUM_GRID: sum_grid_report.main,
 }
 
 

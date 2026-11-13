@@ -128,7 +128,8 @@ The puzzle routes are the same for every game (`POST /api/v1/puzzles/{game}`, th
 `GameShapes` in `puzzles.ts` names, per game, the request body and the puzzle that comes back, and
 `newPuzzle` is typed from it. `newMissingNumber` is `newPuzzle('missing-number', ...)`. `sequences`
 ("Next in Line") is the second entry. `GAMES_WITHOUT_A_SCREEN` in `src/games/gameTopics.ts` lists
-games the backend serves that have no screen here yet; it is empty now.
+games the backend serves that have no screen here yet: today that is `sum-grid`, which is in
+`GameShapes` for the same reason.
 
 When the backend's API changes: export `openapi.json` there, then run `npm run api:types` here. A
 test fails if `schema.d.ts` is out of date. `openapi-typescript` asks for TypeScript 5 as a peer;

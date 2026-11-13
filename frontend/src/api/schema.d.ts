@@ -324,11 +324,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * Cell
+         * @description A place in the grid, counted from 0.
+         */
+        Cell: {
+            /** Row */
+            row: number;
+            /** Col */
+            col: number;
+        };
         /** CheckRequest */
         CheckRequest: {
             /**
              * Answer
-             * @description A whole number. Each game has its own bounds (PuzzleType.answer_min and answer_max): 0 to 10000 for missing-number, -1000 to 10000 for sequences. An answer outside the bounds of the puzzle's game is a 422.
+             * @description A whole number. Each game has its own bounds (PuzzleType.answer_min and answer_max): 0 to 10000 for missing-number, -1000 to 10000 for sequences, 0 to 1000 for sum-grid. An answer outside the bounds of the puzzle's game is a 422.
              */
             answer: number;
         };
@@ -432,6 +442,19 @@ export interface components {
             tier: number;
             /** Text */
             text: string;
+        };
+        /**
+         * Line
+         * @description A row or a column, counted from 0.
+         */
+        Line: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "row" | "col";
+            /** Index */
+            index: number;
         };
         /**
          * LinkedToken
@@ -773,6 +796,79 @@ export interface components {
             /** Attribution */
             attribution: string;
         };
+        /**
+         * SumGridPublic
+         * @description A grid with blanks and a target for every row and column, as the browser gets it.
+         */
+        SumGridPublic: {
+            /**
+             * @description Which game the puzzle belongs to. Always sent; tells the shapes apart. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            game: "sum-grid";
+            /** Puzzle Id */
+            puzzle_id: string;
+            /** Level */
+            level: number;
+            /**
+             * Size
+             * @description The grid is this many cells by this many.
+             */
+            size: number;
+            /**
+             * Length
+             * @description Number of blanks, which is the number of steps.
+             */
+            length: number;
+            /**
+             * Topic Ids
+             * @description Taxonomy topics practised, primary first.
+             */
+            topic_ids: string[];
+            /**
+             * Cells
+             * @description The grid, row by row. Null where a cell is blank. A blank stays null here after it is solved: the browser fills in what the child found.
+             */
+            cells: (number | null)[][];
+            /**
+             * Row Targets
+             * @description What each row must add up to, top to bottom.
+             */
+            row_targets: number[];
+            /**
+             * Col Targets
+             * @description What each column must add up to, left to right.
+             */
+            col_targets: number[];
+            /**
+             * Steps
+             * @description One per blank, in the order they can be worked out without guessing.
+             */
+            steps: components["schemas"]["SumGridStepPublic"][];
+        };
+        /** SumGridStepPublic */
+        SumGridStepPublic: {
+            /**
+             * Index
+             * @description 0-based position in the order the blanks are solved in.
+             */
+            index: number;
+            /** @description Which cell this blank is: row and column, from 0. */
+            cell: components["schemas"]["Cell"];
+            /** @description The row or column in which this blank is the only unknown when its turn comes. Follows from the visible grid. */
+            line: components["schemas"]["Line"];
+            /**
+             * Options
+             * @description The answer and three wrong answers, in an order that is fixed for the puzzle.
+             */
+            options: number[];
+            /**
+             * Hint Tiers
+             * @description How many hint tiers can be asked for.
+             * @default 3
+             */
+            hint_tiers: number;
+        };
         /** TopicDetail */
         TopicDetail: {
             /** Id */
@@ -982,6 +1078,19 @@ export interface components {
          * @description The body of POST /puzzles/sequences. The seed decides everything but the level.
          */
         NewSequenceRequest: {
+            /** Level */
+            level: number;
+            /**
+             * Seed
+             * @description Fixes the puzzle. Leave out for a random one.
+             */
+            seed?: number | null;
+        };
+        /**
+         * NewSumGridRequest
+         * @description The body of POST /puzzles/sum-grid. The seed decides everything but the level.
+         */
+        NewSumGridRequest: {
             /** Level */
             level: number;
             /**
@@ -1499,10 +1608,10 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description The body for the game named in the path. Each game has its own: `missing-number` takes NewPuzzleRequest, `sequences` takes NewSequenceRequest. */
+        /** @description The body for the game named in the path. Each game has its own: `missing-number` takes NewPuzzleRequest, `sequences` takes NewSequenceRequest, `sum-grid` takes NewSumGridRequest. */
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NewPuzzleRequest"] | components["schemas"]["NewSequenceRequest"];
+                "application/json": components["schemas"]["NewPuzzleRequest"] | components["schemas"]["NewSequenceRequest"] | components["schemas"]["NewSumGridRequest"];
             };
         };
         responses: {
@@ -1512,7 +1621,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PuzzlePublic"] | components["schemas"]["SequencePublic"];
+                    "application/json": components["schemas"]["PuzzlePublic"] | components["schemas"]["SequencePublic"] | components["schemas"]["SumGridPublic"];
                 };
             };
             /** @description No such game */
@@ -1564,7 +1673,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PuzzlePublic"] | components["schemas"]["SequencePublic"];
+                    "application/json": components["schemas"]["PuzzlePublic"] | components["schemas"]["SequencePublic"] | components["schemas"]["SumGridPublic"];
                 };
             };
             /** @description Unknown puzzle id, step or hint tier */
@@ -1788,7 +1897,7 @@ export interface operations {
         parameters: {
             query: {
                 /** @description The game to recommend for. Only Missing Number Chains adapts so far; any other game gets its default, with reason_code `no_policy`. */
-                game: "missing-number" | "sequences";
+                game: "missing-number" | "sequences" | "sum-grid";
             };
             header: {
                 /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. */

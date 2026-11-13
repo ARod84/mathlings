@@ -21,7 +21,12 @@ describe('shared/game-topics.json', () => {
       expect(id).toMatch(TOPIC_ID);
       expect(name.trim()).not.toBe('');
     }
-    expect(Object.keys(games).sort()).toEqual(['missing-number', 'number-pyramid', 'sequences']);
+    expect(Object.keys(games).sort()).toEqual([
+      'missing-number',
+      'number-pyramid',
+      'sequences',
+      'sum-grid',
+    ]);
     for (const [gameId, entry] of Object.entries(games)) {
       expect(Object.keys(entry), gameId).toEqual(['byLevel']);
       const levels = Object.entries(entry.byLevel);
@@ -44,6 +49,7 @@ describe('shared/game-topics.json', () => {
     expect(Object.keys(topicsByLevel('number-pyramid'))).toEqual(['addOnly', 'mixed', 'fourRows']);
     expect(Object.keys(topicsByLevel('missing-number'))).toEqual(['1', '2', '3']);
     expect(Object.keys(topicsByLevel('sequences'))).toEqual(['1', '2', '3']);
+    expect(Object.keys(topicsByLevel('sum-grid'))).toEqual(['1', '2', '3']);
   });
 
   it('refuses a game it does not know', () => {

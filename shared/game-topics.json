@@ -10,7 +10,9 @@
     "mt_IzQvs7k_sE": "Skip Counting (4s, 8s, 50s, 100s)",
     "mt_hBZwbst0ow": "Linear number sequences",
     "mt_vXRzMbiPff": "Negative Numbers",
-    "mt_fZTn0W_iZR": "Generalising Patterns"
+    "mt_fZTn0W_iZR": "Generalising Patterns",
+    "mt_Zx1xZM-RbX": "Adding Three Small Numbers",
+    "mt_SrrsLiJkr3": "Adding and subtracting (age 7+)"
   },
   "number-pyramid": {
     "byLevel": {
@@ -31,6 +33,13 @@
       "1": ["mt_W3VOAuFwVw"],
       "2": ["mt_IzQvs7k_sE", "mt_W3VOAuFwVw"],
       "3": ["mt_hBZwbst0ow", "mt_vXRzMbiPff", "mt_fZTn0W_iZR", "mt_W3VOAuFwVw"]
+    }
+  },
+  "sum-grid": {
+    "byLevel": {
+      "1": ["mt__t4afSyZRm", "mt_3JgrHY221M"],
+      "2": ["mt_Zx1xZM-RbX", "mt_3JgrHY221M"],
+      "3": ["mt_SrrsLiJkr3", "mt_glPPG-kTQY"]
     }
   }
 }

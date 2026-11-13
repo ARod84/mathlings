@@ -1,7 +1,7 @@
 {
   "version": "fixture-v1",
   "note": "`topicId` depends on `prerequisiteId`.",
-  "edgeCount": 16,
+  "edgeCount": 22,
   "dependencies": [
     {
       "topicId": "mt_add2",
@@ -98,6 +98,42 @@
       "prerequisiteId": "mt_m1W6nTQJ2b",
       "strength": "soft",
       "reason": "mt_fZTn0W_iZR builds on mt_m1W6nTQJ2b."
+    },
+    {
+      "topicId": "mt__t4afSyZRm",
+      "prerequisiteId": "mt_m1W6nTQJ2b",
+      "strength": "hard",
+      "reason": "mt__t4afSyZRm builds on mt_m1W6nTQJ2b."
+    },
+    {
+      "topicId": "mt_Zx1xZM-RbX",
+      "prerequisiteId": "mt_T76hKqXf0z",
+      "strength": "soft",
+      "reason": "mt_Zx1xZM-RbX builds on mt_T76hKqXf0z."
+    },
+    {
+      "topicId": "mt_Zx1xZM-RbX",
+      "prerequisiteId": "mt_e8CZ7E5qW7",
+      "strength": "soft",
+      "reason": "mt_Zx1xZM-RbX builds on mt_e8CZ7E5qW7."
+    },
+    {
+      "topicId": "mt_SrrsLiJkr3",
+      "prerequisiteId": "mt_ewmuMMPAzP",
+      "strength": "hard",
+      "reason": "mt_SrrsLiJkr3 builds on mt_ewmuMMPAzP."
+    },
+    {
+      "topicId": "mt_glPPG-kTQY",
+      "prerequisiteId": "mt_THl9GLxwoL",
+      "strength": "hard",
+      "reason": "mt_glPPG-kTQY builds on mt_THl9GLxwoL."
+    },
+    {
+      "topicId": "mt_glPPG-kTQY",
+      "prerequisiteId": "mt_m1W6nTQJ2b",
+      "strength": "hard",
+      "reason": "mt_glPPG-kTQY builds on mt_m1W6nTQJ2b."
     }
   ]
 }
