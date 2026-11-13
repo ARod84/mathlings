@@ -272,6 +272,7 @@ class TaxonomyService:
         return [
             ErrorPatternOut(
                 id=p.id,
+                position=p.position,
                 kind=p.kind,
                 pattern=p.pattern,
                 next_move=p.next_move,

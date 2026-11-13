@@ -1,0 +1,365 @@
+from pathlib import Path
+
+import pytest
+
+from app.puzzles.equations import build_equation
+from app.puzzles.models import (
+    Distractor,
+    Equation,
+    MistakeRule,
+    NumberToken,
+    OperatorToken,
+    Puzzle,
+    UnknownToken,
+)
+from app.puzzles.verifier import FailureName, VerificationResult, verify
+from tests.puzzles.support import (
+    example_chain,
+    make_catalog,
+    make_puzzle,
+    make_step,
+    replace_step,
+    topic_exists,
+)
+
+F = FailureName
+
+
+def check(puzzle: Puzzle) -> VerificationResult:
+    return verify(puzzle, catalog=make_catalog(), topic_exists=topic_exists)
+
+
+def test_the_hand_built_example_passes():
+    result = check(example_chain())
+    assert result.ok, result.failures
+    assert result.failures == []
+
+
+def test_hand_built_puzzles_pass_at_every_level():
+    level_2 = make_puzzle(
+        [make_step("c=a+?", 73, 28, level=2), make_step("?+b=c", 45, 97, level=2, link_position=0)],
+        level=2,
+    )
+    level_3 = make_puzzle(
+        [
+            make_step("a+?=c", 245, 380, level=3),
+            make_step("c=?-b", 135, 148, level=3, link_position=0),
+            make_step("c=a+?", 283, 120, level=3, link_position=0),
+        ],
+        level=3,
+    )
+    assert check(level_2).ok, check(level_2).failures
+    assert check(level_3).ok, check(level_3).failures
+
+
+# ---- one test per failure name ----
+
+
+def test_wrong_stored_answer():
+    broken = replace_step(example_chain(), 0, answer=4)  # 8 + □ = 11 is 3
+
+    result = check(broken)
+    assert F.WRONG_ANSWER in result.names
+    failure = next(f for f in result.failures if f.name is F.WRONG_ANSWER)
+    assert failure.step == 0
+    assert "solved 3" in failure.detail
+
+
+def test_value_out_of_range():
+    # 8 + □ = 25 at level 1: 25 is past 20, and so is nothing wrong with the sum itself.
+    step = make_step("a+?=c", 8, 11).model_copy(update={"equation": build_equation("a+?=c", 8, 25)})
+    result = check(make_puzzle([step]))
+
+    assert F.VALUE_OUT_OF_RANGE in result.names
+
+
+def test_negative_value():
+    step = make_step("a+?=c", 8, 11).model_copy(update={"equation": build_equation("a+?=c", -3, 0)})
+    result = check(make_puzzle([step]))
+
+    assert F.NEGATIVE_VALUE in result.names
+
+
+def test_no_unique_solution_when_the_answer_lies_outside_the_range():
+    # □ − 15 = 9 needs 24, which level 1 does not have.
+    result = check(make_puzzle([make_step("?-b=c", 15, 9)]))
+
+    assert F.NO_UNIQUE_SOLUTION in result.names
+    assert F.VALUE_OUT_OF_RANGE in result.names
+
+
+def test_duplicate_distractor():
+    puzzle = example_chain()
+    first, second, _third = puzzle.steps[0].distractors
+    broken = replace_step(puzzle, 0, distractors=[first, second, second])
+
+    assert F.DUPLICATE_DISTRACTOR in check(broken).names
+
+
+def test_distractor_equal_to_the_answer():
+    puzzle = example_chain()
+    kept = puzzle.steps[0].distractors[:2]
+    same_as_answer = Distractor(value=3, rule=MistakeRule.NEAR_MISS)
+    broken = replace_step(puzzle, 0, distractors=[*kept, same_as_answer])
+
+    assert F.DISTRACTOR_EQUALS_ANSWER in check(broken).names
+
+
+def test_distractor_that_does_not_match_its_rule():
+    puzzle = example_chain()
+    kept = puzzle.steps[0].distractors[:2]
+    # ADD_VISIBLE on 8 + □ = 11 is 19, not 12.
+    mislabeled = Distractor(
+        value=12, rule=MistakeRule.ADD_VISIBLE, error_pattern_id="mt_3JgrHY221M#0"
+    )
+    broken = replace_step(puzzle, 0, distractors=[kept[1], mislabeled, kept[0]])
+
+    result = check(broken)
+    assert result.names == {F.DISTRACTOR_RULE_MISMATCH}
+    assert "the rule gives 19" in result.failures[0].detail
+
+
+def test_near_miss_distractor_too_far_from_the_answer():
+    puzzle = example_chain()
+    kept = puzzle.steps[0].distractors[:2]
+    broken = replace_step(
+        puzzle, 0, distractors=[*kept, Distractor(value=12, rule=MistakeRule.NEAR_MISS)]
+    )
+
+    assert check(broken).names == {F.DISTRACTOR_RULE_MISMATCH}
+
+
+def test_distractor_out_of_range():
+    puzzle = example_chain()
+    kept = puzzle.steps[0].distractors[:2]
+    broken = replace_step(
+        puzzle, 0, distractors=[*kept, Distractor(value=45, rule=MistakeRule.NEAR_MISS)]
+    )
+
+    assert F.DISTRACTOR_OUT_OF_RANGE in check(broken).names
+
+
+def test_wrong_number_of_distractors():
+    puzzle = example_chain()
+    broken = replace_step(puzzle, 0, distractors=puzzle.steps[0].distractors[:2])
+
+    assert check(broken).names == {F.DISTRACTOR_COUNT}
+
+
+def test_distractor_tagged_with_the_wrong_error_pattern():
+    puzzle = example_chain()
+    retagged = [
+        d.model_copy(update={"error_pattern_id": "mt_3JgrHY221M#1"})
+        if d.rule is MistakeRule.ADD_VISIBLE
+        else d
+        for d in puzzle.steps[0].distractors
+    ]
+    untagged = [d.model_copy(update={"error_pattern_id": None}) for d in retagged]
+
+    assert check(replace_step(puzzle, 0, distractors=retagged)).names == {
+        F.DISTRACTOR_PATTERN_MISMATCH
+    }
+    assert check(replace_step(puzzle, 0, distractors=untagged)).names == {
+        F.DISTRACTOR_PATTERN_MISMATCH
+    }
+
+
+def test_broken_chain_link():
+    # Step 2 is □ − 3 = 5 with the linked 3 at position 0; claim it is at position 1.
+    wrong_position = replace_step(example_chain(), 1, link_position=1)
+    assert check(wrong_position).names == {F.BROKEN_CHAIN_LINK}
+
+    missing = replace_step(example_chain(), 1, link_position=None)
+    assert check(missing).names == {F.BROKEN_CHAIN_LINK}
+
+    # A second step that does not show the first answer at all.
+    unrelated = make_puzzle([make_step("a+?=c", 8, 11), make_step("a-?=c", 14, 6, link_position=0)])
+    assert check(unrelated).names == {F.BROKEN_CHAIN_LINK}
+
+
+def test_first_step_must_not_claim_a_link():
+    assert check(replace_step(example_chain(), 0, link_position=0)).names == {F.BROKEN_CHAIN_LINK}
+
+
+def test_repeated_form():
+    puzzle = make_puzzle([make_step("a+?=c", 8, 11), make_step("a+?=c", 3, 10, link_position=0)])
+
+    assert check(puzzle).names == {F.REPEATED_FORM}
+
+
+def test_too_many_answer_left_steps_at_levels_1_and_2():
+    steps = [
+        make_step("c=a+?", 11, 8),
+        make_step("?+b=c", 3, 10, link_position=0),
+        make_step("c=?-b", 7, 4, link_position=0),
+    ]
+    assert check(make_puzzle(steps)).names == {F.TOO_MANY_ANSWER_LEFT}
+
+    # Level 3 has no such limit.
+    level_3 = make_puzzle(
+        [
+            make_step("c=a+?", 380, 245, level=3),
+            make_step("?+b=c", 135, 400, level=3, link_position=0),
+            make_step("c=?-b", 265, 148, level=3, link_position=0),
+        ],
+        level=3,
+    )
+    assert check(level_3).ok, check(level_3).failures
+
+
+def test_trivial_step():
+    # 8 + □ = 8: the box is 0.
+    zero_answer = check(make_puzzle([make_step("a+?=c", 8, 8)]))
+    assert F.TRIVIAL_STEP in zero_answer.names
+
+    # □ − 0 = 7: nothing to work out.
+    zero_visible = check(make_puzzle([make_step("?-b=c", 0, 7)]))
+    assert F.TRIVIAL_STEP in zero_visible.names
+
+
+def test_unknown_topic_id():
+    made_up = example_chain().model_copy(update={"topic_ids": ["mt_3JgrHY221M", "mt_nope"]})
+    assert F.UNKNOWN_TOPIC in check(made_up).names
+
+    # The right ids, in a database that does not have one of them.
+    result = verify(
+        example_chain(),
+        catalog=make_catalog(),
+        topic_exists=lambda topic_id: topic_id != "mt_3JgrHY221M",
+    )
+    assert result.names == {F.UNKNOWN_TOPIC}
+    assert "mt_3JgrHY221M" in result.failures[0].detail
+
+
+def test_wrong_topics_for_the_level_and_forms():
+    puzzle = make_puzzle([make_step("c=a+?", 11, 8)])
+    # An answer-left step must carry the equals-sign topic.
+    assert puzzle.topic_ids == ["mt_3JgrHY221M", "mt_oIzycTBeE4"]
+    dropped = puzzle.model_copy(update={"topic_ids": ["mt_3JgrHY221M"]})
+    reordered = puzzle.model_copy(update={"topic_ids": ["mt_oIzycTBeE4", "mt_3JgrHY221M"]})
+
+    assert check(dropped).names == {F.WRONG_TOPICS}
+    assert check(reordered).names == {F.WRONG_TOPICS}
+
+
+def test_level_3_step_without_a_three_digit_number():
+    result = check(make_puzzle([make_step("a+?=c", 12, 60, level=3)], level=3))
+
+    assert result.names == {F.MISSING_THREE_DIGIT_NUMBER}
+
+
+def test_form_label_that_does_not_match_the_tokens():
+    broken = replace_step(example_chain(), 0, form="?+b=c")  # tokens are still 8 + □ = 11
+
+    assert F.FORM_MISMATCH in check(broken).names
+
+
+def test_malformed_equation():
+    two_boxes = Equation(
+        left=[UnknownToken(), OperatorToken(symbol="+"), UnknownToken()],
+        right=[NumberToken(value=11)],
+    )
+    dangling_operator = Equation(
+        left=[NumberToken(value=8), OperatorToken(symbol="+")], right=[NumberToken(value=11)]
+    )
+    for equation in (two_boxes, dangling_operator):
+        result = check(replace_step(example_chain(), 0, equation=equation))
+        assert F.MALFORMED_EQUATION in result.names
+        assert F.NO_UNIQUE_SOLUTION in result.names
+
+
+def test_hint_that_gives_the_answer_away_early():
+    puzzle = example_chain()
+    hints = list(puzzle.steps[0].hints)
+    hints[1] = "Try 11 − 8. It is 3."
+    result = check(replace_step(puzzle, 0, hints=hints))
+
+    assert result.names == {F.HINT_REVEALS_ANSWER}
+    assert "tier 2" in result.failures[0].detail
+
+
+def test_hint_numbers_are_compared_whole():
+    # The answer is 3; "13" and "30" in a hint do not give it away.
+    puzzle = example_chain()
+    hints = list(puzzle.steps[0].hints)
+    hints[0] = "Think of 13 and 30."
+    assert check(replace_step(puzzle, 0, hints=hints)).ok
+
+
+def test_hint_count_and_last_hint_must_show_the_answer():
+    puzzle = example_chain()
+    hints = list(puzzle.steps[0].hints)
+
+    assert check(replace_step(puzzle, 0, hints=hints[:2])).names == {F.HINT_COUNT}
+    vague = [*hints[:2], "Now work it out."]
+    assert check(replace_step(puzzle, 0, hints=vague)).names == {F.HINT_MISSING_ANSWER}
+
+
+def test_puzzle_id_must_describe_the_puzzle():
+    puzzle = example_chain()
+    other_seed = puzzle.model_copy(update={"seed": puzzle.seed + 1})
+    garbage = puzzle.model_copy(update={"puzzle_id": "not-an-id"})
+
+    assert check(other_seed).names == {F.PUZZLE_ID_MISMATCH}
+    assert check(garbage).names == {F.PUZZLE_ID_MISMATCH}
+
+
+def test_bad_length():
+    step = make_step("a+?=c", 8, 11)
+    result = check(make_puzzle([]))
+    assert F.BAD_LENGTH in result.names
+
+    forms = ["a+?=c", "?+b=c", "a+?=c", "?+b=c", "a+?=c"]
+    five = make_puzzle([step.model_copy(update={"form": form}) for form in forms])
+    assert F.BAD_LENGTH in check(five).names
+
+
+def test_unsupported_level_or_version():
+    puzzle = example_chain()
+
+    assert check(puzzle.model_copy(update={"level": 9})).names == {F.UNSUPPORTED_PUZZLE}
+    assert check(puzzle.model_copy(update={"generator_version": "0"})).names == {
+        F.UNSUPPORTED_PUZZLE
+    }
+
+
+def test_several_problems_are_all_reported():
+    puzzle = example_chain()
+    broken = replace_step(puzzle, 0, answer=4, distractors=puzzle.steps[0].distractors[:1])
+    broken = replace_step(broken, 2, link_position=0)
+
+    names = check(broken).names
+    assert {F.WRONG_ANSWER, F.DISTRACTOR_COUNT, F.BROKEN_CHAIN_LINK} <= names
+
+
+# ---- independence ----
+
+
+def test_brute_force_solving_handles_every_form():
+    for form, first, second, answer in [
+        ("a+?=c", 8, 11, 3),
+        ("?+b=c", 5, 12, 7),
+        ("a-?=c", 14, 6, 8),
+        ("?-b=c", 3, 5, 8),
+        ("c=a+?", 11, 8, 3),
+        ("c=?-b", 5, 3, 8),
+    ]:
+        right = make_puzzle([make_step(form, first, second)])
+        assert check(right).ok, (form, check(right).failures)
+        wrong = replace_step(right, 0, answer=answer + 2)
+        assert F.WRONG_ANSWER in check(wrong).names, form
+
+
+def test_the_verifier_does_not_import_the_generator():
+    source = (Path(__file__).parents[2] / "app" / "puzzles" / "verifier.py").read_text("utf-8")
+
+    assert "app.puzzles.generator" not in source
+    assert "app.puzzles.verified" not in source
+    # It solves by trying numbers, not with the generator's closed-form arithmetic.
+    assert "app.puzzles.equations" not in source
+
+
+@pytest.mark.parametrize("name", list(FailureName))
+def test_every_failure_name_is_exercised_by_a_test(name):
+    source = Path(__file__).read_text("utf-8")
+    assert f"F.{name.name}" in source, f"no test mentions {name.name}"

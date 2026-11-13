@@ -429,6 +429,7 @@ def test_error_patterns(client: TestClient):
     first, second, third = patterns
     assert set(first) == {
         "id",
+        "position",
         "kind",
         "pattern",
         "next_move",

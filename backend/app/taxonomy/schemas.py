@@ -69,6 +69,10 @@ class UnlockItem(BaseModel):
 
 class ErrorPatternOut(BaseModel):
     id: int
+    position: int = Field(
+        description="Place in the topic's list of error patterns, from 0. With the "
+        "topic id it identifies the pattern across re-imports."
+    )
     kind: str
     pattern: str
     next_move: str

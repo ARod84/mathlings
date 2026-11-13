@@ -14,6 +14,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "httpx>=0.27",
+    "hypothesis>=6.100",
     "pytest>=8.3",
     "ruff>=0.6",
 ]
@@ -36,6 +37,8 @@ extend-exclude = ["vendor"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+# The maths text uses the real minus sign and the box character on purpose.
+ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.isort]
 # backend/alembic (the migrations folder) would otherwise make it look first-party.

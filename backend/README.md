@@ -138,7 +138,7 @@ from app.db import make_engine
 from app.taxonomy.service import TaxonomyService, reload_graph
 
 with Session(make_engine()) as session:
-    reload_graph(session)                      # once per process
+    reload_graph(session)  # once per process
     service = TaxonomyService(session)
     patterns = service.get_error_patterns("mt_SrrsLiJkr3")
     step_back = service.get_step_back("mt_SrrsLiJkr3")
@@ -152,3 +152,80 @@ re-import takes effect without a restart, even though the importer runs as a sep
 
 `uv run python scripts/export_openapi.py` writes `openapi.json` at the repo root, for the
 frontend's typed client. A test fails if that file is out of date.
+
+## Puzzles
+
+`app/puzzles` is a pure Python library for the first puzzle type, the **missing-number chain**:
+one to four linked equations with one box each, where each answer becomes a visible number in the
+next step.
+
+```
+8 + □ = 11      → 3
+□ − 3 = 5       → 8     (the 3 is now visible)
+14 − □ = 8      → 6     (so is the 8)
+```
+
+It has three parts that are kept separate on purpose.
+
+| Part      | File           | Job                                                                                         |
+| --------- | -------------- | ------------------------------------------------------------------------------------------- |
+| Generator | `generator.py` | Builds a puzzle from `(seed, level, length)`. Same inputs, same puzzle.                     |
+| Verifier  | `verifier.py`  | Checks a puzzle without trusting the generator: it solves each step by trying every number. |
+| Diagnoser | `diagnoser.py` | Says which known mistake produced a wrong answer, and where to step back to.                |
+
+`verified.generate_verified(...)` is the only way to get a puzzle meant for a child: it generates,
+verifies, and retries with a derived seed if either fails. `verified.regenerate(puzzle_id)` rebuilds
+a puzzle from its id alone, so nothing needs storing.
+
+```python
+from sqlmodel import Session
+from app.db import make_engine
+from app.puzzles.diagnoser import diagnose
+from app.puzzles.taxonomy_link import first_step_back, load_catalog, topic_exists
+from app.puzzles.verified import generate_verified
+from app.taxonomy.service import TaxonomyService, reload_graph
+
+with Session(make_engine()) as session:
+    service = TaxonomyService(session, reload_graph(session))
+    catalog = load_catalog(service)  # resolve the rule mapping once
+
+puzzle = generate_verified(
+    42, level=1, length=3, catalog=catalog, topic_exists=topic_exists(service)
+)
+diagnosis = diagnose(puzzle, 0, 19, catalog=catalog, step_back=first_step_back(service))
+```
+
+### Levels
+
+| Level | Numbers                                    | Primary topic                                     | Also tagged                                                    |
+| ----- | ------------------------------------------ | ------------------------------------------------- | -------------------------------------------------------------- |
+| 1     | 0–20                                       | `mt_3JgrHY221M` Unknown in Addition & Subtraction | `mt_oIzycTBeE4` What the equals sign means, on answer-left use |
+| 2     | 0–100                                      | `mt_3JgrHY221M`                                   | same                                                           |
+| 3     | 0–1000, a three-digit number in every step | `mt_XuHmIn2xje` Missing number problems (age 7+)  | `mt_ehGS_uVSJv` Inverse: addition undoes subtraction           |
+
+### Mistake rules
+
+Each rule is a pure function of one step (`rules.py`, which has the full table per form).
+
+| Rule                    | What the child does                                        | Example               | Taxonomy error pattern               |
+| ----------------------- | ---------------------------------------------------------- | --------------------- | ------------------------------------ |
+| `ADD_VISIBLE`           | Adds the two numbers they can see                          | `8 + □ = 11` → 19     | `mt_3JgrHY221M#0`, `mt_XuHmIn2xje#0` |
+| `ANSWER_LEFT_BACKWARDS` | Reads `c = □ − b` as `c − b`                               | `5 = □ − 3` → 2       | `mt_3JgrHY221M#1`                    |
+| `POSITION_CONFUSION`    | Treats `□ − b = c` as `c − b`                              | `□ − 120 = 250` → 130 | `mt_XuHmIn2xje#2`                    |
+| `PLACE_VALUE_SLIP`      | Level 3: works column by column, no exchange or carry      | `245 + □ = 380` → 145 | none                                 |
+| `OFF_BY_ONE_OVER/UNDER` | Counting slip, one too many or one too few                 | 3 → 4 or 2            | none                                 |
+| `NEAR_MISS`             | Not a mistake: a filler near the answer when rules run out | 3 → 5                 | none                                 |
+
+An error pattern id is `<topic id>#<position>`. `misconceptions.py` holds the mapping and resolves
+it against the database at startup; it fails loudly if a pattern is missing or ambiguous.
+
+### Quality report
+
+```bash
+uv run python -m app.puzzles.report --all --count 5000   # or --level 1
+uv run python -m app.puzzles.report --samples 2          # example puzzles
+uv run python -m app.puzzles.report --catalog            # rule -> error pattern table
+```
+
+Bump `GENERATOR_VERSION` in `levels.py` whenever a change can alter the puzzle a seed produces. A
+puzzle also depends on the pinned taxonomy commit, through the error-pattern ids and hint sources.
