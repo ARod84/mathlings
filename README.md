@@ -8,16 +8,38 @@ Club site, to be merged into it later.
 | [`frontend/`](frontend) | The games: Vite, React and TypeScript. Design system, `GameShell`, games. |
 | [`backend/`](backend)   | Python API (FastAPI): the topic database, puzzle generation and checking. |
 
-Each folder has its own README with setup and commands. The backend serves the taxonomy and the
-puzzles over HTTP (see [The API](#the-api)); the frontend does not call it yet.
+Each folder has its own README with setup and commands.
+
+## Running both apps together
+
+The frontend calls the backend, so run both. Two terminals:
 
 ```bash
-# frontend
-cd frontend && npm install && npm run dev
+# terminal 1: the API on http://localhost:8000
+cd backend
+uv sync
+./scripts/fetch_taxonomy.ps1            # first time only (use fetch_taxonomy.sh on macOS or Linux)
+uv run alembic upgrade head             # first time only
+uv run python -m app.taxonomy.importer  # first time only
+uv run uvicorn app.main:app --reload
 
-# backend (see backend/README.md for the taxonomy import)
-cd backend && uv sync && uv run uvicorn app.main:app --reload
+# terminal 2: the games on http://localhost:5173
+cd frontend
+npm install
+npm run dev
 ```
+
+Open `http://localhost:5173`. The Vite dev server passes every `/api` request on to port 8000, so the
+browser only talks to one origin. Number Pyramid works without the backend; Missing Number Chains
+needs it, and shows a "Try again" message when it cannot reach it.
+
+## The games
+
+- **Number Pyramid.** Every block is the sum of the two blocks below it; the child drops number
+  tiles into the empty blocks. Eight generated puzzles per round, made in the browser.
+- **Missing Number Chains.** Equations with one missing number, linked in a chain: the number found
+  in one step turns up in the next. Three levels (up to 20, 100 or 1000), five puzzles per round.
+  The puzzles, the answer checks and the hints come from the backend.
 
 ## The API
 

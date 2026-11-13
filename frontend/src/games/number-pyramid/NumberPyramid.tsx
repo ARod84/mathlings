@@ -8,6 +8,8 @@ export interface NumberPyramidProps {
   /** Decides the puzzles. The same seed always gives the same round. */
   seed: number;
   house?: HouseKey;
+  /** Leaves the game; shown as the shell's "Games" button. */
+  onExit?: () => void;
 }
 
 const INSTRUCTION = 'Every block is the sum of the two blocks below it. Fill the empty blocks!';
@@ -28,7 +30,7 @@ function firstEmpty(puzzle: Puzzle, placements: Placements, after?: number): num
   return null;
 }
 
-export function NumberPyramid({ seed, house = 'builders' }: NumberPyramidProps) {
+export function NumberPyramid({ seed, house = 'builders', onExit }: NumberPyramidProps) {
   const [round, setRound] = useState(0);
   const [index, setIndex] = useState(0);
   const puzzles = useMemo(() => generateRound(seed + round), [seed, round]);
@@ -122,6 +124,7 @@ export function NumberPyramid({ seed, house = 'builders' }: NumberPyramidProps) 
       onCheck={complete && !locked ? check : undefined}
       onReset={locked ? undefined : () => start(puzzle)}
       onNext={next}
+      onExit={onExit}
     >
       <div className={styles.game}>
         <div

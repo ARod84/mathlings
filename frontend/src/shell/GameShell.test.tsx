@@ -106,6 +106,26 @@ describe('GameShell actions', () => {
     expect(onCheck).toHaveBeenCalledTimes(1);
   });
 
+  it('shows a "Games" button that calls onExit, only when onExit is given', async () => {
+    const user = userEvent.setup();
+    const onExit = vi.fn();
+    const { rerenderShell } = renderShell();
+    expect(screen.queryByRole('button', { name: 'Back to games' })).not.toBeInTheDocument();
+
+    rerenderShell({ onExit });
+    const exit = screen.getByRole('button', { name: 'Back to games' });
+    expect(exit).toHaveTextContent('Games');
+    await user.click(exit);
+    expect(onExit).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the "Games" button on the completion screens', () => {
+    const { rerenderShell } = renderShell({ feedback: 'solved', onExit: vi.fn() });
+    expect(screen.getByRole('button', { name: 'Back to games' })).toBeVisible();
+    rerenderShell({ feedback: 'complete', onExit: vi.fn() });
+    expect(screen.getByRole('button', { name: 'Back to games' })).toBeVisible();
+  });
+
   it('calls onNext from the solved screen', async () => {
     const user = userEvent.setup();
     const onNext = vi.fn();

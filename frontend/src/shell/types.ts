@@ -38,6 +38,11 @@ export interface GameShellProps {
   onReset?: () => void;
   /** Used by "Next" on the solved screen and by "Play again" on the round-complete screen. */
   onNext?: () => void;
+  /**
+   * Leaves the game. When given, the header shows a "Games" button that calls
+   * it; without it there is no such button.
+   */
+  onExit?: () => void;
   /** The play area. */
   children: ReactNode;
 }

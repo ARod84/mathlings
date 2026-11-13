@@ -1,4 +1,4 @@
-import { Check, Sparkles, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, Check, Sparkles, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { ActionBar } from './ActionBar';
 import styles from './GameShell.module.css';
@@ -49,6 +49,7 @@ export function GameShell({
   onCheck,
   onReset,
   onNext,
+  onExit,
   children,
 }: GameShellProps) {
   const { muted, toggleMuted, play } = useFeedbackSound();
@@ -74,6 +75,12 @@ export function GameShell({
       aria-label={title}
     >
       <header className={styles.header}>
+        {onExit && (
+          <button type="button" className={styles.exit} onClick={onExit} aria-label="Back to games">
+            <ArrowLeft aria-hidden="true" size={20} strokeWidth={3} />
+            <span>Games</span>
+          </button>
+        )}
         <p className={styles.title}>{title}</p>
         <div className={styles.headerTools}>
           <ProgressIndicator current={progress.current} total={progress.total} />

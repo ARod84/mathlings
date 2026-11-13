@@ -4,38 +4,123 @@ Short math-logic puzzle games for kids aged 7–12. This is a standalone precurs
 Martians Space Club site and will be merged into it later, so its visual language comes from that
 site's design.
 
-Right now the project contains the frontend scaffold, the design system, the `GameShell` that
-every game renders inside, and the first game, Number Pyramid. There is no routing, backend or
-persistence yet.
+This is the frontend: the design system, the `GameShell` that every game renders inside, a home
+screen, and two games. Number Pyramid runs entirely in the browser. Missing Number Chains gets its
+puzzles from the backend in `../backend`. Nothing is saved between visits.
 
 ## Getting started
 
 ```bash
 npm install
-npm run dev        # Number Pyramid at http://localhost:5173
+npm run dev        # home screen at http://localhost:5173
 ```
 
-| Script                 | What it does                                |
-| ---------------------- | ------------------------------------------- |
-| `npm run dev`          | Vite dev server with the game               |
-| `npm test`             | Vitest, single run                          |
-| `npm run test:watch`   | Vitest in watch mode                        |
-| `npm run lint`         | ESLint                                      |
-| `npm run typecheck`    | TypeScript (strict), no emit                |
-| `npm run format`       | Prettier, write                             |
-| `npm run format:check` | Prettier, check only                        |
-| `npm run build`        | Typecheck, then production build to `dist/` |
+| Script                 | What it does                                            |
+| ---------------------- | ------------------------------------------------------- |
+| `npm run dev`          | Vite dev server; proxies `/api` to port 8000            |
+| `npm test`             | Vitest, single run                                      |
+| `npm run test:watch`   | Vitest in watch mode                                    |
+| `npm run lint`         | ESLint                                                  |
+| `npm run typecheck`    | TypeScript (strict), no emit                            |
+| `npm run format`       | Prettier, write                                         |
+| `npm run format:check` | Prettier, check only                                    |
+| `npm run build`        | Typecheck, then production build to `dist/`             |
+| `npm run api:types`    | Regenerate `src/api/schema.d.ts` from `../openapi.json` |
 
 Stack: Vite, React, TypeScript (strict), plain CSS with custom properties and CSS Modules, Vitest
-with React Testing Library, `lucide-react` icons, and fonts self-hosted through `@fontsource/*`.
+with React Testing Library and MSW, `openapi-fetch` for the API, `lucide-react` icons, and fonts
+self-hosted through `@fontsource/*`.
 
 ```
 src/
   design/   tokens.css, tokens.ts, global.css, contrast helpers and their tests
   shell/    GameShell and its parts (progress, action bar, hint bubble, solved screen, sound hook)
-  games/    one folder per game; number-pyramid/ is the first
+  games/    registry.ts and one folder per game: number-pyramid/, missing-number/
+  home/     the home screen: one card per game
+  api/      the typed API client and the generated schema.d.ts
+  test/     test setup, the MSW server and the pretend puzzle backend
   dev/      ShellDemo: the shell review page, at #shell-demo
+  App.tsx   picks the screen for the current route
+  router.ts the hash router
 ```
+
+## Running with the backend
+
+Missing Number Chains needs the API. Start the backend on port 8000 (see `../README.md`), then
+`npm run dev`. `vite.config.ts` proxies `/api` to `http://localhost:8000`, so in development the
+browser uses one origin. To point at an API somewhere else, set `VITE_API_BASE_URL`.
+
+## Routes
+
+`src/router.ts` is a small hash router with no library behind it. The part of the address after
+`#` picks the screen, and changing it re-renders without reloading the page.
+
+| Address            | Screen                       |
+| ------------------ | ---------------------------- |
+| `#/`               | Home (also any unknown hash) |
+| `#/pyramid`        | Number Pyramid               |
+| `#/missing-number` | Missing Number Chains        |
+| `#shell-demo`      | The GameShell review page    |
+
+`useRoute()` returns the current route and `navigate(route)` changes it.
+
+## Games registry and adding a game
+
+`src/games/registry.ts` lists the games as `{ id, title, route, house, description }`. The home
+screen draws one card per entry, and `App.tsx` passes each game its `house` from there.
+
+To add a game:
+
+1. Add its route to `Route` and `ROUTE_HASH` in `src/router.ts`.
+2. Add an entry to `GAMES` in `src/games/registry.ts`.
+3. Create `src/games/<name>/` with the logic (pure functions, or a hook with a reducer), a
+   component that renders inside `GameShell` and accepts `house` and `onExit`, and tests.
+4. Render it for its route in `src/App.tsx`.
+
+## API client
+
+| File                  | Role                                                                             |
+| --------------------- | -------------------------------------------------------------------------------- |
+| `src/api/schema.d.ts` | Types generated from `../openapi.json`. Never edited by hand.                    |
+| `src/api/client.ts`   | The one configured `openapi-fetch` client.                                       |
+| `src/api/puzzles.ts`  | `newMissingNumber`, `getPuzzle`, `checkStep`, `getHint`, each returning a result |
+
+Every function in `puzzles.ts` returns `{ status: 'ok', data }` or one of `notFound`, `gone`,
+`unavailable`, `network`. Components branch on that name and never read an HTTP status code.
+
+When the backend's API changes: export `openapi.json` there, then run `npm run api:types` here. A
+test fails if `schema.d.ts` is out of date. `openapi-typescript` asks for TypeScript 5 as a peer;
+the `overrides` entry in `package.json` lets it install alongside TypeScript 6, which it works with.
+
+### Testing against the API
+
+Tests never call a real server. `src/test/puzzleBackend.ts` is a pretend puzzle API on MSW whose
+responses are typed from `schema.d.ts`, so a change to the API's shape breaks the fixtures at
+compile time. A request no handler expects fails the test.
+
+## Missing Number Chains
+
+`src/games/missing-number`: equations with one missing number, linked in a chain. The child picks
+a number size (up to 20, 100 or 1000) and plays five puzzles with 2, 2, 3, 3 and 4 steps.
+
+- **One step at a time.** Solved steps stay above, faded, with their answer filled in. The current
+  step is big, and later steps are not on the page. When a new step appears, the number just
+  found is highlighted in it.
+- **Answering.** Four option tiles; tapping one puts it in the box, tapping another swaps it.
+  Keys 1 to 4 pick an option and Enter checks. The server checks every answer.
+- **Wrong answers.** The box stays filled. After two wrong tries on a step, the next hint opens by
+  itself, unless that would be the last tier: that one shows the answer, so the child has to ask.
+- **Hints.** Each press fetches the next tier (1, 2, 3) for the current step; then the button is
+  disabled. Reset empties the current box only.
+- **Diagnosis.** What the server says about a wrong answer is kept in state and logged with
+  `console.debug` in development. It is never shown to the child.
+- **Problems.** A puzzle from an older generator version is replaced by a fresh one without a
+  message. Anything else shows a friendly note with a Try again button, which repeats whatever
+  failed. Leaving the game cancels requests in flight.
+
+`useMissingNumberGame.ts` holds the state (a reducer) and the API calls; `MissingNumber.tsx` only
+draws. `equation.ts` turns the API's tokens into the screen-reader label ("8 plus box equals 11").
+Equations are always drawn from tokens, never parsed from text.
 
 ## Number Pyramid
 
@@ -177,6 +262,7 @@ import { GameShell, type FeedbackState } from './shell';
 | `feedback`                     | `'idle' \| 'correct' \| 'incorrect' \| 'solved' \| 'complete'` | Drives all shared feedback                                                                      |
 | `hint`                         | `string \| null` (optional)                                    | Shown in ORBI's bubble when present                                                             |
 | `onHint`, `onCheck`, `onReset` | `() => void` (optional)                                        | A button without a handler is disabled, never removed                                           |
+| `onExit`                       | `() => void` (optional)                                        | Shows a "Games" button in the header that calls it; omitted means no button                     |
 | `onNext`                       | `() => void` (optional)                                        | "Next" on the solved screen, "Play again" on the round-complete screen; omitted means no button |
 | `children`                     | `ReactNode`                                                    | The play area                                                                                   |
 

@@ -1,0 +1,94 @@
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 100%;
+  max-width: 45rem;
+  margin: 0 auto;
+  padding-top: var(--space-8);
+}
+
+.header {
+  text-align: center;
+}
+
+.title {
+  font: var(--font-weight-heavy) clamp(2.5rem, 9vw, 3.5rem) / var(--line-height-tight)
+    var(--font-pop);
+  color: var(--color-gold);
+  text-shadow: 0 5px 0 var(--color-outline);
+}
+
+.tagline {
+  margin-top: var(--space-3);
+  font: var(--font-weight-bold) var(--font-size-lg) / var(--line-height-body) var(--font-body);
+  color: var(--color-on-dark-muted);
+}
+
+.games {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A game card: a block with the game's house color along the top. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(var(--house-dark) 0 6px, var(--house-strong) 6px 16px, transparent 16px),
+    var(--color-cream);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-card);
+}
+
+.cardTitle {
+  margin-top: var(--space-4);
+  font: var(--font-weight-heavy) var(--font-size-2xl) / var(--line-height-snug) var(--font-display);
+  color: var(--house-strong);
+}
+
+.description {
+  flex: 1;
+  font: var(--font-weight-medium) var(--font-size-md) / var(--line-height-body) var(--font-body);
+  color: var(--color-ink);
+}
+
+.play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  min-height: var(--size-control);
+  min-width: 9rem;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-6);
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-md);
+  background: var(--color-gold);
+  color: var(--color-ink);
+  font: var(--font-weight-heavy) var(--font-size-lg) / 1 var(--font-display);
+  text-decoration: none;
+  box-shadow: var(--shadow-button);
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+}
+
+.play:hover {
+  background: var(--color-gold-deep);
+}
+
+.play:active {
+  transform: translateY(var(--size-press));
+  box-shadow: 0 1px 0 0 var(--color-outline);
+}
