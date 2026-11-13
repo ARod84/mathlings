@@ -1,17 +1,20 @@
 import logging
 import random
 import re
+from collections import Counter
+from itertools import pairwise
 
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 import app.puzzles.verified as verified_module
-from app.puzzles.equations import visible_numbers
+from app.puzzles.equations import ALL_FORMS, visible_numbers
 from app.puzzles.generator import GenerationError, generate
 from app.puzzles.ids import MAX_SEED, InvalidPuzzleId, derive_seed, make_puzzle_id, parse_puzzle_id
-from app.puzzles.levels import ANSWER_LEFT_FORMS, GENERATOR_VERSION, LEVELS
+from app.puzzles.levels import ANSWER_LEFT_FORMS, FORM_WEIGHTS, GENERATOR_VERSION, LEVELS
 from app.puzzles.models import MistakeRule, Puzzle
+from app.puzzles.rules import distractor_value
 from app.puzzles.verified import (
     PuzzleGenerationFailed,
     PuzzleRejected,
@@ -93,7 +96,12 @@ def test_the_constraints_hold_checked_directly(seed, level, length):
         options = [d.value for d in step.distractors]
         assert len(set(options)) == 3
         assert step.answer not in options
-        assert all(0 <= value <= spec.max_value for value in options)
+        for distractor in step.distractors:
+            # A filler stays in the level's range; a mistake may go up to the cap.
+            limit = (
+                spec.max_value if distractor.rule is MistakeRule.NEAR_MISS else spec.distractor_max
+            )
+            assert 0 <= distractor.value <= limit
         # Hints: the first two never show the answer as a number of its own; the last does.
         for hint in step.hints[:2]:
             assert step.answer not in [int(n) for n in re.findall(r"\d+", hint)]
@@ -185,6 +193,103 @@ def test_linked_rules_are_preferred_and_hint_source_carries_the_taxonomy_text():
                 assert source.next_move not in " ".join(step.hints)
 
 
+# ---- distractor selection ----
+
+
+@settings(max_examples=300, deadline=None)
+@given(seed=seeds, level=levels, length=lengths)
+def test_a_linked_rule_always_takes_a_slot_before_slips_and_fillers(seed, level, length):
+    puzzle = build(seed, level, length)
+    spec = LEVELS[level]
+    linked_rules = [rule for rule in MistakeRule if CATALOG.is_linked(rule)]
+
+    for step in puzzle.steps:
+        rules = [distractor.rule for distractor in step.distractors]
+        applicable = [
+            rule for rule in linked_rules if distractor_value(rule, step, spec) is not None
+        ]
+        # Every linked rule that gives a usable value is among the options...
+        for rule in applicable:
+            assert rule in rules
+        # ...and linked options come first, then other mistakes, then fillers.
+        tiers = [
+            0 if CATALOG.is_linked(rule) else 2 if rule is MistakeRule.NEAR_MISS else 1
+            for rule in rules
+        ]
+        assert tiers == sorted(tiers)
+
+
+@settings(max_examples=300, deadline=None)
+@given(seed=seeds, level=levels, length=lengths)
+def test_fillers_are_a_last_resort(seed, level, length):
+    puzzle = build(seed, level, length)
+    spec = LEVELS[level]
+
+    for step in puzzle.steps:
+        real = {
+            value
+            for rule in MistakeRule
+            if (value := distractor_value(rule, step, spec)) is not None
+        }
+        fillers = [d for d in step.distractors if d.rule is MistakeRule.NEAR_MISS]
+        # A filler is used only for the slots the mistake rules cannot fill.
+        assert len(fillers) == max(0, 3 - len(real))
+
+
+def test_the_spec_example_is_now_offered():
+    # 8 + □ = 15 at level 1: adding the visible numbers gives 23, above 20.
+    found = False
+    for seed in range(3000):
+        for step in generate(seed, 1, 4, CATALOG).steps:
+            first, second = visible_numbers(step.equation)
+            if step.form == "a+?=c" and first + second > LEVELS[1].max_value:
+                assert step.distractors[0].rule is MistakeRule.ADD_VISIBLE
+                assert step.distractors[0].value == first + second
+                assert step.distractors[0].value <= LEVELS[1].distractor_max
+                found = True
+    assert found
+
+
+# ---- form weights ----
+
+
+def test_form_weights_favour_the_forms_where_a_misconception_can_show():
+    assert set(FORM_WEIGHTS) == set(ALL_FORMS)
+    assert all(weight > 0 for weight in FORM_WEIGHTS.values())
+    others = {form: weight for form, weight in FORM_WEIGHTS.items() if form != "a-?=c"}
+    assert len(set(others.values())) == 1
+    assert FORM_WEIGHTS["a-?=c"] < min(others.values())
+    # "A little above": not so lopsided that the form all but disappears.
+    assert FORM_WEIGHTS["a-?=c"] >= min(others.values()) / 2
+
+
+@pytest.mark.parametrize("level", sorted(LEVELS))
+def test_every_form_still_appears_and_the_unweighted_one_appears_less(level):
+    counts = Counter(
+        step.form for seed in range(1500) for step in generate(seed, level, 4, CATALOG).steps
+    )
+    total = sum(counts.values())
+
+    assert set(counts) == set(ALL_FORMS)
+    # Reachable in practice, not just in theory.
+    assert counts["a-?=c"] / total > 0.04
+    # Less often than each form that is not also held back by the answer-left limit.
+    for form in ("a+?=c", "?+b=c", "?-b=c"):
+        assert counts["a-?=c"] < 0.85 * counts[form], (form, counts)
+    if LEVELS[level].max_answer_left_steps is None:
+        for form in ("c=a+?", "c=?-b"):
+            assert counts["a-?=c"] < 0.85 * counts[form], (form, counts)
+
+
+def test_no_form_repeats_and_the_answer_left_limit_holds_with_weights():
+    for level in LEVELS:
+        for seed in range(500):
+            forms = [step.form for step in generate(seed, level, 4, CATALOG).steps]
+            assert all(a != b for a, b in pairwise(forms))
+            if level < 3:
+                assert sum(form in ANSWER_LEFT_FORMS for form in forms) <= 1
+
+
 # ---- retries ----
 
 
@@ -268,7 +373,7 @@ def test_puzzle_id_round_trip(seed, level, length):
         length,
         seed,
     )
-    assert re.fullmatch(r"mnc-1-\d-\d-[0-9a-z]+-[0-9a-f]{4}", puzzle_id)
+    assert re.fullmatch(rf"mnc-{GENERATOR_VERSION}-\d-\d-[0-9a-z]+-[0-9a-f]{{4}}", puzzle_id)
 
 
 def test_puzzle_id_examples_and_tampering():

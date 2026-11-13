@@ -2,7 +2,7 @@
 
 A puzzle id spells out everything needed to build the puzzle again:
 
-    mnc-1-2-3-9ix-4f1c
+    mnc-2-2-3-9ix-fb4e
      |  | | |  |    '-- checksum of the rest, to catch a mistyped or made-up id
      |  | | |  '------- seed, in base 36
      |  | | '---------- number of steps

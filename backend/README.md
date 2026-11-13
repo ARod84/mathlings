@@ -227,30 +227,69 @@ uv run python -m app.puzzles.report --samples 2          # example puzzles
 uv run python -m app.puzzles.report --catalog            # rule -> error pattern table
 ```
 
-Results of `--all --count 5000` against the real imported database:
+The report was run on generator version 1, then again after the changes that make version 2.
+`--all --count 5000` against the real imported database, both with the same report code:
 
-| Level | Verified on the first try | Average retries | Distractors linked to a taxonomy error pattern | Slowest generation |
-| ----- | ------------------------- | --------------- | ---------------------------------------------- | ------------------ |
-| 1     | 5000 of 5000 (100.0%)     | 0.0000          | 5610 of 37500 (15.0%)                          | 1.08 ms            |
-| 2     | 5000 of 5000 (100.0%)     | 0.0000          | 5751 of 37500 (15.3%)                          | 5.52 ms            |
-| 3     | 5000 of 5000 (100.0%)     | 0.0000          | 5850 of 37500 (15.6%)                          | 34.42 ms           |
+| Metric                                            | Level | Version 1             | Version 2             |
+| ------------------------------------------------- | ----- | --------------------- | --------------------- |
+| **Steps with at least one linked distractor**     | 1     | 5610 of 12500 (44.9%) | 8991 of 12500 (71.9%) |
+|                                                   | 2     | 5751 of 12500 (46.0%) | 8906 of 12500 (71.2%) |
+|                                                   | 3     | 5850 of 12500 (46.8%) | 8918 of 12500 (71.3%) |
+| Steps where a linked rule applied but was dropped | 1     | 2681 (21.4%)          | 0 (0.0%)              |
+| for being out of range (always `ADD_VISIBLE`)     | 2     | 2520 (20.2%)          | 0 (0.0%)              |
+|                                                   | 3     | 2423 (19.4%)          | 0 (0.0%)              |
+| Distractors linked to a taxonomy error pattern    | 1     | 5610 of 37500 (15.0%) | 8991 of 37500 (24.0%) |
+|                                                   | 2     | 5751 of 37500 (15.3%) | 8906 of 37500 (23.7%) |
+|                                                   | 3     | 5850 of 37500 (15.6%) | 8918 of 37500 (23.8%) |
+| `NEAR_MISS` fillers, share of distractors         | 1     | 19.3%                 | 9.4%                  |
+|                                                   | 2     | 18.3%                 | 9.6%                  |
+|                                                   | 3     | 5.9%                  | 3.1%                  |
+| Steps of the form `a − □ = c`                     | 1     | 18.1%                 | 11.0%                 |
+|                                                   | 2     | 18.4%                 | 11.2%                 |
+|                                                   | 3     | 16.4%                 | 9.2%                  |
+| Verified on the first try                         | 1     | 5000 of 5000 (100.0%) | 5000 of 5000 (100.0%) |
+|                                                   | 2     | 5000 of 5000 (100.0%) | 5000 of 5000 (100.0%) |
+|                                                   | 3     | 5000 of 5000 (100.0%) | 5000 of 5000 (100.0%) |
+| Slowest generation (best of 3)                    | 1     | 0.55 ms               | 1.09 ms               |
+|                                                   | 2     | 2.14 ms               | 2.27 ms               |
+|                                                   | 3     | 16.64 ms              | 13.85 ms              |
 
 - **Run on:** 2026-11-12
-- **Generator version:** `1`
+- **Generator version:** `2` (the "Version 1" column is the baseline, from the commit before)
 - **Taxonomy commit:** `ce4eb95df6d0675762daef4d2318f9e545e73d98`
 
 Seeds 0 to 4999 per level, chain lengths 1 to 4 in turn (12,500 steps and 37,500 distractors per
-level). Everything except the timings is the same on every run; the timings are from one laptop.
+level). Average retries were 0 in both versions. Everything except the timings is the same on every
+run. The slowest ten seeds are timed again three times and the best time kept, so that one pause
+of the machine does not pass for slow code; the largest single timings seen were about 40 ms.
 
-The linked share is low by design, not by accident. A step has at most one linked distractor, so
-15% of distractors is about 45% of steps. Only three rules have a taxonomy pattern, each applies to
-some forms only (`a − □ = c` has none), and a mistake whose result falls outside the level's range
-cannot be offered as an option. The other distractors are the off-by-one slips, the column slip at
-level 3 and near-miss fillers, none of which the taxonomy describes. A test fails if the version or
-commit above stops matching the code, so the table cannot go stale unnoticed.
+**Why per-step coverage is the number to watch.** The game is multiple choice, so a wrong answer
+can only be diagnosed if the child picked an option that comes from a known mistake. A step has at
+most one linked distractor out of three, so the share of all distractors can never get near 100%;
+the share of steps with one can.
+
+**What changed between the versions.**
+
+1. A mistake's value may run past the level's range, up to `distractor_max` (40, 200 and 2000 for
+   levels 1 to 3). A child at "up to 20" who adds the visible numbers of `8 + □ = 15` really does
+   write 23, and before it was dropped. The answer and the near-miss fillers stay in range.
+2. Distractors are picked in tiers: rules with a taxonomy pattern, then the other mistake rules,
+   then near-miss fillers only for slots still empty.
+3. The forms where a linked misconception can show are picked a little more often than
+   `a − □ = c`, where none can. The weights are `FORM_WEIGHTS` in `levels.py`:
+
+   | Form   | `a+?=c` | `?+b=c` | `a-?=c` | `?-b=c` | `c=a+?` | `c=?-b` |
+   | ------ | ------- | ------- | ------- | ------- | ------- | ------- |
+   | Weight | 3       | 3       | 1.5     | 3       | 3       | 3       |
+
+**Why coverage stops at about 72%.** `a − □ = c` has no linked rule, and the two subtraction slips
+(`POSITION_CONFUSION`, `ANSWER_LEFT_BACKWARDS`) only give a value when `c ≥ b`, which is about half
+of those steps. A test fails if the version or commit above stops matching the code, and another
+checks the coverage targets (70% at levels 1 and 2, 60% at level 3) on generated puzzles.
 
 Bump `GENERATOR_VERSION` in `levels.py` whenever a change can alter the puzzle a seed produces. A
 puzzle also depends on the pinned taxonomy commit, through the error-pattern ids and hint sources.
+Ids from an older version get a `410` from the API, and the frontend quietly starts a new puzzle.
 
 ### Puzzle API
 

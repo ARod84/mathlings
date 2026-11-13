@@ -176,6 +176,30 @@ def test_report_counts_add_up():
         assert wanted in text
 
 
+# Levels 1 and 2 are measured on the same 5000 seeds as the README report,
+# because their margin over the target is thin (about 71-72% against 70%) and
+# a small sample swings by more than that. Level 3 has room to spare, and its
+# puzzles are slower to verify, so a smaller sample is enough there.
+@pytest.mark.parametrize(
+    ("level", "count", "target"), [(1, 5000, 0.70), (2, 5000, 0.70), (3, 600, 0.60)]
+)
+def test_enough_steps_carry_a_linked_distractor(level, count, target):
+    """The signal the diagnoser gets: a wrong pick can only be explained if a
+    linked option was there. Version 1 managed about 45%."""
+    report = build_report(level, count, make_catalog(), fake_topic_exists)
+
+    assert report.first_try == report.produced == count
+    assert report.steps_with_linked / report.steps >= target
+    # Nothing a linked rule produces is thrown away for being too large.
+    assert report.steps_with_dropped == 0
+    assert sum(report.linked_dropped.values()) == 0
+    assert report.steps_with_linked == report.linked_distractors
+    text = report.format()
+    assert "steps with at least one linked distractor" in text
+    assert "out of range" in text
+    assert "best of 3" in text
+
+
 def test_report_formatting_of_a_puzzle_and_the_catalog():
     text = format_puzzle(example_chain())
     assert "8 + □ = 11" in text

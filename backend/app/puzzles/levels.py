@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from app.puzzles.models import Form
 
-GENERATOR_VERSION = "1"
+GENERATOR_VERSION = "2"
 PUZZLE_TYPE = "missing_number_chain"
 
 MIN_STEPS = 1
@@ -18,6 +18,21 @@ DISTRACTORS_PER_STEP = 3
 HINT_TIERS = 3
 
 ANSWER_LEFT_FORMS: frozenset[Form] = frozenset({"c=a+?", "c=?-b"})
+
+# How likely the generator is to pick each form for a step, relative to the
+# others. The five forms where a known misconception can show are weighted a
+# little above a-?=c, where none can: "do the sum you can see" gives the right
+# answer there. They are also the forms children get wrong, so practice value
+# does not suffer. Every form stays reachable. A generator preference only:
+# the verifier does not know about it.
+FORM_WEIGHTS: dict[Form, float] = {
+    "a+?=c": 3.0,
+    "?+b=c": 3.0,
+    "a-?=c": 1.5,
+    "?-b=c": 3.0,
+    "c=a+?": 3.0,
+    "c=?-b": 3.0,
+}
 
 TOPIC_UNKNOWN_ADD_SUB = "mt_3JgrHY221M"  # Unknown in Addition & Subtraction
 TOPIC_EQUALS_SIGN = "mt_oIzycTBeE4"  # What the equals sign means
@@ -30,6 +45,11 @@ class LevelSpec:
     level: int
     # Every number in a step, the unknown included, is between 0 and this.
     max_value: int
+    # A distractor that comes from a mistake rule may be as large as this. It is
+    # above max_value on purpose: a child at "up to 20" who adds the visible
+    # numbers of 8 + □ = 15 really does write 23, and that is the answer worth
+    # catching. The answer itself and NEAR_MISS fillers stay within max_value.
+    distractor_max: int
     primary_topic_id: str
     # Tagged on every puzzle of the level.
     extra_topic_ids: tuple[str, ...]
@@ -53,6 +73,7 @@ LEVELS: dict[int, LevelSpec] = {
     1: LevelSpec(
         level=1,
         max_value=20,
+        distractor_max=40,
         primary_topic_id=TOPIC_UNKNOWN_ADD_SUB,
         extra_topic_ids=(),
         answer_left_topic_id=TOPIC_EQUALS_SIGN,
@@ -65,6 +86,7 @@ LEVELS: dict[int, LevelSpec] = {
     2: LevelSpec(
         level=2,
         max_value=100,
+        distractor_max=200,
         primary_topic_id=TOPIC_UNKNOWN_ADD_SUB,
         extra_topic_ids=(),
         answer_left_topic_id=TOPIC_EQUALS_SIGN,
@@ -78,6 +100,7 @@ LEVELS: dict[int, LevelSpec] = {
     3: LevelSpec(
         level=3,
         max_value=1000,
+        distractor_max=2000,
         primary_topic_id=TOPIC_MISSING_NUMBER,
         extra_topic_ids=(TOPIC_INVERSE,),
         answer_left_topic_id=None,

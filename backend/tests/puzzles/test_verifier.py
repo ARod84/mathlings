@@ -139,6 +139,49 @@ def test_distractor_out_of_range():
     assert F.DISTRACTOR_OUT_OF_RANGE in check(broken).names
 
 
+def test_a_mistake_value_past_the_level_range_is_accepted_up_to_the_cap():
+    # 8 + □ = 15 at level 1, with 23 (8 + 15) as an option: above 20, within 40.
+    puzzle = make_puzzle([make_step("a+?=c", 8, 15)])
+    assert 23 in [d.value for d in puzzle.steps[0].distractors]
+    assert check(puzzle).ok, check(puzzle).failures
+
+    # 19 + □ = 20 gives 39, the largest a level-1 sum can be.
+    assert check(make_puzzle([make_step("a+?=c", 19, 20)])).ok
+
+
+def test_a_mistake_value_past_the_cap_is_rejected():
+    puzzle = make_puzzle([make_step("a+?=c", 8, 15)])
+    kept = puzzle.steps[0].distractors[:2]
+    over_cap = Distractor(
+        value=41, rule=MistakeRule.ADD_VISIBLE, error_pattern_id="mt_3JgrHY221M#0"
+    )
+    result = check(replace_step(puzzle, 0, distractors=[over_cap, kept[1], kept[0]]))
+
+    assert F.DISTRACTOR_OUT_OF_RANGE in result.names
+    detail = next(f.detail for f in result.failures if f.name is F.DISTRACTOR_OUT_OF_RANGE)
+    assert "0..40" in detail
+
+
+def test_a_filler_past_the_level_range_is_rejected_even_under_the_cap():
+    # 1 + □ = 20 is 19. A filler at 21 is "near", and under 40, but fillers stay in range.
+    puzzle = make_puzzle([make_step("a+?=c", 1, 20)])
+    kept = puzzle.steps[0].distractors[:2]
+    filler = Distractor(value=21, rule=MistakeRule.NEAR_MISS)
+    result = check(replace_step(puzzle, 0, distractors=[*kept, filler]))
+
+    assert F.DISTRACTOR_OUT_OF_RANGE in result.names
+    detail = next(f.detail for f in result.failures if f.name is F.DISTRACTOR_OUT_OF_RANGE)
+    assert "0..20" in detail
+
+
+def test_the_answer_and_visible_numbers_do_not_get_the_higher_cap():
+    # 8 + □ = 30 would need 22: the cap is for mistakes, not for the puzzle itself.
+    result = check(make_puzzle([make_step("a+?=c", 8, 30)]))
+
+    assert F.VALUE_OUT_OF_RANGE in result.names
+    assert F.NO_UNIQUE_SOLUTION in result.names
+
+
 def test_wrong_number_of_distractors():
     puzzle = example_chain()
     broken = replace_step(puzzle, 0, distractors=puzzle.steps[0].distractors[:2])

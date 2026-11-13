@@ -11,6 +11,7 @@ lengths 1 to 4 in turn, so the numbers are the same on every run.
 """
 
 import argparse
+import contextlib
 import sys
 import time
 from collections import Counter
@@ -23,9 +24,16 @@ from app.puzzles.equations import ALL_FORMS, render
 from app.puzzles.levels import LEVELS, MAX_STEPS, MIN_STEPS
 from app.puzzles.misconceptions import MisconceptionCatalog
 from app.puzzles.models import MistakeRule, Puzzle
+from app.puzzles.rules import distractor_value, rule_output
 from app.puzzles.taxonomy_link import load_catalog, topic_exists
 from app.puzzles.verified import PuzzleGenerationFailed, generate_verified_outcome
 from app.taxonomy.service import TaxonomyService, reload_graph
+
+# Generation is timed once per seed. The slowest few seeds are then timed again
+# this many times each and the best time kept: a puzzle is built the same way
+# every time, so the best time is the code's own, without the machine's hiccups.
+RETIME_SLOWEST = 10
+RETIME_REPEATS = 3
 
 
 @dataclass
@@ -41,8 +49,20 @@ class LevelReport:
     rules: Counter[str] = field(default_factory=Counter)
     linked_distractors: int = 0
     distractors: int = 0
+    # Steps with at least one distractor that has a taxonomy error pattern. A
+    # wrong answer can only be diagnosed if such an option was there to pick.
+    steps_with_linked: int = 0
+    # Per linked rule: steps where the mistake gives a value, and steps where
+    # that value could not be offered because it is outside the allowed range.
+    linked_applied: Counter[str] = field(default_factory=Counter)
+    linked_dropped: Counter[str] = field(default_factory=Counter)
+    steps_with_dropped: int = 0
+    # The slowest puzzle to make, re-timed (best of RETIME_REPEATS) so that one
+    # interruption by the operating system does not pass for slow code.
     slowest_ms: float = 0.0
     slowest_seed: int = 0
+    # The largest single timing seen in the main loop, interruptions included.
+    largest_single_ms: float = 0.0
     total_ms: float = 0.0
 
     def format(self) -> str:
@@ -56,7 +76,9 @@ class LevelReport:
             f"  passed on the first try      {self.first_try}  ({share(self.first_try, n)})",
             f"  average retries per puzzle   {self.retries / n:.4f}",
             f"  gave up after all retries    {self.failed}",
-            f"  slowest generation           {self.slowest_ms:.2f} ms (seed {self.slowest_seed})",
+            f"  slowest generation           {self.slowest_ms:.2f} ms (seed {self.slowest_seed}, "
+            f"best of {RETIME_REPEATS})",
+            f"  largest single timing seen   {self.largest_single_ms:.2f} ms",
             f"  average generation           {self.total_ms / n:.3f} ms",
             f"  steps generated              {self.steps}",
             "  forms",
@@ -76,12 +98,31 @@ class LevelReport:
             f"{self.linked_distractors} of {self.distractors}  "
             f"({share(self.linked_distractors, self.distractors).strip()})"
         )
+        lines.append(
+            f"  steps with at least one linked distractor       "
+            f"{self.steps_with_linked} of {self.steps}  "
+            f"({share(self.steps_with_linked, self.steps).strip()})"
+        )
+        lines.append(
+            f"  steps where a linked rule applied but its value was out of range  "
+            f"{self.steps_with_dropped} of {self.steps}  "
+            f"({share(self.steps_with_dropped, self.steps).strip()})"
+        )
+        lines += [
+            f"    {rule:<22}{self.linked_dropped[rule]:>7} of {self.linked_applied[rule]:>6} "
+            f"steps where it applied  ({share(self.linked_dropped[rule], self.steps).strip()} "
+            f"of all steps)"
+            for rule in sorted(self.linked_applied)
+        ]
         return "\n".join(lines)
 
 
 def build_report(level: int, count: int, catalog: MisconceptionCatalog, exists) -> LevelReport:
     report = LevelReport(level=level, requested=count)
+    spec = LEVELS[level]
+    linked_rules = [rule for rule in MistakeRule if catalog.is_linked(rule)]
     lengths = range(MIN_STEPS, MAX_STEPS + 1)
+    timings: list[tuple[float, int]] = []
     for seed in range(count):
         length = lengths[seed % len(lengths)]
         started = time.perf_counter()
@@ -93,8 +134,7 @@ def build_report(level: int, count: int, catalog: MisconceptionCatalog, exists) 
             outcome = None
         elapsed_ms = (time.perf_counter() - started) * 1000
         report.total_ms += elapsed_ms
-        if elapsed_ms > report.slowest_ms:
-            report.slowest_ms, report.slowest_seed = elapsed_ms, seed
+        timings.append((elapsed_ms, seed))
         if outcome is None:
             report.failed += 1
             continue
@@ -108,6 +148,31 @@ def build_report(level: int, count: int, catalog: MisconceptionCatalog, exists) 
                 report.distractors += 1
                 report.rules[distractor.rule.value] += 1
                 report.linked_distractors += distractor.error_pattern_id is not None
+            report.steps_with_linked += any(d.error_pattern_id for d in step.distractors)
+            dropped_here = False
+            for rule in linked_rules:
+                if rule_output(rule, step, spec) is None:
+                    continue
+                report.linked_applied[rule.value] += 1
+                # The mistake gives a value, but it cannot be shown as an option.
+                if distractor_value(rule, step, spec) is None:
+                    report.linked_dropped[rule.value] += 1
+                    dropped_here = True
+            report.steps_with_dropped += dropped_here
+
+    timings.sort(reverse=True)
+    report.largest_single_ms = timings[0][0] if timings else 0.0
+    for _first_ms, seed in timings[:RETIME_SLOWEST]:
+        best = float("inf")
+        for _repeat in range(RETIME_REPEATS):
+            started = time.perf_counter()
+            with contextlib.suppress(PuzzleGenerationFailed):
+                generate_verified_outcome(
+                    seed, level, lengths[seed % len(lengths)], catalog=catalog, topic_exists=exists
+                )
+            best = min(best, (time.perf_counter() - started) * 1000)
+        if best > report.slowest_ms:
+            report.slowest_ms, report.slowest_seed = best, seed
     return report
 
 

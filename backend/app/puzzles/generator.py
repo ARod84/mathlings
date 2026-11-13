@@ -27,6 +27,7 @@ from app.puzzles.ids import MAX_SEED, make_puzzle_id
 from app.puzzles.levels import (
     ANSWER_LEFT_FORMS,
     DISTRACTORS_PER_STEP,
+    FORM_WEIGHTS,
     GENERATOR_VERSION,
     LEVELS,
     MAX_STEPS,
@@ -38,7 +39,8 @@ from app.puzzles.misconceptions import MisconceptionCatalog
 from app.puzzles.models import Distractor, Form, HintSource, MistakeRule, Puzzle, PuzzleStep
 from app.puzzles.rules import distractor_value
 
-# Rules with a taxonomy error pattern are tried first, then the others.
+# The order mistake rules are tried in within a tier. _distractors puts the
+# rules that have a taxonomy error pattern ahead of the ones that do not.
 DISTRACTOR_RULE_ORDER: tuple[MistakeRule, ...] = (
     MistakeRule.ADD_VISIBLE,
     MistakeRule.ANSWER_LEFT_BACKWARDS,
@@ -65,6 +67,23 @@ def _pick(rng: random.Random, low: int, high: int, preferred_low: int) -> int | 
     if low > high:
         return None
     return rng.randint(max(low, preferred_low) if preferred_low <= high else low, high)
+
+
+def _weighted_order(
+    rng: random.Random, options: list[tuple[Form, int | None]]
+) -> list[tuple[Form, int | None]]:
+    """The options in a random order where heavier forms tend to come first.
+
+    Each option draws a key u ** (1 / weight), u uniform in [0, 1), and the
+    options are tried from the largest key down. The first one is then picked
+    with probability proportional to its form's weight (FORM_WEIGHTS), and
+    every option keeps some chance of coming first.
+    """
+    keyed = [
+        (rng.random() ** (1.0 / FORM_WEIGHTS[form]), form, position) for form, position in options
+    ]
+    keyed.sort(key=lambda item: item[0], reverse=True)
+    return [(form, position) for _key, form, position in keyed]
 
 
 def _choose_numbers(
@@ -129,9 +148,20 @@ def _acceptable(numbers: _Numbers, spec: LevelSpec) -> bool:
 def _distractors(
     rng: random.Random, step: PuzzleStep, spec: LevelSpec, catalog: MisconceptionCatalog
 ) -> list[Distractor] | None:
+    """Three wrong answers for a step, the most diagnosable first.
+
+    1. mistake rules with a taxonomy error pattern
+    2. the other mistake rules
+    3. NEAR_MISS fillers, only if the first two leave a slot empty
+
+    Within tiers 1 and 2 the order is fixed (DISTRACTOR_RULE_ORDER); the
+    fillers are picked by the seed.
+    """
     chosen: list[Distractor] = []
     used = {step.answer}
-    for rule in DISTRACTOR_RULE_ORDER:
+    # sorted() is stable, so each tier keeps DISTRACTOR_RULE_ORDER.
+    by_tier = sorted(DISTRACTOR_RULE_ORDER, key=lambda rule: not catalog.is_linked(rule))
+    for rule in by_tier:
         if len(chosen) == DISTRACTORS_PER_STEP:
             break
         value = distractor_value(rule, step, spec)
@@ -213,7 +243,7 @@ def generate(seed: int, level: int, length: int, catalog: MisconceptionCatalog) 
             and (answer_left_allowed or form not in ANSWER_LEFT_FORMS)
             for position in ((None,) if previous is None else (0, 1))
         ]
-        rng.shuffle(options)
+        options = _weighted_order(rng, options)
 
         step = None
         for form, position in options:

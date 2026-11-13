@@ -222,8 +222,11 @@ def _check_step(
         label = f"{distractor.rule.value}={distractor.value}"
         if distractor.value == step.answer:
             fail(FailureName.DISTRACTOR_EQUALS_ANSWER, f"{label} is the answer")
-        if not 0 <= distractor.value <= spec.max_value:
-            fail(FailureName.DISTRACTOR_OUT_OF_RANGE, f"{label} not within 0..{spec.max_value}")
+        # A mistake's value may run past the level's range, up to distractor_max;
+        # a filler may not.
+        limit = spec.max_value if distractor.rule is MistakeRule.NEAR_MISS else spec.distractor_max
+        if not 0 <= distractor.value <= limit:
+            fail(FailureName.DISTRACTOR_OUT_OF_RANGE, f"{label} not within 0..{limit}")
         if not form_ok:
             continue  # a rule cannot be recomputed on an equation of the wrong shape
         if distractor.rule is MistakeRule.NEAR_MISS:

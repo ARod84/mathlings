@@ -55,7 +55,7 @@ needs it, and shows a "Try again" message when it cannot reach it.
 
 ### Puzzles are stateless
 
-Nothing about a puzzle is stored. A `puzzle_id` such as `mnc-1-1-3-2-b555` spells out the generator
+Nothing about a puzzle is stored. A `puzzle_id` such as `mnc-2-1-3-2-e12d` spells out the generator
 version, level, number of steps and seed, plus a short checksum. On every request the server builds
 the puzzle again from the id and verifies it before using it. Two consequences:
 

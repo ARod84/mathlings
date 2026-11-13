@@ -156,15 +156,26 @@ def test_a_filler_distractor_is_not_a_diagnosis():
     assert result.matched_rules == []
 
 
-def test_an_answer_above_the_level_range_is_still_diagnosed():
-    # 15 + □ = 18 answered 33: never offered as an option at level 1, but a
-    # child typing freely can give it.
+def test_an_answer_above_the_level_range_is_offered_and_diagnosed():
+    # 15 + □ = 18 answered 33: past level 1's 20, but it is what a child who
+    # adds the visible numbers writes, so it is an option and it is diagnosed.
     puzzle = make_puzzle([make_step("a+?=c", 15, 18)])
-    assert 33 not in [d.value for d in puzzle.steps[0].distractors]
+    assert 33 in [d.value for d in puzzle.steps[0].distractors]
 
     result = run(puzzle, 33)
     assert result.matched_rules == [MistakeRule.ADD_VISIBLE]
     assert result.error_pattern_id == "mt_3JgrHY221M#0"
+
+
+def test_an_answer_past_the_distractor_cap_is_still_diagnosed():
+    # A value too large to offer as an option can still be typed, so the
+    # diagnoser has no upper limit. (25 and 30 are not level-1 numbers; the
+    # step is only here to push the sum past the cap of 40.)
+    puzzle = make_puzzle([make_step("a+?=c", 25, 30)])
+    assert 55 not in [d.value for d in puzzle.steps[0].distractors]
+
+    result = run(puzzle, 55)
+    assert result.matched_rules == [MistakeRule.ADD_VISIBLE]
 
 
 def test_every_real_rule_distractor_is_diagnosed_as_its_rule():
