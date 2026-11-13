@@ -464,11 +464,12 @@ def test_an_id_with_a_valid_checksum_but_impossible_values_is_404(client: TestCl
 
 
 def test_an_id_from_an_older_generator_is_410(client: TestClient):
-    # "mnc-1-1-3-2-b555" is a real id the version 1 generator handed out.
+    # Real ids that the version 1 and version 2 generators handed out.
     assert make_puzzle_id("1", 1, 3, 2) == "mnc-1-1-3-2-b555"
-    assert GENERATOR_VERSION == "2"
+    assert make_puzzle_id("2", 1, 2, 42) == "mnc-2-1-2-16-eb38"
+    assert GENERATOR_VERSION == "3"
 
-    for old in (make_puzzle_id("0", 1, 3, 42), "mnc-1-1-3-2-b555"):
+    for old in (make_puzzle_id("0", 1, 3, 42), "mnc-1-1-3-2-b555", "mnc-2-1-2-16-eb38"):
         for response in (
             client.get(f"{PUZZLES}/{old}"),
             client.post(f"{PUZZLES}/{old}/steps/0/check", json={"answer": 1}),

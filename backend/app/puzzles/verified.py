@@ -1,6 +1,6 @@
 """The one way to get a puzzle that may be shown to a child: generate, then verify.
 
-    generate_verified(seed, level, length, catalog=..., topic_exists=...) -> Puzzle
+    generate_verified(seed, level, length, focus=None, catalog=..., topic_exists=...) -> Puzzle
 
 If the first attempt cannot be built or fails verification, the seed is
 replaced by one derived from it (ids.derive_seed) and tried again, up to
@@ -14,9 +14,9 @@ from dataclasses import dataclass
 
 from app.puzzles.generator import GenerationError, generate
 from app.puzzles.ids import InvalidPuzzleId, OutdatedPuzzleId, derive_seed, parse_puzzle_id
-from app.puzzles.levels import GENERATOR_VERSION
+from app.puzzles.levels import FOCUS_BY_CODE, GENERATOR_VERSION, supported_focus
 from app.puzzles.misconceptions import MisconceptionCatalog
-from app.puzzles.models import Puzzle
+from app.puzzles.models import MistakeRule, Puzzle
 from app.puzzles.verifier import VerificationResult, verify
 
 logger = logging.getLogger(__name__)
@@ -48,17 +48,27 @@ def generate_verified_outcome(
     seed: int,
     level: int,
     length: int,
+    focus: MistakeRule | None = None,
     *,
     catalog: MisconceptionCatalog,
     topic_exists: Callable[[str], bool],
     max_attempts: int = MAX_ATTEMPTS,
 ) -> GenerationOutcome:
     """Like generate_verified, and also says how many retries it took."""
+    if focus is not None and supported_focus(focus) is None:
+        # Only some mistake rules can be targeted. The rest change nothing.
+        logger.info("Focus %s has no effect on generation; making a puzzle without it", focus.value)
+        focus = None
     last_problem = "no attempt was made"
     for attempt in range(max_attempts):
         attempt_seed = derive_seed(seed, attempt)
         try:
-            puzzle = generate(attempt_seed, level, length, catalog)
+            # Called with four arguments when there is no focus, exactly as before.
+            puzzle = (
+                generate(attempt_seed, level, length, catalog)
+                if focus is None
+                else generate(attempt_seed, level, length, catalog, focus)
+            )
         except GenerationError as error:
             last_problem = str(error)
             continue
@@ -90,14 +100,25 @@ def generate_verified(
     seed: int,
     level: int,
     length: int,
+    focus: MistakeRule | None = None,
     *,
     catalog: MisconceptionCatalog,
     topic_exists: Callable[[str], bool],
     max_attempts: int = MAX_ATTEMPTS,
 ) -> Puzzle:
-    """A verified puzzle for these inputs. The same inputs always give the same puzzle."""
+    """A verified puzzle for these inputs. The same inputs always give the same puzzle.
+
+    `focus` is a mistake rule to target (see levels.FOCUS_TARGET_FORMS). A
+    rule that cannot be targeted is logged and treated as no focus.
+    """
     return generate_verified_outcome(
-        seed, level, length, catalog=catalog, topic_exists=topic_exists, max_attempts=max_attempts
+        seed,
+        level,
+        length,
+        focus,
+        catalog=catalog,
+        topic_exists=topic_exists,
+        max_attempts=max_attempts,
     ).puzzle
 
 
@@ -126,7 +147,12 @@ def regenerate(
         if _is_older(key.generator_version):
             raise OutdatedPuzzleId(message)
         raise InvalidPuzzleId(message)
-    puzzle = generate(key.seed, key.level, key.length, catalog)
+    focus = None
+    if key.focus is not None:
+        focus = FOCUS_BY_CODE.get(key.focus)
+        if focus is None:
+            raise InvalidPuzzleId(f"{puzzle_id!r} names a focus this generator does not know")
+    puzzle = generate(key.seed, key.level, key.length, catalog, focus)
     result = verify(puzzle, catalog=catalog, topic_exists=topic_exists)
     if not result.ok:
         raise PuzzleRejected(puzzle_id, result)

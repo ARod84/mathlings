@@ -40,6 +40,8 @@ class Observation:
     # Mistake rules the answer matched; empty when right or unrecognized.
     matched_rules: tuple[str, ...] = ()
     at: datetime | None = None
+    # The puzzle this step belongs to was generated with a focus.
+    focused: bool = False
 
 
 @dataclass(frozen=True)
@@ -60,6 +62,7 @@ def to_observation(
     topic_ids: Iterable[str],
     matched_rules: Iterable[str] = (),
     at: datetime | None = None,
+    focused: bool = False,
 ) -> Observation | None:
     """Turn one stored attempt into an observation, or None if it is not evidence.
 
@@ -77,6 +80,7 @@ def to_observation(
         correct=correct and unaided,
         matched_rules=tuple(matched_rules),
         at=at,
+        focused=focused,
     )
 
 

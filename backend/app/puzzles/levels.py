@@ -7,9 +7,9 @@ separately against these.
 
 from dataclasses import dataclass
 
-from app.puzzles.models import Form
+from app.puzzles.models import Form, MistakeRule
 
-GENERATOR_VERSION = "2"
+GENERATOR_VERSION = "3"
 PUZZLE_TYPE = "missing_number_chain"
 
 MIN_STEPS = 1
@@ -33,6 +33,45 @@ FORM_WEIGHTS: dict[Form, float] = {
     "c=a+?": 3.0,
     "c=?-b": 3.0,
 }
+
+# ---- focus: puzzles that target one mistake a child keeps making ----
+#
+# A focus is a mistake rule. A focused puzzle has more steps of the forms where
+# that mistake can happen, always offers the mistake's wrong answer on them when
+# it has one, and words the first hint around the idea behind it. Only the rules
+# below can be a focus; any other rule is treated as no focus.
+#
+# The forms are the ones each rule gives a value on (rules.py); a test keeps
+# the two in step.
+FOCUS_TARGET_FORMS: dict[MistakeRule, frozenset[Form]] = {
+    MistakeRule.ADD_VISIBLE: frozenset({"a+?=c", "?+b=c", "c=a+?"}),
+    MistakeRule.ANSWER_LEFT_BACKWARDS: frozenset({"c=?-b"}),
+    MistakeRule.POSITION_CONFUSION: frozenset({"?-b=c"}),
+}
+# How the focus is written in a puzzle id (ids.py).
+FOCUS_CODES: dict[MistakeRule, str] = {
+    MistakeRule.ADD_VISIBLE: "av",
+    MistakeRule.ANSWER_LEFT_BACKWARDS: "ab",
+    MistakeRule.POSITION_CONFUSION: "pc",
+}
+FOCUS_BY_CODE: dict[str, MistakeRule] = {code: rule for rule, code in FOCUS_CODES.items()}
+# A targeted form's weight (FORM_WEIGHTS) is multiplied by this.
+FOCUS_WEIGHT_FACTOR = 3.0
+# With this focus, a chain at a level that limits answer-left steps may have this many.
+FOCUS_ANSWER_LEFT_STEPS: dict[MistakeRule, int] = {MistakeRule.ANSWER_LEFT_BACKWARDS: 2}
+# A chain this long or longer keeps at least one step the focus does not
+# target, so a focused puzzle never turns into pure drill.
+FOCUS_UNTARGETED_FROM_LENGTH = 3
+# For a targeted step the generator draws numbers up to this many times,
+# looking for ones where the mistake gives a value that can be offered. A
+# generator preference: the verifier only requires the option when it exists.
+FOCUS_NUMBER_DRAWS = 6
+
+
+def supported_focus(focus: MistakeRule | None) -> MistakeRule | None:
+    """The focus if it is one the generator acts on, otherwise None."""
+    return focus if focus in FOCUS_TARGET_FORMS else None
+
 
 TOPIC_UNKNOWN_ADD_SUB = "mt_3JgrHY221M"  # Unknown in Addition & Subtraction
 TOPIC_EQUALS_SIGN = "mt_oIzycTBeE4"  # What the equals sign means
@@ -112,6 +151,13 @@ LEVELS: dict[int, LevelSpec] = {
         preferred_min_part=11,
     ),
 }
+
+
+def answer_left_limit(spec: LevelSpec, focus: MistakeRule | None = None) -> int | None:
+    """How many answer-left steps a chain may have; None for no limit."""
+    if spec.max_answer_left_steps is None:
+        return None
+    return max(spec.max_answer_left_steps, FOCUS_ANSWER_LEFT_STEPS.get(focus, 0))
 
 
 def topic_ids_for(spec: LevelSpec, forms: list[Form]) -> list[str]:

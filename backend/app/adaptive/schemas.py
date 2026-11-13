@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.puzzles.models import MistakeRule
+
 
 class TopicMasteryOut(BaseModel):
     topic_id: str
@@ -32,7 +34,12 @@ class NextPuzzle(BaseModel):
     reason: str = Field(description="Why, in a sentence for an adult. Never show it to a child.")
     focus_rule: str | None = Field(
         description="A mistake rule that keeps coming up, for example ADD_VISIBLE. "
-        "Information only: nothing acts on it yet."
+        "Says what was noticed; `focus` says what to do about it."
+    )
+    focus: MistakeRule | None = Field(
+        description="The rule to generate this puzzle with: pass it as `focus` to "
+        "POST /puzzles/missing-number. Null when there is nothing to target, or when the "
+        "previous puzzle was focused (at most every other puzzle is)."
     )
     mastery: list[NamedMastery] = Field(
         description="The mastery values the decision used: the recommended level's topics "

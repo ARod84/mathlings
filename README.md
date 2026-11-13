@@ -40,7 +40,9 @@ needs it, and shows a "Try again" message when it cannot reach it.
   tiles into the empty blocks. Eight generated puzzles per round, made in the browser.
 - **Missing Number Chains.** Equations with one missing number, linked in a chain: the number found
   in one step turns up in the next. Three levels (up to 20, 100 or 1000), five puzzles per round. "Play" lets the backend
-  pick the level and chain length puzzle by puzzle; the child can also choose a range.
+  pick the level and chain length puzzle by puzzle; the child can also choose a range. When a
+  child keeps making the same known mistake, every other puzzle is built to target it. The child
+  is never told.
   The puzzles, the answer checks and the hints come from the backend.
 
 ## The API
@@ -57,8 +59,9 @@ needs it, and shows a "Try again" message when it cannot reach it.
 
 ### Puzzles are stateless
 
-No puzzle is stored. A `puzzle_id` such as `mnc-2-1-3-2-e12d` spells out the generator
-version, level, number of steps and seed, plus a short checksum. On every request the server builds
+No puzzle is stored. A `puzzle_id` such as `mnc-3-1-3-2-8c3f` spells out the generator
+version, level, number of steps and seed, plus a short checksum (and, for a puzzle built to
+target one mistake, a two-letter focus code). On every request the server builds
 the puzzle again from the id and verifies it before using it. Two consequences:
 
 - An id that was tampered with fails its checksum and gets a 404.

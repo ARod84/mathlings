@@ -1,6 +1,7 @@
 """Offline check of the adaptive engine on made-up learners.
 
     uv run python -m app.adaptive.simulate --learners 500 --steps 120 --seed 1
+    uv run python -m app.adaptive.simulate --focus off     # ignore the recommended focus
 
 Each synthetic learner plays through the real loop, in memory and without
 HTTP: recommend -> generate a verified puzzle -> answer its steps -> the
@@ -23,6 +24,18 @@ The learner model
       it by TRANSFER of that.
     - The "add_visible" kind, when wrong, picks the option that comes from
       adding the two visible numbers whenever the step offers it.
+
+FOCUS. With --focus on (the default) each puzzle is generated with the focus
+the policy recommends, as the game does. The report then has a "focus
+mechanics" block for the add_visible learners: how often puzzles are focused,
+whether the every-other-puzzle cap holds, and how soon the focus is released
+once the mistake stops matching.
+
+It deliberately reports NO learning effect of focus. A synthetic learner
+unlearns a misconception only if this file says so, and at whatever rate this
+file picks, so any "improvement" would be our own assumption shown back to
+us. The learners here do not react to focus at all. Whether focused practice
+helps is a question for real children's data.
 """
 
 import argparse
@@ -39,7 +52,7 @@ from app.adaptive.policy import recommend_from
 from app.db import make_engine
 from app.puzzles.diagnoser import diagnose
 from app.puzzles.ids import MAX_SEED
-from app.puzzles.levels import GENERATOR_VERSION, step_topic_ids
+from app.puzzles.levels import FOCUS_TARGET_FORMS, GENERATOR_VERSION, step_topic_ids
 from app.puzzles.misconceptions import MisconceptionCatalog
 from app.puzzles.models import MistakeRule, Puzzle
 from app.puzzles.taxonomy_link import load_catalog, topic_exists
@@ -108,6 +121,19 @@ class LearnerResult:
     focus_flagged_at: int | None = None
     final_level: int = 1
     levels_played: list[int] = field(default_factory=list)
+    # ---- focus mechanics ----
+    puzzles: int = 0
+    focused_puzzles: int = 0
+    # Puzzles generated while the policy was reporting a focus_rule.
+    puzzles_while_flagged: int = 0
+    # A focused puzzle straight after a focused puzzle: the cap says never.
+    back_to_back_focused: int = 0
+    # Each time focus_rule went back to None: first tries since the rule last matched.
+    releases: list[int] = field(default_factory=list)
+    steps_played: int = 0
+    # Steps of a form ADD_VISIBLE applies to, and steps that offered its wrong answer.
+    add_visible_form_steps: int = 0
+    add_visible_option_steps: int = 0
 
 
 @dataclass(frozen=True)
@@ -126,10 +152,66 @@ class KindReport:
 
 
 @dataclass(frozen=True)
+class FocusMechanics:
+    """How focus behaved for one kind of learner. Mechanics only: no learning effect."""
+
+    kind: str
+    puzzles: int
+    focused_puzzles: int
+    puzzles_while_flagged: int
+    back_to_back_focused: int
+    releases: int
+    average_first_tries_to_release: float | None
+    most_first_tries_to_release: int | None
+    steps: int
+    add_visible_form_steps: int
+    add_visible_option_steps: int
+
+    @property
+    def focused_percent(self) -> float:
+        return _percent(self.focused_puzzles, self.puzzles)
+
+    @property
+    def focused_while_flagged_percent(self) -> float:
+        return _percent(self.focused_puzzles, self.puzzles_while_flagged)
+
+    @property
+    def cap_holds(self) -> bool:
+        return self.back_to_back_focused == 0
+
+    def format(self) -> str:
+        release = (
+            "never released"
+            if self.average_first_tries_to_release is None
+            else f"{self.average_first_tries_to_release:.1f} first tries on average, "
+            f"{self.most_first_tries_to_release} at most, over {self.releases} releases"
+        )
+        return "\n".join(
+            [
+                f"Focus mechanics, {self.kind} learners (no learning effect is measured)",
+                f"  puzzles generated with a focus     {self.focused_puzzles} of {self.puzzles}  "
+                f"({self.focused_percent:.1f}%)",
+                f"  ...of the puzzles made while a mistake was flagged  "
+                f"{self.focused_while_flagged_percent:.1f}%",
+                f"  focused puzzles back to back       {self.back_to_back_focused}  "
+                f"(cap {'holds' if self.cap_holds else 'BROKEN'})",
+                f"  flag released after the rule last matched  {release}",
+                f"  steps of a form ADD_VISIBLE applies to     "
+                f"{_percent(self.add_visible_form_steps, self.steps):.1f}%",
+                f"  steps offering the ADD_VISIBLE wrong answer  "
+                f"{_percent(self.add_visible_option_steps, self.steps):.1f}%",
+            ]
+        )
+
+
+@dataclass(frozen=True)
 class SimulationReport:
     learners: int
     steps: int
     seed: int
+    # True if puzzles were generated with the focus the policy recommended.
+    focus: bool
+    mechanics: FocusMechanics
     kinds: tuple[KindReport, ...]
     # Over every learner: promoted at least once while the true skill at the
     # level they were leaving was below TRUE_SKILL_FOR_PROMOTION.
@@ -158,7 +240,8 @@ class SimulationReport:
         bkt = DEFAULT_BKT
         lines = [
             f"Adaptive simulation: {self.learners} learners, {self.steps} steps each, "
-            f"seed {self.seed}, generator version {GENERATOR_VERSION}",
+            f"seed {self.seed}, generator version {GENERATOR_VERSION}, "
+            f"focus {'on' if self.focus else 'off'}",
             f"BKT priors: p_init {bkt.p_init}, p_learn {bkt.p_learn}, "
             f"p_slip {bkt.p_slip}, p_guess {bkt.p_guess}",
             "",
@@ -197,6 +280,8 @@ class SimulationReport:
             f"Level changes per learner, all kinds: {self.average_level_changes:.2f}",
             f"add_visible learners with focus_rule ADD_VISIBLE within {FOCUS_WITHIN_STEPS} steps: "
             f"{self.focus_flagged_percent:.1f}%",
+            "",
+            self.mechanics.format(),
         ]
         return "\n".join(lines)
 
@@ -259,6 +344,7 @@ def answer_step(
             level=puzzle.level,
             topic_ids=step_topic_ids(puzzle.level, step.form),
             matched_rules=rules,
+            focused=puzzle.focus is not None,
         )
         if observation is not None:
             observations.append(observation)
@@ -272,14 +358,31 @@ def simulate_learner(
     rng: random.Random,
     catalog: MisconceptionCatalog,
     exists: Callable[[str], bool],
+    use_focus: bool = True,
 ) -> LearnerResult:
     result = LearnerResult(kind=learner.kind.name)
     observations: list[Observation] = []
     previous_level: int | None = None
+    was_flagged = False
+    previous_focused = False
+    add_visible = MistakeRule.ADD_VISIBLE
 
     while len(observations) < steps:
         recommendation = recommend_from(observations)
         done = len(observations)
+        flagged = recommendation.focus_rule is not None
+        if was_flagged and not flagged:
+            # Released: how many first tries ago did any rule last match?
+            since = next(
+                (
+                    back
+                    for back, observation in enumerate(reversed(observations))
+                    if observation.matched_rules
+                ),
+                done,
+            )
+            result.releases.append(since)
+        was_flagged = flagged
         if (
             recommendation.focus_rule == MistakeRule.ADD_VISIBLE.value
             and result.focus_flagged_at is None
@@ -301,14 +404,25 @@ def simulate_learner(
         if level == MAX_LEVEL and result.steps_to_level_3 is None:
             result.steps_to_level_3 = done
 
+        focus = MistakeRule(recommendation.focus) if use_focus and recommendation.focus else None
         puzzle = generate_verified(
             rng.randrange(MAX_SEED + 1),
             level,
             recommendation.length,
+            focus,
             catalog=catalog,
             topic_exists=exists,
         )
-        for step_index in range(len(puzzle.steps)):
+        focused = puzzle.focus is not None
+        result.puzzles += 1
+        result.focused_puzzles += focused
+        result.puzzles_while_flagged += flagged
+        result.back_to_back_focused += focused and previous_focused
+        previous_focused = focused
+        for step_index, step in enumerate(puzzle.steps):
+            result.steps_played += 1
+            result.add_visible_form_steps += step.form in FOCUS_TARGET_FORMS[add_visible]
+            result.add_visible_option_steps += any(d.rule is add_visible for d in step.distractors)
             observations.extend(answer_step(learner, puzzle, step_index, rng, catalog))
             if len(observations) >= steps:
                 break
@@ -328,14 +442,19 @@ def run_simulation(
     *,
     catalog: MisconceptionCatalog,
     topic_exists: Callable[[str], bool],
+    focus: bool = True,
 ) -> SimulationReport:
-    """Simulate `learners` learners, the kinds in turn, for `steps` first tries each."""
+    """Simulate `learners` learners, the kinds in turn, for `steps` first tries each.
+
+    With `focus`, each puzzle is generated with the focus the policy
+    recommends, as the game does. Without it the recommendation is ignored.
+    """
     results: list[LearnerResult] = []
     for index in range(learners):
         # One generator per learner, so adding learners never changes earlier ones.
         rng = random.Random(f"{seed}:{index}")
         learner = make_learner(KINDS[index % len(KINDS)], rng)
-        results.append(simulate_learner(learner, steps, rng, catalog, topic_exists))
+        results.append(simulate_learner(learner, steps, rng, catalog, topic_exists, focus))
 
     kinds = []
     for kind in KINDS:
@@ -374,6 +493,8 @@ def run_simulation(
         learners=learners,
         steps=steps,
         seed=seed,
+        focus=focus,
+        mechanics=focus_mechanics("add_visible", results),
         kinds=tuple(kinds),
         false_promotion_percent=_percent(
             sum(r.false_promotions > 0 for r in results), len(results)
@@ -388,11 +509,36 @@ def run_simulation(
     )
 
 
+def focus_mechanics(kind: str, results: list[LearnerResult]) -> FocusMechanics:
+    mine = [r for r in results if r.kind == kind]
+    releases = [since for r in mine for since in r.releases]
+    return FocusMechanics(
+        kind=kind,
+        puzzles=sum(r.puzzles for r in mine),
+        focused_puzzles=sum(r.focused_puzzles for r in mine),
+        puzzles_while_flagged=sum(r.puzzles_while_flagged for r in mine),
+        back_to_back_focused=sum(r.back_to_back_focused for r in mine),
+        releases=len(releases),
+        average_first_tries_to_release=sum(releases) / len(releases) if releases else None,
+        most_first_tries_to_release=max(releases) if releases else None,
+        steps=sum(r.steps_played for r in mine),
+        add_visible_form_steps=sum(r.add_visible_form_steps for r in mine),
+        add_visible_option_steps=sum(r.add_visible_option_steps for r in mine),
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--learners", type=int, default=500)
     parser.add_argument("--steps", type=int, default=120)
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument(
+        "--focus",
+        choices=("on", "off"),
+        default="on",
+        help="on: generate each puzzle with the focus the policy recommends (what the game "
+        "does). off: ignore it.",
+    )
     args = parser.parse_args(argv)
 
     # The puzzles need the mistake-rule catalog, which is resolved against the
@@ -404,7 +550,12 @@ def main(argv: list[str] | None = None) -> int:
         exists = topic_exists(service)
 
     report = run_simulation(
-        args.learners, args.steps, args.seed, catalog=catalog, topic_exists=exists
+        args.learners,
+        args.steps,
+        args.seed,
+        catalog=catalog,
+        topic_exists=exists,
+        focus=args.focus == "on",
     )
     print(report.format())
     return 0 if report.targets_met else 1

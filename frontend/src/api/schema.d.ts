@@ -435,6 +435,12 @@ export interface components {
             /** Count */
             count: number;
         };
+        /**
+         * MistakeRule
+         * @description A known way of getting a step wrong. See rules.py for what each one computes.
+         * @enum {string}
+         */
+        MistakeRule: "ADD_VISIBLE" | "ANSWER_LEFT_BACKWARDS" | "POSITION_CONFUSION" | "PLACE_VALUE_SLIP" | "OFF_BY_ONE_OVER" | "OFF_BY_ONE_UNDER" | "NEAR_MISS";
         /** NamedMastery */
         NamedMastery: {
             /** Topic Id */
@@ -463,6 +469,8 @@ export interface components {
              * @description Fixes the puzzle. Leave out for a random one.
              */
             seed?: number | null;
+            /** @description A mistake rule to target, as `focus` from /players/me/next gives it. ADD_VISIBLE, ANSWER_LEFT_BACKWARDS and POSITION_CONFUSION change the puzzle; any other rule name is accepted and has no effect. Never tell the child about it. */
+            focus?: components["schemas"]["MistakeRule"] | null;
         };
         /** NextPuzzle */
         NextPuzzle: {
@@ -485,9 +493,11 @@ export interface components {
             reason: string;
             /**
              * Focus Rule
-             * @description A mistake rule that keeps coming up, for example ADD_VISIBLE. Information only: nothing acts on it yet.
+             * @description A mistake rule that keeps coming up, for example ADD_VISIBLE. Says what was noticed; `focus` says what to do about it.
              */
             focus_rule: string | null;
+            /** @description The rule to generate this puzzle with: pass it as `focus` to POST /puzzles/missing-number. Null when there is nothing to target, or when the previous puzzle was focused (at most every other puzzle is). */
+            focus: components["schemas"]["MistakeRule"] | null;
             /**
              * Mastery
              * @description The mastery values the decision used: the recommended level's topics first, then everything else the player has practised.

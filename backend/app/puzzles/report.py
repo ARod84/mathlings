@@ -21,7 +21,13 @@ from sqlmodel import Session
 
 from app.db import make_engine
 from app.puzzles.equations import ALL_FORMS, render
-from app.puzzles.levels import LEVELS, MAX_STEPS, MIN_STEPS
+from app.puzzles.levels import (
+    ANSWER_LEFT_FORMS,
+    FOCUS_TARGET_FORMS,
+    LEVELS,
+    MAX_STEPS,
+    MIN_STEPS,
+)
 from app.puzzles.misconceptions import MisconceptionCatalog
 from app.puzzles.models import MistakeRule, Puzzle
 from app.puzzles.rules import distractor_value, rule_output
@@ -40,6 +46,16 @@ RETIME_REPEATS = 3
 class LevelReport:
     level: int
     requested: int
+    # The mistake rule every puzzle was generated to target, or None.
+    focus: MistakeRule | None = None
+    # With a focus: steps of a form it targets, and those that offer its wrong answer.
+    targeted_steps: int = 0
+    focus_option_steps: int = 0
+    # Chains with two or more answer-left steps, and the most in any one chain.
+    chains_with_two_answer_left: int = 0
+    most_answer_left: int = 0
+    # Chains of three or more steps where every step is one the focus targets (must be 0).
+    chains_without_untargeted_step: int = 0
     produced: int = 0
     failed: int = 0
     first_try: int = 0
@@ -70,8 +86,9 @@ class LevelReport:
             return f"{100 * part / whole:5.1f}%" if whole else "    -"
 
         n = self.requested
+        focus = f", focus {self.focus.value}" if self.focus else ", no focus"
         lines = [
-            f"Level {self.level}: {n} puzzles requested (seeds 0..{n - 1})",
+            f"Level {self.level}: {n} puzzles requested (seeds 0..{n - 1}){focus}",
             f"  verified puzzles produced    {self.produced}  ({share(self.produced, n)})",
             f"  passed on the first try      {self.first_try}  ({share(self.first_try, n)})",
             f"  average retries per puzzle   {self.retries / n:.4f}",
@@ -114,11 +131,33 @@ class LevelReport:
             f"of all steps)"
             for rule in sorted(self.linked_applied)
         ]
+        lines.append(
+            f"  chains with two or more answer-left steps        "
+            f"{self.chains_with_two_answer_left}  (most in one chain: {self.most_answer_left})"
+        )
+        if self.focus is not None:
+            lines += [
+                f"  steps of a form the focus targets                "
+                f"{self.targeted_steps} of {self.steps}  "
+                f"({share(self.targeted_steps, self.steps).strip()})",
+                f"  targeted steps that offer the focus wrong answer  "
+                f"{self.focus_option_steps} of {self.targeted_steps}  "
+                f"({share(self.focus_option_steps, self.targeted_steps).strip()})",
+                f"  chains of 3+ with no untargeted step (must be 0)  "
+                f"{self.chains_without_untargeted_step}",
+            ]
         return "\n".join(lines)
 
 
-def build_report(level: int, count: int, catalog: MisconceptionCatalog, exists) -> LevelReport:
-    report = LevelReport(level=level, requested=count)
+def build_report(
+    level: int,
+    count: int,
+    catalog: MisconceptionCatalog,
+    exists,
+    focus: MistakeRule | None = None,
+) -> LevelReport:
+    report = LevelReport(level=level, requested=count, focus=focus)
+    targets = FOCUS_TARGET_FORMS.get(focus, frozenset()) if focus else frozenset()
     spec = LEVELS[level]
     linked_rules = [rule for rule in MistakeRule if catalog.is_linked(rule)]
     lengths = range(MIN_STEPS, MAX_STEPS + 1)
@@ -128,7 +167,7 @@ def build_report(level: int, count: int, catalog: MisconceptionCatalog, exists) 
         started = time.perf_counter()
         try:
             outcome = generate_verified_outcome(
-                seed, level, length, catalog=catalog, topic_exists=exists
+                seed, level, length, focus, catalog=catalog, topic_exists=exists
             )
         except PuzzleGenerationFailed:
             outcome = None
@@ -141,7 +180,17 @@ def build_report(level: int, count: int, catalog: MisconceptionCatalog, exists) 
         report.produced += 1
         report.retries += outcome.retries
         report.first_try += outcome.retries == 0
+        forms = [step.form for step in outcome.puzzle.steps]
+        answer_left = sum(form in ANSWER_LEFT_FORMS for form in forms)
+        report.chains_with_two_answer_left += answer_left >= 2
+        report.most_answer_left = max(report.most_answer_left, answer_left)
+        report.chains_without_untargeted_step += (
+            bool(targets) and len(forms) >= 3 and all(form in targets for form in forms)
+        )
         for step in outcome.puzzle.steps:
+            if step.form in targets:
+                report.targeted_steps += 1
+                report.focus_option_steps += any(d.rule is focus for d in step.distractors)
             report.steps += 1
             report.forms[step.form] += 1
             for distractor in step.distractors:
@@ -168,7 +217,12 @@ def build_report(level: int, count: int, catalog: MisconceptionCatalog, exists) 
             started = time.perf_counter()
             with contextlib.suppress(PuzzleGenerationFailed):
                 generate_verified_outcome(
-                    seed, level, lengths[seed % len(lengths)], catalog=catalog, topic_exists=exists
+                    seed,
+                    level,
+                    lengths[seed % len(lengths)],
+                    focus,
+                    catalog=catalog,
+                    topic_exists=exists,
                 )
             best = min(best, (time.perf_counter() - started) * 1000)
         if best > report.slowest_ms:
@@ -180,6 +234,7 @@ def format_puzzle(puzzle: Puzzle) -> str:
     lines = [
         f"{puzzle.puzzle_id}   level {puzzle.level}, {len(puzzle.steps)} steps, seed {puzzle.seed}",
         f"  topics: {', '.join(puzzle.topic_ids)}",
+        f"  focus: {puzzle.focus.value if puzzle.focus else 'none'}",
     ]
     for number, step in enumerate(puzzle.steps, start=1):
         link = "" if step.link_position is None else f"   (link at position {step.link_position})"
@@ -212,8 +267,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--count", type=int, default=5000)
     parser.add_argument("--samples", type=int, default=0, help="print this many puzzles per level")
     parser.add_argument("--catalog", action="store_true", help="print the rule mapping")
+    parser.add_argument(
+        "--focus",
+        choices=[rule.value for rule in FOCUS_TARGET_FORMS],
+        help="generate every puzzle with this focus (default: no focus)",
+    )
     args = parser.parse_args(argv)
     levels = sorted(LEVELS) if args.all or args.level is None else [args.level]
+    focus = MistakeRule(args.focus) if args.focus else None
 
     # The report contains "□" and "−"; a Windows console may not default to UTF-8.
     if hasattr(sys.stdout, "reconfigure"):
@@ -231,12 +292,12 @@ def main(argv: list[str] | None = None) -> int:
         for level in levels:
             for seed in range(args.samples):
                 outcome = generate_verified_outcome(
-                    seed + 1, level, 3, catalog=catalog, topic_exists=exists
+                    seed + 1, level, 3, focus, catalog=catalog, topic_exists=exists
                 )
                 print(format_puzzle(outcome.puzzle), end="\n\n")
     if not args.catalog and not args.samples:
         for level in levels:
-            print(build_report(level, args.count, catalog, exists).format(), end="\n\n")
+            print(build_report(level, args.count, catalog, exists, focus).format(), end="\n\n")
     return 0
 
 

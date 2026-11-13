@@ -134,6 +134,7 @@ def get_next(
         reason_code=recommendation.reason_code,
         reason=recommendation.reason,
         focus_rule=recommendation.focus_rule,
+        focus=recommendation.focus,
         mastery=[
             NamedMastery(
                 topic_id=key[0],

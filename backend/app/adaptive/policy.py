@@ -23,8 +23,17 @@ fire again, so a learner does not bounce between two levels. At level 3 there
 is nowhere to promote to, and at level 1 nowhere to step down to, so those
 rules do not apply there and consolidate decides.
 
-`focus_rule` names a mistake that keeps coming up. It is information only:
-nothing acts on it yet.
+Focus. `focus_rule` names a mistake that keeps coming up. `focus` is the rule
+the next puzzle should be generated with, or None:
+
+    - only a rule the generator can target (levels.FOCUS_TARGET_FORMS)
+    - at most every other puzzle: if the puzzle played last was focused, the
+      next one is not, so a round of five has at most three (the 1st, 3rd, 5th)
+    - it switches off by itself: focus_rule goes back to None once the rule
+      has not matched often enough in the latest first tries
+
+All of it is worked out from the attempts already stored. A focused puzzle is
+recognised by the focus code in its id.
 """
 
 from collections import Counter
@@ -51,7 +60,7 @@ from app.adaptive.constants import (
     STEP_DOWN_P_KNOWN,
 )
 from app.puzzles.equations import ALL_FORMS
-from app.puzzles.levels import LEVELS, topic_ids_for
+from app.puzzles.levels import FOCUS_TARGET_FORMS, LEVELS, topic_ids_for
 
 ReasonCode = Literal["cold_start", "promote", "step_down", "consolidate"]
 
@@ -65,6 +74,8 @@ class Recommendation:
     reason: str
     # A mistake rule that keeps coming up, if any.
     focus_rule: str | None = None
+    # The rule to generate the next puzzle with, or None. See the module docstring.
+    focus: str | None = None
     # Every mastery value behind the decision: all practised (topic, level)
     # pairs, plus the topics of the recommended level (at their prior if the
     # player has never practised them there).
@@ -104,6 +115,22 @@ def find_focus_rule(observations: Sequence[Observation]) -> tuple[str, int] | No
         return None
     rule = max(counts, key=lambda name: (counts[name], last_seen[name], name))
     return (rule, counts[rule]) if counts[rule] >= FOCUS_MIN_MATCHES else None
+
+
+def focus_for_next_puzzle(
+    observations: Sequence[Observation], focus_rule: str | None
+) -> str | None:
+    """The rule to generate the next puzzle with, or None.
+
+    None when there is no repeated mistake, when the generator cannot target
+    it, or when the puzzle the player worked on last was itself focused.
+    """
+    if focus_rule is None or not observations:
+        return None
+    targetable = {rule.value for rule in FOCUS_TARGET_FORMS}
+    if focus_rule not in targetable or observations[-1].focused:
+        return None
+    return focus_rule
 
 
 def _with_level_topics(
@@ -178,12 +205,17 @@ def recommend_from(observations: Sequence[Observation]) -> Recommendation:
             )
 
     focus = find_focus_rule(observations)
+    next_focus = focus_for_next_puzzle(observations, focus[0] if focus else None)
     if focus is not None:
         rule, count = focus
         window = min(FOCUS_WINDOW, len(observations))
         reason += (
             f" The same mistake keeps coming up: {rule} ({count} of the last {window} first tries)."
         )
+        if next_focus is not None:
+            reason += " The next puzzle targets it."
+        elif observations[-1].focused:
+            reason += " The last puzzle targeted it, so the next one is an ordinary one."
 
     return Recommendation(
         level=new_level,
@@ -191,5 +223,6 @@ def recommend_from(observations: Sequence[Observation]) -> Recommendation:
         reason_code=code,
         reason=reason,
         focus_rule=focus[0] if focus else None,
+        focus=next_focus,
         mastery=_with_level_topics(mastery, new_level),
     )

@@ -60,7 +60,7 @@ router = APIRouter(prefix="/api/v1/puzzles", tags=["Puzzles"], responses=NOT_LOA
 def new_missing_number_puzzle(
     body: NewPuzzleRequest, puzzles: Puzzles, _player_id: OptionalPlayer
 ) -> PuzzlePublic:
-    return puzzles.new_puzzle(body.level, body.length, body.seed)
+    return puzzles.new_puzzle(body.level, body.length, body.seed, body.focus)
 
 
 @router.get(

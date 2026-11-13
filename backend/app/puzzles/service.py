@@ -29,7 +29,7 @@ from app.puzzles.diagnoser import Diagnosis, diagnose
 from app.puzzles.ids import MAX_SEED, InvalidPuzzleId, OutdatedPuzzleId
 from app.puzzles.levels import GENERATOR_VERSION, LEVELS, step_topic_ids
 from app.puzzles.misconceptions import MisconceptionCatalog, MisconceptionResolutionError
-from app.puzzles.models import Equation, NumberToken, Puzzle
+from app.puzzles.models import Equation, MistakeRule, NumberToken, Puzzle
 from app.puzzles.schemas import (
     CheckResult,
     DiagnosisPublic,
@@ -187,15 +187,29 @@ class PuzzleService:
         self._topic_exists = topic_exists(taxonomy)
         self._step_back = first_step_back(taxonomy)
 
-    def new_puzzle(self, level: int, length: int = 3, seed: int | None = None) -> PuzzlePublic:
+    def new_puzzle(
+        self,
+        level: int,
+        length: int = 3,
+        seed: int | None = None,
+        focus: MistakeRule | None = None,
+    ) -> PuzzlePublic:
         """A new verified puzzle. Without a seed, one is drawn at random.
+
+        `focus` targets a mistake rule (see levels.FOCUS_TARGET_FORMS). The
+        public puzzle does not say whether it has one.
 
         Raises verified.PuzzleGenerationFailed if every attempt fails.
         """
         if seed is None:
             seed = secrets.randbelow(MAX_SEED + 1)
         puzzle = generate_verified(
-            seed, level, length, catalog=self.catalog, topic_exists=self._topic_exists
+            seed,
+            level,
+            length,
+            focus=focus,
+            catalog=self.catalog,
+            topic_exists=self._topic_exists,
         )
         return to_public(puzzle)
 

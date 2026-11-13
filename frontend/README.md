@@ -129,6 +129,9 @@ puzzles.
   id, or if the call fails, the puzzle is level 1 with 2 steps, and nothing is said about it.
   The reason, the mastery values and the focus rule are logged with `console.debug` in
   development and never reach the page.
+- **Focus.** If `/next` returns a `focus` (a mistake to target), the game passes it unchanged
+  in the new-puzzle request. When it is null the field is not sent. Nothing changes on screen,
+  and the child is never told a puzzle is focused.
 - **A chosen range.** Five puzzles at that level with 2, 2, 3, 3 and 4 steps; `/next` is not
   called.
 

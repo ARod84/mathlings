@@ -14,6 +14,8 @@ export type LinkedToken = components['schemas']['LinkedToken'];
 export type CheckResult = components['schemas']['CheckResult'];
 export type Diagnosis = components['schemas']['DiagnosisPublic'];
 export type Hint = components['schemas']['HintOut'];
+/** A mistake rule's name. Used only to pass a focus through; never shown to the child. */
+export type MistakeRule = components['schemas']['MistakeRule'];
 
 export type Level = 1 | 2 | 3;
 
@@ -45,7 +47,7 @@ async function toResult<T>(request: Promise<Outcome<T>>): Promise<ApiResult<T>> 
 }
 
 export function newMissingNumber(
-  request: { level: Level; length: number; seed?: number },
+  request: { level: Level; length: number; seed?: number; focus?: MistakeRule },
   signal?: AbortSignal,
 ): Promise<ApiResult<PuzzlePublic>> {
   return toResult(api.POST('/api/v1/puzzles/missing-number', { body: request, signal }));

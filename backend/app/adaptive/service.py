@@ -25,6 +25,15 @@ from app.adaptive.constants import EVIDENCE_ATTEMPT_ON_STEP, MAX_OBSERVATIONS_PE
 from app.adaptive.policy import Recommendation, recommend_from
 from app.models import Attempt
 from app.players.service import GAME_MISSING_NUMBER
+from app.puzzles.ids import InvalidPuzzleId, parse_puzzle_id
+
+
+def is_focused(puzzle_id: str) -> bool:
+    """True if the id says the puzzle was generated with a focus."""
+    try:
+        return parse_puzzle_id(puzzle_id).focus is not None
+    except InvalidPuzzleId:
+        return False
 
 
 class AdaptiveService:
@@ -68,6 +77,7 @@ class AdaptiveService:
                 col(Attempt.topic_ids),
                 col(Attempt.matched_rules),
                 col(Attempt.created_at),
+                col(Attempt.puzzle_id),
             )
             .where(
                 col(Attempt.id).in_(
@@ -81,7 +91,7 @@ class AdaptiveService:
 
         observations = []
         for row in rows:
-            attempt_on_step, hint_tier, correct, level, topic_ids, rules, created_at = row
+            attempt_on_step, hint_tier, correct, level, topic_ids, rules, created_at = row[:7]
             observation = to_observation(
                 attempt_on_step=attempt_on_step,
                 hint_tier_before=hint_tier,
@@ -90,6 +100,7 @@ class AdaptiveService:
                 topic_ids=topic_ids,
                 matched_rules=rules,
                 at=created_at,
+                focused=is_focused(row.puzzle_id),
             )
             if observation is not None:
                 observations.append(observation)

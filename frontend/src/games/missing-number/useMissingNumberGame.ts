@@ -7,6 +7,7 @@ import {
   type ApiResult,
   type Diagnosis,
   type Level,
+  type MistakeRule,
   type PuzzlePublic,
 } from '../../api/puzzles';
 import type { FeedbackState } from '../../shell';
@@ -20,7 +21,9 @@ import type { FeedbackState } from '../../shell';
  *
  * There are two ways to play a round:
  * - "Play" (adaptive): before every puzzle the backend is asked what this
- *   player should do next, and its level and chain length are used. If it
+ *   player should do next, and its level and chain length are used, along
+ *   with its focus (a mistake to target), which is passed straight on to
+ *   the puzzle request and never shown or mentioned to the child. If it
  *   cannot say (no player id, or the call fails) the puzzle is FALLBACK, and
  *   the child is told nothing.
  * - A chosen range (fixed): all five puzzles at that level, with the chain
@@ -255,6 +258,8 @@ export function useMissingNumberGame(timing: GameTiming = DEFAULT_TIMING): Missi
 
       let level: Level;
       let length: number;
+      // A mistake rule for the backend to target, from /next. Opaque to the game.
+      let focus: MistakeRule | null = null;
       if (plan.kind === 'fixed') {
         level = plan.level;
         length = ROUND_LENGTHS[puzzleIndex] ?? ROUND_LENGTHS[0];
@@ -267,9 +272,12 @@ export function useMissingNumberGame(timing: GameTiming = DEFAULT_TIMING): Missi
         const usable = recommended !== null && isLevel(recommended.level) && recommended.length > 0;
         level = usable && isLevel(recommended.level) ? recommended.level : FALLBACK.level;
         length = usable ? recommended.length : FALLBACK.length;
+        focus = usable ? recommended.focus : null;
       }
 
-      const result = await newMissingNumber({ level, length }, signal);
+      // The focus is sent only when there is one.
+      const request = focus === null ? { level, length } : { level, length, focus };
+      const result = await newMissingNumber(request, signal);
       if (!alive()) return;
       if (result.status === 'ok') dispatch({ type: 'loaded', puzzle: result.data, level });
       else fail({ kind: 'load', plan, puzzleIndex });

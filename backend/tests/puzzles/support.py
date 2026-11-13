@@ -4,6 +4,7 @@ from app.puzzles.equations import build_equation
 from app.puzzles.hints import build_hints
 from app.puzzles.ids import make_puzzle_id
 from app.puzzles.levels import (
+    FOCUS_CODES,
     GENERATOR_VERSION,
     LEVELS,
     TOPIC_EQUALS_SIGN,
@@ -134,8 +135,13 @@ def make_step(
     level: int = 1,
     link_position: int | None = None,
     answer: int | None = None,
+    focus: MistakeRule | None = None,
 ) -> PuzzleStep:
-    """A step with valid hints and distractors, built by hand from its two visible numbers."""
+    """A step with valid hints and distractors, built by hand from its two visible numbers.
+
+    With a `focus`, the step is what a focused puzzle needs: that rule's wrong
+    answer first, and the focus wording in the first hint.
+    """
     spec = LEVELS[level]
     catalog = make_catalog()
     solved = _ANSWERS[form](first, second) if answer is None else answer
@@ -145,11 +151,11 @@ def make_step(
         form=form,
         link_position=link_position,
         distractors=[],
-        hints=build_hints(form, first, second, solved),
+        hints=build_hints(form, first, second, solved, focus),
     )
     distractors: list[Distractor] = []
     used = {solved}
-    for rule in _RULE_ORDER:
+    for rule in sorted(_RULE_ORDER, key=lambda rule: rule is not focus):
         value = distractor_value(rule, step, spec)
         if value is None or value in used or len(distractors) == 3:
             continue
@@ -168,9 +174,14 @@ def make_step(
     return step.model_copy(update={"distractors": distractors})
 
 
-def make_puzzle(steps: list[PuzzleStep], *, level: int = 1, seed: int = 7) -> Puzzle:
+def make_puzzle(
+    steps: list[PuzzleStep], *, level: int = 1, seed: int = 7, focus: MistakeRule | None = None
+) -> Puzzle:
     return Puzzle(
-        puzzle_id=make_puzzle_id(GENERATOR_VERSION, level, len(steps), seed),
+        focus=focus,
+        puzzle_id=make_puzzle_id(
+            GENERATOR_VERSION, level, len(steps), seed, FOCUS_CODES[focus] if focus else None
+        ),
         generator_version=GENERATOR_VERSION,
         seed=seed,
         level=level,

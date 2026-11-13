@@ -29,6 +29,7 @@ function recommendation(
     reason_code: 'consolidate',
     reason: SECRET_REASON,
     focus_rule: 'ADD_VISIBLE',
+    focus: null,
     mastery: [
       { topic_id: 'mt_3JgrHY221M', name: SECRET_TOPIC, level, p_known: 0.9731, observations: 7 },
     ],
@@ -295,5 +296,91 @@ describe('what the child never sees', () => {
       expect.objectContaining({ level: 2, length: 3, reason: SECRET_REASON }),
     );
     expect(log).not.toHaveBeenCalled();
+  });
+});
+
+describe('focus: a mistake the backend wants the next puzzle to target', () => {
+  it('is passed to the new-puzzle request when /next gives one', async () => {
+    const user = userEvent.setup();
+    answers = [recommendation(1, 3, { focus: 'ADD_VISIBLE' })];
+    await play(user);
+
+    expect(backend.newBodies).toEqual([{ level: 1, length: 3, focus: 'ADD_VISIBLE' }]);
+  });
+
+  it('is not sent at all when /next says null', async () => {
+    const user = userEvent.setup();
+    answers = [recommendation(1, 3, { focus: null, focus_rule: 'ADD_VISIBLE' })];
+    await play(user);
+
+    expect(backend.newBodies).toEqual([{ level: 1, length: 3 }]);
+    expect(backend.newBodies[0]).not.toHaveProperty('focus');
+  });
+
+  it('follows /next puzzle by puzzle: focused, ordinary, focused', async () => {
+    const user = userEvent.setup();
+    answers = [
+      recommendation(1, 2, { focus: 'POSITION_CONFUSION' }),
+      recommendation(1, 2, { focus: null }),
+      recommendation(1, 2, { focus: 'POSITION_CONFUSION' }),
+    ];
+    await play(user);
+    for (const puzzle of [2, 3]) {
+      await solvePuzzle(user, 2);
+      await user.click(await screen.findByRole('button', { name: 'Next' }));
+      await waitFor(() => expect(screen.getByText(`${puzzle} / 5`)).toBeInTheDocument());
+      await waitFor(() => expect(steps()).toHaveLength(1));
+    }
+
+    expect(backend.newBodies.map((body) => body.focus)).toEqual([
+      'POSITION_CONFUSION',
+      undefined,
+      'POSITION_CONFUSION',
+    ]);
+  });
+
+  it('is never sent for a chosen range or for the fallback', async () => {
+    const user = userEvent.setup();
+    answers = [500];
+    await play(user);
+    expect(backend.newBodies).toEqual([{ level: 1, length: 2 }]);
+  });
+
+  it('changes nothing the child can see, and the rule name never reaches the page', async () => {
+    const user = userEvent.setup();
+    answers = [recommendation(1, 2, { focus: 'ANSWER_LEFT_BACKWARDS', focus_rule: null })];
+    await play(user);
+
+    expect(document.body.innerHTML).not.toContain('ANSWER_LEFT_BACKWARDS');
+    expect(document.body.innerHTML.toLowerCase()).not.toContain('focus');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Find the missing number');
+    expect(screen.getByText('1 / 5')).toBeInTheDocument();
+  });
+
+  it('a puzzle from an older generator still restarts quietly, asking /next again', async () => {
+    const user = userEvent.setup();
+    answers = [
+      recommendation(1, 2, { focus: 'ADD_VISIBLE' }),
+      recommendation(1, 2, { focus: null }),
+    ];
+    await play(user);
+    const first = backend.requests.check.length;
+
+    // The server answers 410 Gone to the check: the puzzle is from an older version.
+    backend.failNext('check', 410);
+    await user.click(option(3));
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+
+    await waitFor(() => expect(backend.requests.new).toHaveLength(2));
+    await waitFor(() => expect(steps()).toHaveLength(1));
+    expect(backend.requests.check).toHaveLength(first + 1);
+    expect(nextCalls).toHaveLength(2);
+    // The replacement is whatever /next says now, not a copy of the old request.
+    expect(backend.newBodies).toEqual([
+      { level: 1, length: 2, focus: 'ADD_VISIBLE' },
+      { level: 1, length: 2 },
+    ]);
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    expect(screen.getByText('1 / 5')).toBeInTheDocument();
   });
 });

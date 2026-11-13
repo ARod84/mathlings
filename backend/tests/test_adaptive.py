@@ -36,15 +36,17 @@ from app.adaptive.constants import (
 from app.adaptive.policy import (
     consolidate_length,
     find_focus_rule,
+    focus_for_next_puzzle,
     level_topic_ids,
     primary_topic_id,
     recommend_from,
 )
-from app.adaptive.service import AdaptiveService
+from app.adaptive.service import AdaptiveService, is_focused
 from app.adaptive.simulate import KINDS, run_simulation
 from app.config import BACKEND_DIR
 from app.models import Attempt, Player
 from app.puzzles.equations import ALL_FORMS
+from app.puzzles.ids import make_puzzle_id
 from app.puzzles.levels import (
     ANSWER_LEFT_FORMS,
     LEVELS,
@@ -78,12 +80,14 @@ def obs(
     level: int = 1,
     rules: tuple[str, ...] = (),
     form: str = "a+?=c",
+    focused: bool = False,
 ):
     return Observation(
         level=level,
         topic_ids=tuple(step_topic_ids(level, form)),
         correct=correct,
         matched_rules=rules,
+        focused=focused,
     )
 
 
@@ -659,6 +663,103 @@ def test_focus_rule_does_not_change_the_level_or_length():
     )
 
 
+# ---- focus: which rule the next puzzle is generated with ----
+
+ADD = ("ADD_VISIBLE",)
+
+
+def test_focus_is_the_focus_rule_when_the_generator_can_target_it():
+    for rule in ("ADD_VISIBLE", "ANSWER_LEFT_BACKWARDS", "POSITION_CONFUSION"):
+        history = [obs(False, rules=(rule,)), obs(True), obs(False, rules=(rule,))]
+        recommendation = recommend_from(history)
+        assert (recommendation.focus_rule, recommendation.focus) == (rule, rule)
+        assert "The next puzzle targets it." in recommendation.reason
+
+    for rule in ("OFF_BY_ONE_OVER", "OFF_BY_ONE_UNDER", "PLACE_VALUE_SLIP"):
+        history = [obs(False, rules=(rule,)), obs(False, rules=(rule,))]
+        recommendation = recommend_from(history)
+        assert (recommendation.focus_rule, recommendation.focus) == (rule, None)
+
+    assert recommend_from([]).focus is None
+    assert recommend_from(right(3)).focus is None
+    assert focus_for_next_puzzle([], "ADD_VISIBLE") is None
+    assert focus_for_next_puzzle(right(2), None) is None
+
+
+def test_focus_is_null_right_after_a_focused_puzzle():
+    mistakes = [obs(False, rules=ADD), obs(False, rules=ADD)]
+    assert recommend_from(mistakes).focus == "ADD_VISIBLE"
+
+    # The puzzle played last was focused: whatever happened in it, the next one is not.
+    for last in (obs(True, focused=True), obs(False, rules=ADD, focused=True)):
+        after_focused = recommend_from([*mistakes, last])
+        assert after_focused.focus_rule == "ADD_VISIBLE"
+        assert after_focused.focus is None
+        assert "so the next one is an ordinary one" in after_focused.reason
+
+    # One ordinary puzzle later it is offered again.
+    after_plain = recommend_from([*mistakes, obs(True, focused=True), obs(True)])
+    assert after_plain.focus == "ADD_VISIBLE"
+
+
+def test_at_most_every_other_puzzle_in_a_round_is_focused():
+    """Replay five puzzles of a player who makes the mistake on every first try.
+
+    Each puzzle is as focused as the policy asked for. The pattern has to be
+    focused, plain, focused, plain, focused: puzzles 1, 3 and 5 at most.
+    """
+    history = [obs(False, rules=ADD), obs(False, rules=ADD)]
+    asked = []
+    for _puzzle in range(5):
+        focus = recommend_from(history).focus
+        asked.append(focus)
+        # Two steps per puzzle, both wrong in the same way.
+        history += [obs(False, rules=ADD, focused=focus is not None)] * 2
+
+    assert asked == ["ADD_VISIBLE", None, "ADD_VISIBLE", None, "ADD_VISIBLE"]
+    assert all(not (a and b) for a, b in itertools.pairwise(asked))
+
+
+def test_focus_is_released_when_the_rule_stops_matching():
+    """Detection needs 2 matches in the last 8 first tries, so release needs no rule of its own."""
+    mistakes = [obs(False, rules=ADD), obs(False, rules=ADD)]
+
+    released_after = None
+    for clean in range(0, 10):
+        recommendation = recommend_from(mistakes + right(clean))
+        if recommendation.focus_rule is None:
+            assert recommendation.focus is None
+            released_after = released_after or clean
+        else:
+            assert released_after is None
+            assert recommendation.focus == "ADD_VISIBLE"
+
+    # The second-to-last match slides out of the window of 8 after 7 clean first tries.
+    assert released_after == FOCUS_WINDOW - 1 == 7
+    # With 8 clean first tries the rule has not matched at all in the window.
+    assert recommend_from(mistakes + right(8)).focus is None
+    # One relapse is not enough to switch it back on; two are.
+    assert recommend_from(mistakes + right(8) + [obs(False, rules=ADD)]).focus is None
+    again = mistakes + right(8) + [obs(False, rules=ADD), obs(False, rules=ADD)]
+    assert recommend_from(again).focus == "ADD_VISIBLE"
+
+
+def test_focus_does_not_change_the_level_or_the_length():
+    plain = [obs(index % 2 == 0) for index in range(9)]
+    with_focus = [obs(i % 2 == 0, rules=() if i % 2 == 0 else ADD) for i in range(9)]
+
+    a, b = recommend_from(plain), recommend_from(with_focus)
+    assert b.focus == "ADD_VISIBLE"
+    assert (a.level, a.length, a.reason_code) == (b.level, b.length, b.reason_code)
+
+
+def test_a_focused_puzzle_is_recognised_by_its_id():
+    assert is_focused(make_puzzle_id("3", 1, 3, 99, "av")) is True
+    assert is_focused(make_puzzle_id("3", 1, 3, 99)) is False
+    assert is_focused("mnc-2-1-2-16-eb38") is False  # an old id
+    assert is_focused("hand-12") is False  # not an id at all
+
+
 def test_primary_topics_and_level_topics():
     assert primary_topic_id(1) == primary_topic_id(2) == TOPIC_UNKNOWN_ADD_SUB
     assert primary_topic_id(3) == TOPIC_MISSING_NUMBER
@@ -830,14 +931,45 @@ def test_adaptive_modules_do_not_import_fastapi():
 # ---- the simulator ----
 
 
-def simulate(learners: int, steps: int, seed: int):
+def simulate(learners: int, steps: int, seed: int, focus: bool = True):
     return run_simulation(
         learners,
         steps,
         seed,
         catalog=make_catalog(),
         topic_exists=lambda topic_id: topic_id in KNOWN_TOPICS,
+        focus=focus,
     )
+
+
+def test_simulated_focus_is_capped_and_can_be_switched_off():
+    on, off = simulate(24, 60, 5), simulate(24, 60, 5, focus=False)
+
+    assert (on.focus, off.focus) == (True, False)
+    assert on.mechanics.kind == off.mechanics.kind == "add_visible"
+    # Focused puzzles happen, never two in a row, and never more than every other one.
+    assert on.mechanics.focused_puzzles > 0
+    assert on.mechanics.cap_holds and on.mechanics.back_to_back_focused == 0
+    assert on.mechanics.focused_puzzles <= (on.mechanics.puzzles + 1) // 2
+    assert 0 < on.mechanics.focused_while_flagged_percent <= 60
+    # Switched off, the recommendation is ignored.
+    assert off.mechanics.focused_puzzles == 0
+    # The flag is released, and never long after the mistake stops: 7 first
+    # tries for the window, plus up to 3 until the policy looks again.
+    for mechanics in (on.mechanics, off.mechanics):
+        assert mechanics.releases > 0
+        assert mechanics.most_first_tries_to_release <= 10
+    assert "no learning effect is measured" in on.format()
+    assert simulate(24, 60, 5) == on
+
+
+def test_the_simulator_says_plainly_that_it_measures_no_learning_effect():
+    source = (BACKEND_DIR / "app" / "adaptive" / "simulate.py").read_text(encoding="utf-8")
+    readme = (BACKEND_DIR / "README.md").read_text(encoding="utf-8")
+
+    assert "reports NO learning effect of focus" in source
+    assert "What this does not show: any learning effect." in readme
+    assert "our own assumption shown back to us" in readme.replace("\n", " ")
 
 
 def test_a_small_simulation_is_deterministic_and_reports_every_kind():

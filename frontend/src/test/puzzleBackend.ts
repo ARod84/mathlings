@@ -132,11 +132,13 @@ export interface PuzzleBackend {
   handlers: HttpHandler[];
   /** Everything the app asked for, in order. */
   requests: {
-    new: { level: number; length: number; seed?: number | null }[];
+    new: { level: number; length: number; seed?: number | null; focus?: string | null }[];
     get: string[];
     check: { puzzleId: string; step: number; answer: number }[];
     hint: { puzzleId: string; step: number; tier: number }[];
   };
+  /** The JSON body of every new-puzzle request, exactly as it was sent. */
+  newBodies: Record<string, unknown>[];
   /** The X-Player-Id header of every request, in order; null where there was none. */
   playerIds: (string | null)[];
   /** Make the next call to a route fail once. */
@@ -168,6 +170,7 @@ export function createPuzzleBackend(chain: FixtureStep[] = CHAIN): PuzzleBackend
   const backend: PuzzleBackend = {
     handlers: [],
     requests: { new: [], get: [], check: [], hint: [] },
+    newBodies: [],
     playerIds: [],
     failNext: (route, failure) => pending[route].push(failure),
     delayMs: 0,
@@ -198,7 +201,13 @@ export function createPuzzleBackend(chain: FixtureStep[] = CHAIN): PuzzleBackend
     http.post('*/api/v1/puzzles/missing-number', async ({ request }) => {
       seen(request);
       const body = (await request.json()) as Schemas['NewPuzzleRequest'];
-      backend.requests.new.push({ level: body.level, length: body.length ?? 3, seed: body.seed });
+      backend.newBodies.push(body as Record<string, unknown>);
+      backend.requests.new.push({
+        level: body.level,
+        length: body.length ?? 3,
+        seed: body.seed,
+        focus: body.focus,
+      });
       await pause();
       const failure = pending.new.shift();
       if (failure !== undefined) return failureResponse(failure);
