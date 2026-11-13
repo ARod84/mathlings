@@ -10,6 +10,7 @@ export type PuzzlePublic = components['schemas']['PuzzlePublic'];
 export type PuzzleStepPublic = components['schemas']['PuzzleStepPublic'];
 export type Equation = components['schemas']['Equation'];
 export type EquationToken = Equation['left'][number];
+export type LinkedToken = components['schemas']['LinkedToken'];
 export type CheckResult = components['schemas']['CheckResult'];
 export type Diagnosis = components['schemas']['DiagnosisPublic'];
 export type Hint = components['schemas']['HintOut'];

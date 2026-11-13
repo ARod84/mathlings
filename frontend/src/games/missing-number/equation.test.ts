@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Equation } from '../../api/puzzles';
-import { CHAIN } from '../../test/puzzleBackend';
+import { CHAIN, SAME_VALUE_TWICE } from '../../test/puzzleBackend';
 import { equationLabel, equationParts, linkedTokenIndex } from './equation';
 
 const [addMissing, subtractFromBox, subtractBox, answerLeft] = CHAIN.map((step) => step.equation);
@@ -44,23 +44,29 @@ describe('equationParts', () => {
 });
 
 describe('linkedTokenIndex', () => {
-  it('finds the visible number that is the previous answer', () => {
-    // □ − 3 = 5 after answering 3.
-    expect(linkedTokenIndex(eq(subtractFromBox), 3)).toBe(2);
-    // 14 − □ = 8 after answering 8.
-    expect(linkedTokenIndex(eq(subtractBox), 8)).toBe(3);
+  it("turns the API's side and index into a position in reading order", () => {
+    // □ − 3 = 5: the 3 is the third token on the left.
+    expect(linkedTokenIndex(eq(subtractFromBox), { side: 'left', index: 2 })).toBe(2);
+    // 14 − □ = 8: the 8 is the first token on the right, after three on the left.
+    expect(linkedTokenIndex(eq(subtractBox), { side: 'right', index: 0 })).toBe(3);
+    // 20 = 6 + □: the 6 is the first token on the right, after one on the left.
+    expect(linkedTokenIndex(eq(answerLeft), { side: 'right', index: 0 })).toBe(1);
+    expect(linkedTokenIndex(eq(answerLeft), { side: 'left', index: 0 })).toBe(0);
   });
 
-  it('gives -1 for the first step or when the number is not there', () => {
+  it('gives -1 for a first step, which has no link', () => {
     expect(linkedTokenIndex(eq(addMissing), null)).toBe(-1);
-    expect(linkedTokenIndex(eq(addMissing), 99)).toBe(-1);
   });
 
-  it('picks the first when both visible numbers match', () => {
-    const doubled: Equation = {
-      left: [{ kind: 'unknown' }, { kind: 'operator', symbol: '-' }, { kind: 'number', value: 5 }],
-      right: [{ kind: 'number', value: 5 }],
-    };
-    expect(linkedTokenIndex(doubled, 5)).toBe(2);
+  it('tells two equal numbers apart instead of guessing', () => {
+    const twice = eq(SAME_VALUE_TWICE[1]?.equation); // □ − 9 = 9
+    const { tokens } = equationParts(twice);
+
+    const left = linkedTokenIndex(twice, { side: 'left', index: 2 });
+    const right = linkedTokenIndex(twice, { side: 'right', index: 0 });
+
+    expect([left, right]).toEqual([2, 3]);
+    expect(tokens[left]).toEqual({ kind: 'number', value: 9 });
+    expect(tokens[right]).toEqual({ kind: 'number', value: 9 });
   });
 });

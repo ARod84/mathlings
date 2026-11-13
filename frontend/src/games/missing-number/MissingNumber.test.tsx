@@ -1,7 +1,12 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPuzzleBackend, CHAIN, type PuzzleBackend } from '../../test/puzzleBackend';
+import {
+  createPuzzleBackend,
+  CHAIN,
+  SAME_VALUE_TWICE,
+  type PuzzleBackend,
+} from '../../test/puzzleBackend';
 import { server } from '../../test/server';
 import { MissingNumber } from './MissingNumber';
 import { ROUND_LENGTHS } from './useMissingNumberGame';
@@ -186,6 +191,28 @@ describe('playing a puzzle', () => {
     expect(await screen.findByTestId('solved-screen')).toBeInTheDocument();
     expect(feedback()).toBe('solved');
     expect(backend.requests.check).toHaveLength(2);
+  });
+
+  it('highlights exactly the linked number when the same value appears twice', async () => {
+    // 14 − □ = 5 gives 9, then □ − 9 = 9. The API says the link is the 9 on the right.
+    server.use(...createPuzzleBackend(SAME_VALUE_TWICE).handlers);
+    const user = userEvent.setup();
+    await start(user);
+
+    await user.click(option(9));
+    await user.click(action('Check'));
+    await waitFor(() => expect(steps()).toHaveLength(2));
+
+    expect(currentStep()).toHaveAccessibleName('box minus 9 equals 9');
+    const nines = [...currentStep().querySelectorAll('span')].filter(
+      (span) => span.children.length === 0 && span.textContent === '9',
+    );
+    expect(nines).toHaveLength(2);
+    const [leftNine, rightNine] = nines;
+    // Only one is highlighted, and it is the one after the equals sign, not the first found.
+    expect(currentStep().querySelectorAll('[data-linked]')).toHaveLength(1);
+    expect(rightNine).toHaveAttribute('data-linked');
+    expect(leftNine).not.toHaveAttribute('data-linked');
   });
 
   it('moves on to the next puzzle from the solved screen', async () => {

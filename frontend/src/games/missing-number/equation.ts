@@ -1,4 +1,4 @@
-import type { Equation, EquationToken } from '../../api/puzzles';
+import type { Equation, EquationToken, LinkedToken } from '../../api/puzzles';
 
 /*
  * Reading an equation from its API tokens. Equations are never built from or
@@ -34,12 +34,16 @@ export function equationLabel(
 }
 
 /**
- * Which token to highlight as "the number you just found": the first visible
- * number equal to the previous step's answer. -1 if there is none.
+ * Index, in reading order, of the token the API names as the previous step's
+ * answer (`linked_token`). -1 for the first step, which has none.
+ *
+ * The API says exactly which token it is. That matters when the same value
+ * shows twice, as in "□ − 9 = 9" after answering 9: only one of them is the link.
  */
-export function linkedTokenIndex(equation: Equation, previousAnswer: number | null): number {
-  if (previousAnswer === null) return -1;
-  return equationParts(equation).tokens.findIndex(
-    (token) => token.kind === 'number' && token.value === previousAnswer,
-  );
+export function linkedTokenIndex(
+  equation: Equation,
+  linked: LinkedToken | null | undefined,
+): number {
+  if (!linked) return -1;
+  return linked.side === 'left' ? linked.index : equation.left.length + linked.index;
 }

@@ -352,6 +352,22 @@ export interface components {
             /** Text */
             text: string;
         };
+        /**
+         * LinkedToken
+         * @description Where a token sits in an equation: which side, and its place on that side.
+         */
+        LinkedToken: {
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "left" | "right";
+            /**
+             * Index
+             * @description 0-based position within that side's token list.
+             */
+            index: number;
+        };
         /** NewPuzzleRequest */
         NewPuzzleRequest: {
             /** Level */
@@ -461,6 +477,8 @@ export interface components {
              * @default 3
              */
             hint_tiers: number;
+            /** @description The visible number that is the previous step's answer. Null for the first step. Says which one when the same value appears twice. */
+            linked_token?: components["schemas"]["LinkedToken"] | null;
         };
         /** ResearchActivity */
         ResearchActivity: {

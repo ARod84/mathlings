@@ -26,6 +26,8 @@ export interface FixtureStep {
   hints: [string, string, string];
   /** Wrong answers the server recognizes as a known mistake. */
   mistakes: Record<number, Diagnosis>;
+  /** Which token is the previous step's answer. Null on a first step. */
+  linked: Schemas['LinkedToken'] | null;
 }
 
 const ADD_VISIBLE: Diagnosis = {
@@ -46,6 +48,7 @@ export const CHAIN: FixtureStep[] = [
       '11 − 8 = 3, so the missing number is 3. Check: 8 + 3 = 11.',
     ],
     mistakes: { 19: ADD_VISIBLE },
+    linked: null,
   },
   {
     equation: { left: [box, op('-'), n(3)], right: [n(5)] },
@@ -57,6 +60,7 @@ export const CHAIN: FixtureStep[] = [
       '5 + 3 = 8, so the missing number is 8. Check: 8 − 3 = 5.',
     ],
     mistakes: {},
+    linked: { side: 'left', index: 2 },
   },
   {
     equation: { left: [n(14), op('-'), box], right: [n(8)] },
@@ -68,6 +72,7 @@ export const CHAIN: FixtureStep[] = [
       '14 − 8 = 6, so the missing number is 6. Check: 14 − 6 = 8.',
     ],
     mistakes: {},
+    linked: { side: 'right', index: 0 },
   },
   {
     equation: { left: [n(20)], right: [n(6), op('+'), box] },
@@ -79,6 +84,36 @@ export const CHAIN: FixtureStep[] = [
       '20 − 6 = 14, so the missing number is 14. Check: 6 + 14 = 20.',
     ],
     mistakes: { 26: ADD_VISIBLE },
+    linked: { side: 'right', index: 0 },
+  },
+];
+
+const PLAIN_HINTS: FixtureStep['hints'] = [
+  'The = sign means both sides are worth the same.',
+  'Try the inverse.',
+  'Here is the worked step.',
+];
+
+/**
+ * 14 − □ = 5 gives 9, then □ − 9 = 9: both visible numbers of the second step
+ * are 9, and the link is the one on the right of the equals sign.
+ */
+export const SAME_VALUE_TWICE: FixtureStep[] = [
+  {
+    equation: { left: [n(14), op('-'), box], right: [n(5)] },
+    options: [8, 9, 19, 10],
+    answer: 9,
+    hints: PLAIN_HINTS,
+    mistakes: {},
+    linked: null,
+  },
+  {
+    equation: { left: [box, op('-'), n(9)], right: [n(9)] },
+    options: [17, 18, 0, 19],
+    answer: 18,
+    hints: PLAIN_HINTS,
+    mistakes: {},
+    linked: { side: 'right', index: 0 },
   },
 ];
 
@@ -122,7 +157,8 @@ function failureResponse(failure: Failure): Response {
   return HttpResponse.json({ detail: 'Unavailable' }, { status: failure });
 }
 
-export function createPuzzleBackend(): PuzzleBackend {
+/** `chain` is the steps every puzzle is cut from; CHAIN unless a test needs another. */
+export function createPuzzleBackend(chain: FixtureStep[] = CHAIN): PuzzleBackend {
   const puzzles = new Map<string, FixtureStep[]>();
   const pending: Record<Route, Failure[]> = { new: [], get: [], check: [], hint: [] };
   let counter = 0;
@@ -149,6 +185,7 @@ export function createPuzzleBackend(): PuzzleBackend {
       equation: step.equation,
       options: step.options,
       hint_tiers: step.hints.length,
+      linked_token: step.linked,
     })),
   });
 
@@ -160,7 +197,7 @@ export function createPuzzleBackend(): PuzzleBackend {
       const failure = pending.new.shift();
       if (failure !== undefined) return failureResponse(failure);
       counter += 1;
-      const steps = CHAIN.slice(0, body.length ?? 3);
+      const steps = chain.slice(0, body.length ?? 3);
       const puzzleId = `mnc-1-${body.level}-${steps.length}-${counter}-test`;
       puzzles.set(puzzleId, steps);
       return HttpResponse.json(toPublic(puzzleId, body.level, steps), { status: 201 });

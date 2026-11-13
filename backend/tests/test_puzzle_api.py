@@ -14,13 +14,22 @@ from app.puzzles.ids import MAX_SEED, make_puzzle_id
 from app.puzzles.levels import GENERATOR_VERSION, LEVELS
 from app.puzzles.models import MistakeRule, Puzzle
 from app.puzzles.rules import rule_output
-from app.puzzles.service import PuzzleNotFound, PuzzleRuntime, PuzzleService, shuffled_options
+from app.puzzles.schemas import LinkedToken
+from app.puzzles.service import (
+    PuzzleNotFound,
+    PuzzleRuntime,
+    PuzzleService,
+    linked_token,
+    shuffled_options,
+    to_public,
+)
 from app.puzzles.taxonomy_link import topic_exists
 from app.puzzles.verified import PuzzleGenerationFailed, regenerate
 from app.puzzles.verifier import verify
 from app.taxonomy.importer import run_import
 from app.taxonomy.service import TaxonomyService
 from tests.conftest import FIXTURE_COMMIT, FIXTURE_TAXONOMY, PUZZLE_FIXTURE_TAXONOMY, migrate
+from tests.puzzles.support import make_catalog, make_puzzle, make_step
 from tests.test_api import api_client, count_statements
 
 PUZZLES = "/api/v1/puzzles"
@@ -139,6 +148,76 @@ def test_equation_tokens_are_sent_unchanged(client: TestClient):
         assert kinds.count("operator") == 1
 
 
+# ---- the linked token ----
+
+
+def test_linked_token_picks_the_right_one_when_the_value_appears_twice():
+    # 14 − □ = 5 gives 9. The next step is □ − 9 = 9: both visible numbers are 9,
+    # and only one of them is the 9 the child just found.
+    first = make_step("a-?=c", 14, 5)
+    link_is_first_nine = make_puzzle([first, make_step("?-b=c", 9, 9, link_position=0)])
+    link_is_second_nine = make_puzzle([first, make_step("?-b=c", 9, 9, link_position=1)])
+    for puzzle in (link_is_first_nine, link_is_second_nine):
+        result = verify(puzzle, catalog=make_catalog(), topic_exists=lambda _topic_id: True)
+        assert result.ok, result.failures
+
+    as_first = to_public(link_is_first_nine).steps
+    as_second = to_public(link_is_second_nine).steps
+
+    assert as_first[0].linked_token is None
+    # □ − 9 = 9 is  left: [box, −, 9]  right: [9]
+    assert as_first[1].linked_token == LinkedToken(side="left", index=2)
+    assert as_second[1].linked_token == LinkedToken(side="right", index=0)
+    assert as_first[1].equation == as_second[1].equation
+
+
+@pytest.mark.parametrize(
+    ("form", "first", "second", "expected"),
+    [
+        # reads as          left tokens       right tokens
+        ("a+?=c", 8, 11, [("left", 0), ("right", 0)]),  # 8 + □ = 11
+        ("?+b=c", 5, 12, [("left", 2), ("right", 0)]),  # □ + 5 = 12
+        ("a-?=c", 14, 6, [("left", 0), ("right", 0)]),  # 14 − □ = 6
+        ("?-b=c", 3, 5, [("left", 2), ("right", 0)]),  # □ − 3 = 5
+        ("c=a+?", 11, 8, [("left", 0), ("right", 0)]),  # 11 = 8 + □
+        ("c=?-b", 5, 3, [("left", 0), ("right", 2)]),  # 5 = □ − 3
+    ],
+)
+def test_linked_token_for_every_form_and_position(form, first, second, expected):
+    equation = make_step(form, first, second).equation
+
+    for position, (side, index) in enumerate(expected):
+        token = linked_token(equation, position)
+        assert token == LinkedToken(side=side, index=index)
+        assert getattr(equation, side)[index].value == (first, second)[position]
+    assert linked_token(equation, None) is None
+    assert linked_token(equation, 2) is None  # there are only two visible numbers
+
+
+def test_linked_token_in_the_api_points_at_the_previous_answer(client: TestClient):
+    for level in (1, 2, 3):
+        for seed in range(30):
+            created = new_puzzle(client, level=level, length=4, seed=seed)
+            puzzle = internal(client, created["puzzle_id"])
+            assert created["steps"][0]["linked_token"] is None
+            for index in range(1, 4):
+                public = created["steps"][index]
+                linked = public["linked_token"]
+                token = public["equation"][linked["side"]][linked["index"]]
+                assert token == {"kind": "number", "value": puzzle.steps[index - 1].answer}
+                # It is the same number the internal link position names.
+                numbers = [
+                    (side, i)
+                    for side in ("left", "right")
+                    for i, t in enumerate(public["equation"][side])
+                    if t["kind"] == "number"
+                ]
+                assert numbers[puzzle.steps[index].link_position] == (
+                    linked["side"],
+                    linked["index"],
+                )
+
+
 # ---- what the browser must not receive ----
 
 
@@ -178,6 +257,7 @@ def test_public_puzzle_has_no_internal_fields(client: TestClient):
                 "equation",
                 "options",
                 "hint_tiers",
+                "linked_token",
             }
 
 

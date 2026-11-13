@@ -189,9 +189,7 @@ export function MissingNumber({
                     equation={step.equation}
                     boxValue={boxValue}
                     solved={solved}
-                    linkedIndex={
-                      current ? linkedTokenIndex(step.equation, answers[index - 1] ?? null) : -1
-                    }
+                    linkedIndex={current ? linkedTokenIndex(step.equation, step.linked_token) : -1}
                   />
                 </li>
               );

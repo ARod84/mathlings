@@ -20,11 +20,12 @@ from app.puzzles.diagnoser import diagnose
 from app.puzzles.ids import MAX_SEED, InvalidPuzzleId, OutdatedPuzzleId
 from app.puzzles.levels import GENERATOR_VERSION
 from app.puzzles.misconceptions import MisconceptionCatalog, MisconceptionResolutionError
-from app.puzzles.models import Puzzle
+from app.puzzles.models import Equation, NumberToken, Puzzle
 from app.puzzles.schemas import (
     CheckResult,
     DiagnosisPublic,
     HintOut,
+    LinkedToken,
     PuzzlePublic,
     PuzzleStepPublic,
     ReteachTopic,
@@ -120,6 +121,26 @@ def shuffled_options(puzzle_id: str, step_index: int, values: list[int]) -> list
     return options
 
 
+def linked_token(equation: Equation, link_position: int | None) -> LinkedToken | None:
+    """Where the previous step's answer sits among the equation's tokens.
+
+    `link_position` counts visible numbers in reading order (left side, then
+    right); this turns it into a side and a token index on that side. It
+    tells the browser nothing new: the number is already on show.
+    """
+    if link_position is None:
+        return None
+    seen = 0
+    for side, tokens in (("left", equation.left), ("right", equation.right)):
+        for index, token in enumerate(tokens):
+            if not isinstance(token, NumberToken):
+                continue
+            if seen == link_position:
+                return LinkedToken(side=side, index=index)
+            seen += 1
+    return None
+
+
 def to_public(puzzle: Puzzle) -> PuzzlePublic:
     """The child-facing view: equations and options, no answers, rules or hint text."""
     return PuzzlePublic(
@@ -137,6 +158,7 @@ def to_public(puzzle: Puzzle) -> PuzzlePublic:
                     [step.answer, *(distractor.value for distractor in step.distractors)],
                 ),
                 hint_tiers=len(step.hints),
+                linked_token=linked_token(step.equation, step.link_position),
             )
             for index, step in enumerate(puzzle.steps)
         ],

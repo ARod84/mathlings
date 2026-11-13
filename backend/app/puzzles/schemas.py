@@ -35,6 +35,13 @@ class NewPuzzleRequest(BaseModel):
     )
 
 
+class LinkedToken(BaseModel):
+    """Where a token sits in an equation: which side, and its place on that side."""
+
+    side: Literal["left", "right"]
+    index: int = Field(description="0-based position within that side's token list.")
+
+
 class PuzzleStepPublic(BaseModel):
     index: int = Field(description="0-based position in the chain.")
     equation: Equation
@@ -42,6 +49,11 @@ class PuzzleStepPublic(BaseModel):
         description="The answer and three wrong answers, in an order that is fixed for the puzzle."
     )
     hint_tiers: int = Field(default=HINT_TIERS, description="How many hint tiers can be asked for.")
+    linked_token: LinkedToken | None = Field(
+        default=None,
+        description="The visible number that is the previous step's answer. Null for the "
+        "first step. Says which one when the same value appears twice.",
+    )
 
 
 class PuzzlePublic(BaseModel):

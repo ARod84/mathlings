@@ -1348,6 +1348,30 @@
         ],
         "title": "HintOut"
       },
+      "LinkedToken": {
+        "properties": {
+          "side": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right"
+            ],
+            "title": "Side"
+          },
+          "index": {
+            "type": "integer",
+            "title": "Index",
+            "description": "0-based position within that side's token list."
+          }
+        },
+        "type": "object",
+        "required": [
+          "side",
+          "index"
+        ],
+        "title": "LinkedToken",
+        "description": "Where a token sits in an equation: which side, and its place on that side."
+      },
       "NewPuzzleRequest": {
         "properties": {
           "level": {
@@ -1567,6 +1591,17 @@
             "title": "Hint Tiers",
             "description": "How many hint tiers can be asked for.",
             "default": 3
+          },
+          "linked_token": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkedToken"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The visible number that is the previous step's answer. Null for the first step. Says which one when the same value appears twice."
           }
         },
         "type": "object",
