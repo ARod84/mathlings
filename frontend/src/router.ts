@@ -7,21 +7,30 @@ import { useSyncExternalStore } from 'react';
  *   #/                 home (also an empty or unknown hash)
  *   #/pyramid          Number Pyramid
  *   #/missing-number   Missing Number Chains
+ *   #/sequences        Next in Line
  *   #shell-demo        the GameShell review page (dev)
  */
 
-export type Route = 'home' | 'pyramid' | 'missing-number' | 'shell-demo';
+export type Route = 'home' | 'pyramid' | 'missing-number' | 'sequences' | 'shell-demo';
 
 export const ROUTE_HASH: Record<Route, string> = {
   home: '#/',
   pyramid: '#/pyramid',
   'missing-number': '#/missing-number',
+  sequences: '#/sequences',
   'shell-demo': '#shell-demo',
 };
 
 export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#\/?/, '').replace(/\/$/, '');
-  if (path === 'pyramid' || path === 'missing-number' || path === 'shell-demo') return path;
+  if (
+    path === 'pyramid' ||
+    path === 'missing-number' ||
+    path === 'sequences' ||
+    path === 'shell-demo'
+  ) {
+    return path;
+  }
   return 'home';
 }
 

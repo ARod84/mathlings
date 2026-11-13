@@ -1,0 +1,174 @@
+.game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+/*
+ * The row and the arcs above it share one width. Sizes inside are worked out
+ * from that width, the number of terms (--count) and the longest number a
+ * block may hold (--chars), both set by the component. So six blocks fit a
+ * 360 px screen: the blocks shrink, then the numbers, and nothing ever wraps.
+ */
+.rowArea {
+  container-type: inline-size;
+  width: 100%;
+  max-width: 34rem;
+  --gap: clamp(3px, 1.4cqi, 10px);
+}
+
+/* ---- The row: one block per term ---- */
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+  gap: var(--gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.block {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  aspect-ratio: 1 / 1;
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--house-strong);
+  color: var(--color-on-dark);
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-heavy);
+  /*
+   * As big as the longest number allows: a block's inner width (its share of
+   * the row, less gap and outline) over the width of that many digits. A
+   * four-digit number has to fit a block that is a sixth of a small screen.
+   */
+  font-size: clamp(
+    0.8rem,
+    calc((100cqi / var(--count) - 10px) / (max(var(--chars, 4), 2) * 0.64)),
+    var(--font-size-3xl)
+  );
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 3px 0 0 var(--color-outline);
+}
+
+/* A blank still to come: a dashed, empty slot. */
+.block[data-state='blank'] {
+  border-style: dashed;
+  background: var(--color-cream);
+  box-shadow: none;
+}
+
+/* The blank being solved: solid, tinted, and ringed in gold. */
+.block[data-state='current'] {
+  border-color: var(--house-strong);
+  background: var(--house-soft);
+  color: var(--color-ink);
+  box-shadow: 0 3px 0 0 var(--house-strong);
+  outline: 3px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+.block[data-state='current'][data-filled] {
+  border-color: var(--color-outline);
+  background: var(--color-gold);
+  box-shadow: 0 3px 0 0 var(--color-outline);
+  animation: dropIn var(--duration-base) var(--ease-bounce);
+}
+
+/* Solved: filled in for good. */
+.block[data-state='solved'] {
+  border-color: var(--color-correct-text);
+  background: var(--color-correct-bg);
+  color: var(--color-correct-text);
+  box-shadow: 0 3px 0 0 var(--color-correct-text);
+}
+
+/* ---- The jumps, drawn after the second hint ---- */
+
+.arcsSpace {
+  height: clamp(2rem, 9cqi, 3rem);
+  margin-bottom: var(--space-1);
+}
+
+/* The same columns as the row, so the arcs line up with the blocks at any width. */
+.arcs {
+  display: grid;
+  grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+  gap: var(--gap);
+  align-items: end;
+  height: 100%;
+}
+
+/* An arc starts at the middle of its block and ends at the middle of the next one. */
+.arc {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  grid-row: 1;
+  width: calc(100% + var(--gap));
+  margin-left: 50%;
+  height: 100%;
+  animation: arcIn var(--duration-slow) var(--ease-out) both;
+}
+
+.arcLabel {
+  font: var(--font-weight-heavy) clamp(0.75rem, 3.4cqi, 1.0625rem) / 1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--house-strong);
+}
+
+.arcCurve {
+  display: block;
+  width: 100%;
+  height: 45%;
+  overflow: visible;
+}
+
+.arcCurve path {
+  fill: none;
+  stroke: var(--house-strong);
+  stroke-width: 3;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+@keyframes dropIn {
+  from {
+    transform: translateY(-8px) scale(0.92);
+  }
+}
+
+@keyframes arcIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* With reduced motion the arcs and the filled blank are simply there. */
+@media (prefers-reduced-motion: reduce) {
+  .arc,
+  .block[data-state='current'][data-filled] {
+    animation: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .game {
+    gap: var(--space-6);
+  }
+
+  /* On a phone the row takes most of the play area's padding for itself. */
+  .rowArea {
+    width: calc(100% + 2 * var(--space-3));
+    margin-inline: calc(-1 * var(--space-3));
+  }
+}

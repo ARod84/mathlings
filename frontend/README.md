@@ -35,7 +35,8 @@ self-hosted through `@fontsource/*`.
 src/
   design/   tokens.css, tokens.ts, global.css, contrast helpers and their tests
   shell/    GameShell and its parts (progress, action bar, hint bubble, solved screen, sound hook)
-  games/    registry.ts and one folder per game: number-pyramid/, missing-number/
+  games/    registry.ts and one folder per game: number-pyramid/, missing-number/, sequences/;
+            usePuzzleSession.ts and session/ for what server-checked games share
   home/     the home screen: one card per game
   api/      the typed API client and the generated schema.d.ts
   test/     test setup, the MSW server and the pretend puzzle backend
@@ -60,6 +61,7 @@ browser uses one origin. To point at an API somewhere else, set `VITE_API_BASE_U
 | `#/`               | Home (also any unknown hash) |
 | `#/pyramid`        | Number Pyramid               |
 | `#/missing-number` | Missing Number Chains        |
+| `#/sequences`      | Next in Line                 |
 | `#shell-demo`      | The GameShell review page    |
 
 `useRoute()` returns the current route and `navigate(route)` changes it.
@@ -125,9 +127,8 @@ Every function in `puzzles.ts` returns `{ status: 'ok', data }` or one of `notFo
 The puzzle routes are the same for every game (`POST /api/v1/puzzles/{game}`, then the puzzle id).
 `GameShapes` in `puzzles.ts` names, per game, the request body and the puzzle that comes back, and
 `newPuzzle` is typed from it. `newMissingNumber` is `newPuzzle('missing-number', ...)`. `sequences`
-("Next in Line") is in `GameShapes` already, because the backend serves it; it has no screen yet,
-which is why it is listed in `GAMES_WITHOUT_A_SCREEN` in `src/games/gameTopics.ts` and not in the
-games registry.
+("Next in Line") is the second entry. `GAMES_WITHOUT_A_SCREEN` in `src/games/gameTopics.ts` lists
+games the backend serves that have no screen here yet; it is empty now.
 
 When the backend's API changes: export `openapi.json` there, then run `npm run api:types` here. A
 test fails if `schema.d.ts` is out of date. `openapi-typescript` asks for TypeScript 5 as a peer;
@@ -200,12 +201,57 @@ puzzles.
   message. Anything else shows a friendly note with a Try again button, which repeats whatever
   failed. Leaving the game cancels requests in flight.
 
+The start screen, the loading placeholder, the error message and the four answer tiles are the
+shared ones in `src/games/session/` (`SessionScreens.tsx`, and `useOptionKeys.ts` for keys 1 to 4
+and Enter); Next in Line uses the same.
+
 The state (a reducer) and the API calls are in `src/games/usePuzzleSession.ts`, which any
 server-checked game can use: loading, `/next` before each puzzle, check, hint tiers, the automatic
 hint, the 410 restart, errors and cancelling. `useMissingNumberGame.ts` is a thin layer on top: it
 gives the session a config (the game id, how a round picks level and chain length, how many hint
 tiers a step has) and names the two ways to start a round. `MissingNumber.tsx` only draws. `equation.ts` turns the API's tokens into the screen-reader label ("8 plus box equals 11").
 Equations are always drawn from tokens, never parsed from text.
+
+## Next in Line
+
+`src/games/sequences`: a row of five or six numbers that follows a pattern, with one or two blanks.
+The child picks each missing number from four tiles. A round is five puzzles.
+
+- **Start screen.** The same as Missing Number Chains: a big "Play" button, and under it "Or choose
+  a level" with "Counting on", "Skip counting" and "Tricky patterns".
+- **Play.** Before each puzzle the game asks `GET /players/me/next?game=sequences` and plays the
+  level it is given. Sequences have no recommendation policy yet, so the answer is `no_policy`,
+  level 1, every time; the game does not know or care, and will follow as soon as the backend
+  recommends something else. With no answer the puzzle is level 1.
+- **The row.** One block per number, in the block style of the other games. A blank is an empty
+  dashed block; the one being solved is ringed in gold. With two blanks they are solved left to
+  right: a solved blank fills in, turns green and stays.
+- **Fitting the screen.** The row never wraps. Blocks share the width of the row, and the size of
+  the numbers is worked out from that width, the number of terms and the longest number the row
+  can hold (the visible terms and every option). Six blocks with four-digit numbers fit at 360 px;
+  shorter numbers are drawn bigger. On a phone the row also takes most of the play area's padding.
+- **Negative numbers** are written with the real minus sign, `−` (U+2212), never a hyphen, in the
+  row and on the tiles, and are read as "minus 3" by a screen reader (`formatNumber` and
+  `spokenNumber` in `sequence.ts`).
+- **Answering, wrong answers, hints, problems.** As in Missing Number Chains, all through
+  `usePuzzleSession`: keys 1 to 4 and Enter, the automatic hint after two wrong tries, tiers 1 to
+  3, a silent restart on a 410, a friendly error with Try again. The diagnosis is logged with
+  `console.debug` in development and never shown.
+- **The visual hint.** Once the child has the second hint tier (the one that states the rule),
+  small arcs are drawn between neighbouring numbers, each labelled with its jump: `+4`, or `−3`.
+  On a growing sequence each arc shows its own gap. **Arcs are drawn only between two numbers the
+  puzzle itself shows.** The differences are worked out in the browser from the visible terms
+  (`visibleJumps`); the browser does not have the answers. There is never an arc into or out of a
+  blank, not even one the child has already solved, so the arcs cannot give a missing number
+  away. They are decoration for a hint the child has already read: hidden from screen readers,
+  and with reduced motion they appear without animation.
+- **Screen readers.** The row is a list whose label reads naturally: "4, 8, 12, blank, 20", and
+  "4, 8, 12, 16, 20" once filled. The current blank is announced as "Blank 1 of 2". After a
+  correct answer focus moves to the next blank, or to the solved screen.
+
+`useSequencesGame.ts` is the thin layer on `usePuzzleSession`; `Sequences.tsx` only draws;
+`sequence.ts` has the pure helpers. The test fixtures are in `src/test/sequenceBackend.ts`, typed
+from the generated schema, one per level plus a growing-step row.
 
 ## Number Pyramid
 

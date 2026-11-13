@@ -3,6 +3,7 @@ import { ShellDemo } from './dev/ShellDemo';
 import { MissingNumber } from './games/missing-number/MissingNumber';
 import { NumberPyramid } from './games/number-pyramid/NumberPyramid';
 import { gameFor } from './games/registry';
+import { Sequences } from './games/sequences/Sequences';
 import { Home } from './home/Home';
 import { navigate, useRoute } from './router';
 
@@ -26,6 +27,7 @@ export function App() {
       {route === 'missing-number' && (
         <MissingNumber house={gameFor('missing-number').house} onExit={goHome} />
       )}
+      {route === 'sequences' && <Sequences house={gameFor('sequences').house} onExit={goHome} />}
     </main>
   );
 }

@@ -5,6 +5,7 @@ import { App } from './App';
 import { GAMES, gameFor } from './games/registry';
 import { parseRoute, ROUTE_HASH } from './router';
 import { createPuzzleBackend } from './test/puzzleBackend';
+import { createSequenceBackend } from './test/sequenceBackend';
 import { server } from './test/server';
 
 /** Sets the hash the way a link or the address bar would. */
@@ -43,11 +44,13 @@ describe('home screen', () => {
     }
   });
 
-  it('lists Number Pyramid and Missing Number Chains with their houses', () => {
+  it('lists the three games with their houses', () => {
     expect(GAMES.map((game) => [game.title, game.route, game.house])).toEqual([
       ['Number Pyramid', 'pyramid', 'builders'],
       ['Missing Number Chains', 'missing-number', 'navigators'],
+      ['Next in Line', 'sequences', 'scientists'],
     ]);
+    expect(gameFor('sequences').description).toBe('Find the missing number in the pattern.');
     expect(gameFor('missing-number').house).toBe('navigators');
     for (const game of GAMES) expect(game.description).not.toContain('\n');
   });
@@ -100,6 +103,39 @@ describe('routing', () => {
     debug.mockRestore();
   });
 
+  it('shows three cards, and Next in Line opens, plays a blank and goes back', async () => {
+    const user = userEvent.setup();
+    const backend = createSequenceBackend();
+    server.use(...backend.handlers);
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    render(<App />);
+
+    expect(cards()).toHaveLength(3);
+    const card = within(cards()[2] as HTMLElement);
+    expect(card.getByRole('heading', { level: 2, name: 'Next in Line' })).toBeInTheDocument();
+    expect(card.getByText('Find the missing number in the pattern.')).toBeInTheDocument();
+    expect(cards()[2]).toHaveAttribute('data-house', 'scientists');
+
+    await user.click(card.getByRole('link', { name: 'Play Next in Line' }));
+    await goTo(ROUTE_HASH.sequences);
+    const shell = screen.getByRole('region', { name: 'Next in Line' });
+    expect(shell).toHaveAttribute('data-house', 'scientists');
+    expect(screen.queryByRole('list', { name: 'Games' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Counting on' }));
+    await screen.findByTestId('sequence-row');
+    await user.click(screen.getByRole('button', { name: '20' }));
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+    await waitFor(() => expect(backend.requests.check).toHaveLength(1));
+
+    await user.click(screen.getByRole('button', { name: 'Back to games' }));
+
+    await waitFor(() => expect(screen.getByRole('list', { name: 'Games' })).toBeInTheDocument());
+    expect(window.location.hash).toBe('#/');
+    expect(screen.queryByRole('region', { name: 'Next in Line' })).not.toBeInTheDocument();
+    debug.mockRestore();
+  });
+
   it('follows the hash when it changes, in both directions', async () => {
     render(<App />);
     expect(screen.getByRole('list', { name: 'Games' })).toBeInTheDocument();
@@ -119,6 +155,14 @@ describe('routing', () => {
     render(<App />);
 
     expect(screen.getByRole('region', { name: 'Missing Number Chains' })).toBeInTheDocument();
+  });
+
+  it('opens Next in Line directly from its address', async () => {
+    window.location.hash = '#/sequences';
+    render(<App />);
+
+    expect(screen.getByRole('region', { name: 'Next in Line' })).toBeInTheDocument();
+    expect(parseRoute('#/sequences')).toBe('sequences');
   });
 
   it('Number Pyramid keeps its puzzles while the child visits the home screen', async () => {

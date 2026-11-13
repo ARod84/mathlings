@@ -1,8 +1,9 @@
-import { Play, RotateCcw } from 'lucide-react';
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type { Equation, Level } from '../../api/puzzles';
 import type { HouseKey } from '../../design/tokens';
 import { GameShell } from '../../shell';
+import { LoadingScreen, OptionTiles, ProblemScreen, StartScreen } from '../session/SessionScreens';
+import { useOptionKeys } from '../session/useOptionKeys';
 import { equationLabel, equationParts, linkedTokenIndex } from './equation';
 import styles from './MissingNumber.module.css';
 import { DEFAULT_TIMING, useMissingNumberGame, type GameTiming } from './useMissingNumberGame';
@@ -80,7 +81,6 @@ export function MissingNumber({
   const { phase, puzzle, stepIndex, selected, answers } = state;
   const playing = phase === 'playing' && puzzle !== null;
   const currentStep = playing ? puzzle.steps[stepIndex] : undefined;
-  const rangeLabelId = useId();
 
   // After a correct answer the next step slides in, and focus goes with it.
   const currentRef = useRef<HTMLLIElement>(null);
@@ -89,27 +89,7 @@ export function MissingNumber({
   }, [playing, stepIndex]);
 
   // Keys 1-4 pick an option and Enter checks, wherever the focus is in the game.
-  const { select, check } = game;
-  const options = currentStep?.options;
-  useEffect(() => {
-    if (!options || locked) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.altKey || event.ctrlKey || event.metaKey) return;
-      const picked = options[Number(event.key) - 1];
-      if (/^[1-9]$/.test(event.key) && picked !== undefined) {
-        select(picked);
-        return;
-      }
-      if (event.key !== 'Enter') return;
-      // Enter on one of the shell's own buttons (Hint, Reset, sound...) is that button's.
-      const target = event.target instanceof Element ? event.target.closest('button, a') : null;
-      if (target && !target.closest('[data-options]')) return;
-      event.preventDefault();
-      check();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [options, locked, select, check]);
+  useOptionKeys(currentStep?.options, locked, game.select, game.check);
 
   return (
     <GameShell
@@ -129,52 +109,20 @@ export function MissingNumber({
       onExit={onExit}
     >
       {phase === 'choose-level' && (
-        <div className={styles.start}>
-          {/* The main way in: the backend picks the level and chain length. */}
-          <button type="button" className={styles.play} onClick={game.play}>
-            <Play aria-hidden="true" size={26} strokeWidth={3} fill="currentColor" />
-            <span>Play</span>
-          </button>
-          <p className={styles.rangeLabel} id={rangeLabelId}>
-            Or choose a range
-          </p>
-          <div className={styles.levels} role="group" aria-labelledby={rangeLabelId}>
-            {LEVELS.map(({ level, label }) => (
-              <button
-                key={level}
-                type="button"
-                className={styles.level}
-                onClick={() => game.chooseLevel(level)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <StartScreen
+          onPlay={game.play}
+          choicesLabel="Or choose a range"
+          choices={LEVELS.map(({ level, label }) => ({
+            key: level,
+            label,
+            onChoose: () => game.chooseLevel(level),
+          }))}
+        />
       )}
 
-      {phase === 'loading' && (
-        <div className={styles.loading} aria-busy="true">
-          <span className={styles.loadingBlocks} aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
-          <span className={styles.srOnly}>Loading your puzzle</span>
-        </div>
-      )}
+      {phase === 'loading' && <LoadingScreen />}
 
-      {phase === 'error' && (
-        <div className={styles.problem}>
-          <p className={styles.problemText}>
-            We couldn&rsquo;t get your puzzle just now. Check your connection and try again.
-          </p>
-          <button type="button" className={styles.tryAgain} onClick={game.retry}>
-            <RotateCcw aria-hidden="true" size={20} strokeWidth={3} />
-            <span>Try again</span>
-          </button>
-        </div>
-      )}
+      {phase === 'error' && <ProblemScreen onRetry={game.retry} />}
 
       {playing && currentStep && (
         <div className={styles.game}>
@@ -207,21 +155,12 @@ export function MissingNumber({
             })}
           </ol>
 
-          <div className={styles.options} role="group" aria-label="Answer choices" data-options>
-            {currentStep.options.map((option, index) => (
-              <button
-                key={option}
-                type="button"
-                className={styles.option}
-                aria-pressed={selected === option}
-                aria-keyshortcuts={String(index + 1)}
-                disabled={locked}
-                onClick={() => game.select(option)}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
+          <OptionTiles
+            options={currentStep.options}
+            selected={selected}
+            locked={locked}
+            onSelect={game.select}
+          />
         </div>
       )}
     </GameShell>

@@ -34,7 +34,7 @@ npm run dev
 
 Open `http://localhost:5173`. The Vite dev server passes every `/api` request on to port 8000, so the
 browser only talks to one origin. Number Pyramid works without the backend; Missing Number Chains
-needs it, and shows a "Try again" message when it cannot reach it.
+and Next in Line need it, and show a "Try again" message when they cannot reach it.
 
 ## The games
 
@@ -46,6 +46,12 @@ needs it, and shows a "Try again" message when it cannot reach it.
   child keeps making the same known mistake, every other puzzle is built to target it. The child
   is never told.
   The puzzles, the answer checks and the hints come from the backend.
+- **Next in Line.** A row of numbers that follows a pattern, with one or two blanks to fill from
+  four options. Three levels: counting on, skip counting, and tricky patterns (down through zero
+  into negative numbers, or a step that grows). Five puzzles per round. After the second hint,
+  small arcs show the jump between neighbouring numbers, only between numbers that are on show,
+  so they never give a blank away. Puzzles, checks and hints come from the backend, which proves
+  for every puzzle that it has exactly one answer.
 
 ## The API
 

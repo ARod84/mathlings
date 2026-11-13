@@ -41,6 +41,14 @@ export const GAMES: readonly GameEntry[] = [
     description: 'Find the missing number, then use it to crack the next one.',
     topicIds: allTopicIds('missing-number'),
   },
+  {
+    id: 'sequences',
+    title: 'Next in Line',
+    route: 'sequences',
+    house: 'scientists',
+    description: 'Find the missing number in the pattern.',
+    topicIds: allTopicIds('sequences'),
+  },
 ];
 
 export function gameFor(route: GameEntry['route']): GameEntry {

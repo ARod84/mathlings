@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { Level, MistakeRule, PuzzlePublic } from '../../api/puzzles';
+import { isLevel, type Level, type MistakeRule, type PuzzlePublic } from '../../api/puzzles';
 import {
   DEFAULT_TIMING,
   usePuzzleSession,
@@ -42,8 +42,6 @@ export type GameTiming = SessionTiming;
 type Plan = { kind: 'adaptive' } | { kind: 'fixed'; level: Level };
 
 export type GameState = SessionState<PuzzlePublic, Plan, Level>;
-
-const isLevel = (value: number): value is Level => value === 1 || value === 2 || value === 3;
 
 const SESSION: PuzzleSessionConfig<'missing-number', Plan, Level> = {
   game: 'missing-number',
