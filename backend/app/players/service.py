@@ -58,7 +58,7 @@ def _rate(part: int, whole: int) -> float | None:
     return round(part / whole, 4) if whole else None
 
 
-def _utc(moment: datetime) -> datetime:
+def utc(moment: datetime) -> datetime:
     # SQLite hands datetimes back without a zone; they were stored in UTC.
     return moment.replace(tzinfo=UTC) if moment.tzinfo is None else moment
 
@@ -250,14 +250,14 @@ class PlayerService:
                 first_try_correct_rate=_rate(first_correct, topic_steps),
                 hints_per_step=_rate(hints_by_topic.get(topic_id, 0), topic_steps),
                 top_mistakes=mistakes_by_topic.get(topic_id, [])[:TOP_MISTAKES],
-                last_practised=_utc(last_practised),
+                last_practised=utc(last_practised),
             )
             for topic_id, topic_attempts, topic_steps, first_correct, last_practised in sorted(
                 topic_rows, key=lambda r: (-r[1], r[0])
             )
         ]
         return PlayerSummary(
-            player_since=_utc(player.created_at),
+            player_since=utc(player.created_at),
             totals=PracticeTotals(
                 attempts=attempts,
                 steps=total_steps,

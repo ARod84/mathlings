@@ -1,4 +1,5 @@
 import { api } from './client';
+import type { components } from './schema';
 
 /*
  * The anonymous player id.
@@ -44,6 +45,31 @@ export function getPlayerId(): string | null {
     const fresh = globalThis.crypto.randomUUID();
     window.localStorage.setItem(PLAYER_ID_KEY, fresh);
     return fresh;
+  } catch {
+    return null;
+  }
+}
+
+/** What to play next, and why. Only `level` and `length` are for the game itself. */
+export type NextPuzzle = components['schemas']['NextPuzzle'];
+
+/**
+ * Asks the backend what this player should play next in Missing Number
+ * Chains. Null when there is no player id or the call does not succeed: the
+ * caller falls back to a fixed puzzle and says nothing about it.
+ *
+ * `reason`, `focus_rule` and `mastery` are for adults and for development.
+ * They must never be shown to the child.
+ */
+export async function getNextPuzzle(signal?: AbortSignal): Promise<NextPuzzle | null> {
+  const id = getPlayerId();
+  if (id === null) return null;
+  try {
+    const { data, response } = await api.GET('/api/v1/players/me/next', {
+      params: { query: { game: 'missing-number' }, header: { [PLAYER_ID_HEADER]: id } },
+      signal,
+    });
+    return response.ok && data !== undefined ? data : null;
   } catch {
     return null;
   }

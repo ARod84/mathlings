@@ -18,6 +18,7 @@ from app.config import BACKEND_DIR, sqlite_url
 from app.db import make_engine
 from app.models import Attempt, HintRequest, Player
 from app.players.service import AttemptRecord, PlayerNotFound, PlayerService
+from app.puzzles.levels import step_topic_ids
 from app.puzzles.models import MistakeRule
 from app.puzzles.service import PuzzleService
 from app.taxonomy.importer import run_import
@@ -297,7 +298,7 @@ def test_a_known_mistake_is_stored_with_its_rules_pattern_and_reteach_topic(clie
     assert (mistake.game, mistake.level) == ("missing-number", 1)
     assert mistake.generator_version == puzzle.generator_version
     assert mistake.form == puzzle.steps[index].form
-    assert mistake.topic_ids == puzzle.topic_ids
+    assert mistake.topic_ids == step_topic_ids(1, puzzle.steps[index].form)
     assert isinstance(mistake.created_at, datetime)
 
     assert right.correct is True
@@ -506,7 +507,10 @@ def test_summary_numbers_on_a_hand_built_history(client: TestClient):
     response = client.get(f"{PLAYERS}/me/summary", headers=as_player(player))
 
     assert response.status_code == 200
-    assert response.json() == {
+    body = response.json()
+    # Mastery has its own tests, in test_adaptive.py.
+    assert len(body.pop("mastery")) == 2
+    assert body == {
         "player_since": "2026-11-01T09:00:00Z",
         "totals": {
             "attempts": 9,
@@ -563,7 +567,9 @@ def test_summary_from_a_short_real_play_session(client: TestClient):
         "first_try_correct_rate": 0.0,
         "hints_per_step": 1.0,
     }
-    assert [topic["topic_id"] for topic in summary["topics"]] == sorted(puzzle.topic_ids)
+    assert [topic["topic_id"] for topic in summary["topics"]] == sorted(
+        step_topic_ids(1, puzzle.steps[index].form)
+    )
     for topic in summary["topics"]:
         assert topic["top_mistakes"] == [{"rule": "ADD_VISIBLE", "count": 1}]
         assert (topic["attempts"], topic["steps"], topic["hints_per_step"]) == (2, 1, 1.0)
@@ -588,7 +594,8 @@ def test_summary_is_empty_for_a_known_player_with_no_attempts(client: TestClient
         "first_try_correct_rate": None,
         "hints_per_step": None,
     }
-    assert set(body) == {"player_since", "totals", "topics"}
+    assert set(body) == {"player_since", "totals", "topics", "mastery"}
+    assert body["mastery"] == []
 
 
 def test_summary_for_an_unknown_id_is_404(client: TestClient):
@@ -708,9 +715,10 @@ def test_summary_and_delete_use_a_fixed_number_of_statements(client: TestClient)
         assert response.status_code == 200
         return seen
 
-    # The player, per topic, mistakes per topic, hints per topic, totals.
-    assert len(summary_statements(small)) == 5
-    assert len(summary_statements(large)) == 5
+    # The player, per topic, mistakes per topic, hints per topic, totals, and
+    # one for the first tries that mastery is replayed from.
+    assert len(summary_statements(small)) == 6
+    assert len(summary_statements(large)) == 6
 
     for player in (large, uuid.uuid4()):
         with count_statements(client) as seen:

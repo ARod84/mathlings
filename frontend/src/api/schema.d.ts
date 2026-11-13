@@ -259,6 +259,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/players/me/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the player in the header should play next, and why
+         * @description A player with no stored attempts, known or not, gets the cold start.
+         *
+         *     `reason`, `focus_rule` and `mastery` are for adults and for development.
+         *     Nothing in this response is meant to be shown to a child.
+         */
+        get: operations["get_next_api_v1_players_me_next_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/players/me": {
         parameters: {
             query?: never;
@@ -412,6 +435,19 @@ export interface components {
             /** Count */
             count: number;
         };
+        /** NamedMastery */
+        NamedMastery: {
+            /** Topic Id */
+            topic_id: string;
+            /** Name */
+            name: string;
+            /** Level */
+            level: number;
+            /** P Known */
+            p_known: number;
+            /** Observations */
+            observations: number;
+        };
         /** NewPuzzleRequest */
         NewPuzzleRequest: {
             /** Level */
@@ -427,6 +463,36 @@ export interface components {
              * @description Fixes the puzzle. Leave out for a random one.
              */
             seed?: number | null;
+        };
+        /** NextPuzzle */
+        NextPuzzle: {
+            /** Level */
+            level: number;
+            /**
+             * Length
+             * @description Number of steps in the chain.
+             */
+            length: number;
+            /**
+             * Reason Code
+             * @enum {string}
+             */
+            reason_code: "cold_start" | "promote" | "step_down" | "consolidate";
+            /**
+             * Reason
+             * @description Why, in a sentence for an adult. Never show it to a child.
+             */
+            reason: string;
+            /**
+             * Focus Rule
+             * @description A mistake rule that keeps coming up, for example ADD_VISIBLE. Information only: nothing acts on it yet.
+             */
+            focus_rule: string | null;
+            /**
+             * Mastery
+             * @description The mastery values the decision used: the recommended level's topics first, then everything else the player has practised.
+             */
+            mastery: components["schemas"]["NamedMastery"][];
         };
         /** NumberToken */
         NumberToken: {
@@ -469,6 +535,11 @@ export interface components {
              * @description Most practised first.
              */
             topics: components["schemas"]["TopicPractice"][];
+            /**
+             * Mastery
+             * @description Estimated mastery per topic and level, from the first try at each step.
+             */
+            mastery?: components["schemas"]["TopicMasteryOut"][];
         };
         /** PracticeTotals */
         PracticeTotals: {
@@ -627,6 +698,28 @@ export interface components {
              * @description The assessment prompt with the child's name filled in, or worded to 'you' when no name is given.
              */
             assessment_prompt: string;
+        };
+        /** TopicMasteryOut */
+        TopicMasteryOut: {
+            /** Topic Id */
+            topic_id: string;
+            /**
+             * Level
+             * @description Each level keeps its own estimate of the same topic.
+             */
+            level: number;
+            /**
+             * P Known
+             * @description Estimated probability that the topic is known, 0 to 1. From Bayesian Knowledge Tracing with hand-set (not fitted) parameters.
+             */
+            p_known: number;
+            /**
+             * Observations
+             * @description First tries the estimate is built from (at most 200).
+             */
+            observations: number;
+            /** Last Practised */
+            last_practised: string | null;
         };
         /** TopicNotFoundBody */
         TopicNotFoundBody: {
@@ -1490,6 +1583,50 @@ export interface operations {
                 };
             };
             /** @description The player tables do not exist yet */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_next_api_v1_players_me_next_get: {
+        parameters: {
+            query: {
+                /** @description The game to recommend for. Only Missing Number Chains adapts so far. */
+                game: "missing-number";
+            };
+            header: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. */
+                "X-Player-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NextPuzzle"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The taxonomy has not been imported yet */
             503: {
                 headers: {
                     [name: string]: unknown;

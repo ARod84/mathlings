@@ -1183,6 +1183,74 @@
         }
       }
     },
+    "/api/v1/players/me/next": {
+      "get": {
+        "tags": [
+          "Players"
+        ],
+        "summary": "What the player in the header should play next, and why",
+        "description": "A player with no stored attempts, known or not, gets the cold start.\n\n`reason`, `focus_rule` and `mastery` are for adults and for development.\nNothing in this response is meant to be shown to a child.",
+        "operationId": "get_next_api_v1_players_me_next_get",
+        "parameters": [
+          {
+            "name": "game",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "const": "missing-number",
+              "type": "string",
+              "description": "The game to recommend for. Only Missing Number Chains adapts so far.",
+              "title": "Game"
+            },
+            "description": "The game to recommend for. Only Missing Number Chains adapts so far."
+          },
+          {
+            "name": "X-Player-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid4",
+              "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login.",
+              "title": "X-Player-Id"
+            },
+            "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextPuzzle"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The taxonomy has not been imported yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/players/me": {
       "delete": {
         "tags": [
@@ -1582,6 +1650,39 @@
         ],
         "title": "MistakeCount"
       },
+      "NamedMastery": {
+        "properties": {
+          "topic_id": {
+            "type": "string",
+            "title": "Topic Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "level": {
+            "type": "integer",
+            "title": "Level"
+          },
+          "p_known": {
+            "type": "number",
+            "title": "P Known"
+          },
+          "observations": {
+            "type": "integer",
+            "title": "Observations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic_id",
+          "name",
+          "level",
+          "p_known",
+          "observations"
+        ],
+        "title": "NamedMastery"
+      },
       "NewPuzzleRequest": {
         "properties": {
           "level": {
@@ -1619,6 +1720,66 @@
           "level"
         ],
         "title": "NewPuzzleRequest"
+      },
+      "NextPuzzle": {
+        "properties": {
+          "level": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Level"
+          },
+          "length": {
+            "type": "integer",
+            "title": "Length",
+            "description": "Number of steps in the chain."
+          },
+          "reason_code": {
+            "type": "string",
+            "enum": [
+              "cold_start",
+              "promote",
+              "step_down",
+              "consolidate"
+            ],
+            "title": "Reason Code"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Why, in a sentence for an adult. Never show it to a child."
+          },
+          "focus_rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focus Rule",
+            "description": "A mistake rule that keeps coming up, for example ADD_VISIBLE. Information only: nothing acts on it yet."
+          },
+          "mastery": {
+            "items": {
+              "$ref": "#/components/schemas/NamedMastery"
+            },
+            "type": "array",
+            "title": "Mastery",
+            "description": "The mastery values the decision used: the recommended level's topics first, then everything else the player has practised."
+          }
+        },
+        "type": "object",
+        "required": [
+          "level",
+          "length",
+          "reason_code",
+          "reason",
+          "focus_rule",
+          "mastery"
+        ],
+        "title": "NextPuzzle"
       },
       "NumberToken": {
         "properties": {
@@ -1694,6 +1855,14 @@
             "type": "array",
             "title": "Topics",
             "description": "Most practised first."
+          },
+          "mastery": {
+            "items": {
+              "$ref": "#/components/schemas/TopicMasteryOut"
+            },
+            "type": "array",
+            "title": "Mastery",
+            "description": "Estimated mastery per topic and level, from the first try at each step."
           }
         },
         "type": "object",
@@ -2080,6 +2249,50 @@
           "assessment_prompt"
         ],
         "title": "TopicDetail"
+      },
+      "TopicMasteryOut": {
+        "properties": {
+          "topic_id": {
+            "type": "string",
+            "title": "Topic Id"
+          },
+          "level": {
+            "type": "integer",
+            "title": "Level",
+            "description": "Each level keeps its own estimate of the same topic."
+          },
+          "p_known": {
+            "type": "number",
+            "title": "P Known",
+            "description": "Estimated probability that the topic is known, 0 to 1. From Bayesian Knowledge Tracing with hand-set (not fitted) parameters."
+          },
+          "observations": {
+            "type": "integer",
+            "title": "Observations",
+            "description": "First tries the estimate is built from (at most 200)."
+          },
+          "last_practised": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Practised"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic_id",
+          "level",
+          "p_known",
+          "observations",
+          "last_practised"
+        ],
+        "title": "TopicMasteryOut"
       },
       "TopicNotFoundBody": {
         "properties": {

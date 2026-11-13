@@ -120,3 +120,15 @@ def topic_ids_for(spec: LevelSpec, forms: list[Form]) -> list[str]:
     if spec.answer_left_topic_id and any(form in ANSWER_LEFT_FORMS for form in forms):
         topic_ids.append(spec.answer_left_topic_id)
     return topic_ids
+
+
+def step_topic_ids(level: int, form: Form) -> list[str]:
+    """The topics one step practises, primary first.
+
+    Narrower than the puzzle's list: at levels 1 and 2 only an answer-left step
+    (c=a+? or c=?-b) practises "what the equals sign means". A puzzle's
+    topic_ids are the union of its steps' topics. Practice history is stored
+    per step, so a step never counts toward a topic it does not practise.
+    Migration 0003 carries a frozen copy of this mapping.
+    """
+    return topic_ids_for(LEVELS[level], [form])

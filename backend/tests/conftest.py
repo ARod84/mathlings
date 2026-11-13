@@ -19,15 +19,18 @@ PUZZLE_FIXTURE_TAXONOMY = Path(__file__).parent / "fixtures" / "taxonomy_puzzles
 FIXTURE_COMMIT = "f" * 40
 
 
-def migrate(database_path: Path) -> Engine:
-    """Create the schema with the real Alembic migration and return an engine for it."""
+def migrate(database_path: Path, revision: str = "head") -> Engine:
+    """Create the schema with the real Alembic migrations and return an engine for it.
+
+    `revision` stops at an earlier migration, or moves an existing database on.
+    """
     url = sqlite_url(database_path)
     config = Config(str(BACKEND_DIR / "alembic.ini"))
     config.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
     config.set_main_option("sqlalchemy.url", url)
     # Leave logging alone, so pytest's caplog keeps working.
     config.attributes["configure_logging"] = False
-    command.upgrade(config, "head")
+    command.upgrade(config, revision)
     return make_engine(url)
 
 

@@ -8,6 +8,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.adaptive.schemas import TopicMasteryOut
+
 
 class MistakeCount(BaseModel):
     rule: str = Field(description="Mistake-rule name, for example ADD_VISIBLE.")
@@ -41,6 +43,10 @@ class PlayerSummary(BaseModel):
     player_since: datetime
     totals: PracticeTotals
     topics: list[TopicPractice] = Field(description="Most practised first.")
+    mastery: list[TopicMasteryOut] = Field(
+        default_factory=list,
+        description="Estimated mastery per topic and level, from the first try at each step.",
+    )
 
 
 class PlayerNotFoundBody(BaseModel):

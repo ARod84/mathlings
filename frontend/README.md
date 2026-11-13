@@ -85,7 +85,7 @@ To add a game:
 | `src/api/schema.d.ts` | Types generated from `../openapi.json`. Never edited by hand.                    |
 | `src/api/client.ts`   | The one configured `openapi-fetch` client.                                       |
 | `src/api/puzzles.ts`  | `newMissingNumber`, `getPuzzle`, `checkStep`, `getHint`, each returning a result |
-| `src/api/player.ts`   | The anonymous player id: `getPlayerId`, `forgetPlayer`                           |
+| `src/api/player.ts`   | The anonymous player id (`getPlayerId`, `forgetPlayer`) and `getNextPuzzle`      |
 
 Every function in `puzzles.ts` returns `{ status: 'ok', data }` or one of `notFound`, `gone`,
 `unavailable`, `network`. Components branch on that name and never read an HTTP status code.
@@ -119,8 +119,18 @@ hides the one from jsdom.
 
 ## Missing Number Chains
 
-`src/games/missing-number`: equations with one missing number, linked in a chain. The child picks
-a number size (up to 20, 100 or 1000) and plays five puzzles with 2, 2, 3, 3 and 4 steps.
+`src/games/missing-number`: equations with one missing number, linked in a chain. A round is five
+puzzles.
+
+- **Start screen.** One big "Play" button, and under it a smaller row, "Or choose a range" (up
+  to 20, 100 or 1000).
+- **Play.** Before each puzzle of the round the game asks `GET /players/me/next` and uses the
+  level and chain length it recommends, so the round adapts as the child plays. With no player
+  id, or if the call fails, the puzzle is level 1 with 2 steps, and nothing is said about it.
+  The reason, the mastery values and the focus rule are logged with `console.debug` in
+  development and never reach the page.
+- **A chosen range.** Five puzzles at that level with 2, 2, 3, 3 and 4 steps; `/next` is not
+  called.
 
 - **One step at a time.** Solved steps stay above, faded, with their answer filled in. The current
   step is big, and later steps are not on the page. When a new step appears, the number just

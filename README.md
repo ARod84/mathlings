@@ -39,7 +39,8 @@ needs it, and shows a "Try again" message when it cannot reach it.
 - **Number Pyramid.** Every block is the sum of the two blocks below it; the child drops number
   tiles into the empty blocks. Eight generated puzzles per round, made in the browser.
 - **Missing Number Chains.** Equations with one missing number, linked in a chain: the number found
-  in one step turns up in the next. Three levels (up to 20, 100 or 1000), five puzzles per round.
+  in one step turns up in the next. Three levels (up to 20, 100 or 1000), five puzzles per round. "Play" lets the backend
+  pick the level and chain length puzzle by puzzle; the child can also choose a range.
   The puzzles, the answer checks and the hints come from the backend.
 
 ## The API
@@ -51,7 +52,7 @@ needs it, and shows a "Try again" message when it cannot reach it.
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Taxonomy | `GET /domains`, `/topics`, `/topics/{id}` and its `/prerequisites`, `/unlocks`, `/step-back`, `/error-patterns`, `/research`; `GET /meta/source`                   |
 | Puzzles  | `POST /puzzles/missing-number`, `GET /puzzles/{puzzle_id}`, `POST /puzzles/{puzzle_id}/steps/{index}/check`, `GET /puzzles/{puzzle_id}/steps/{index}/hints/{tier}` |
-| Players  | `GET /players/me/summary`, `DELETE /players/me`; both need the `X-Player-Id` header (see [Privacy](#privacy))                                                      |
+| Players  | `GET /players/me/summary`, `GET /players/me/next`, `DELETE /players/me`; all need the `X-Player-Id` header (see [Privacy](#privacy))                               |
 | Health   | `GET /health`                                                                                                                                                      |
 
 ### Puzzles are stateless
@@ -109,6 +110,12 @@ calls `DELETE /api/v1/players/me`. That removes the player row and every attempt
 is a real delete, not a flag. The browser then drops its id, and the next play starts a new one.
 Deleting an id the server has never seen also answers `204`. If the server cannot be reached, the
 id is kept so the delete can be tried again.
+
+**What it is used for.** The backend replays a player's first tries to estimate how well they
+know each topic, and recommends the next level and chain length for Missing Number Chains
+(`GET /players/me/next`). Nothing extra is stored for this, and the estimate, the reason and the
+mistake it flags are never shown to the child. How it works, and how well, is in the
+[backend README](backend/README.md#adaptive-practice).
 
 **Open item: no retention policy yet.** History is kept until someone deletes it. There is no
 expiry, no clean-up job and no rule for players who never come back. This has to be decided before

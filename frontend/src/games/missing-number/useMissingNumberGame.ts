@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { getNextPuzzle } from '../../api/player';
 import {
   checkStep,
   getHint,
@@ -14,12 +15,27 @@ import type { FeedbackState } from '../../shell';
  * All the logic and state of Missing Number Chains. The component only draws
  * what this hook returns and calls its actions.
  *
- * A round is five puzzles at one level. Each puzzle is a chain of steps that
- * the child solves one at a time; the server checks every answer.
+ * A round is five puzzles. Each puzzle is a chain of steps that the child
+ * solves one at a time; the server checks every answer.
+ *
+ * There are two ways to play a round:
+ * - "Play" (adaptive): before every puzzle the backend is asked what this
+ *   player should do next, and its level and chain length are used. If it
+ *   cannot say (no player id, or the call fails) the puzzle is FALLBACK, and
+ *   the child is told nothing.
+ * - A chosen range (fixed): all five puzzles at that level, with the chain
+ *   lengths in ROUND_LENGTHS.
  */
 
-/** Chain length of each puzzle in a round. */
+/** Chain length of each puzzle in a round at a chosen level. */
 export const ROUND_LENGTHS = [2, 2, 3, 3, 4] as const;
+/** What "Play" uses when the backend has no recommendation. */
+export const FALLBACK = { level: 1, length: 2 } as const;
+
+/** How the puzzles of a round are picked. */
+type Plan = { kind: 'adaptive' } | { kind: 'fixed'; level: Level };
+
+const isLevel = (value: number): value is Level => value === 1 || value === 2 || value === 3;
 /** After this many wrong tries on a step, a hint opens by itself. */
 export const WRONG_TRIES_BEFORE_HINT = 2;
 
@@ -36,12 +52,15 @@ export type Phase = 'choose-level' | 'loading' | 'playing' | 'error';
 
 /** What to do again when the child presses "Try again". */
 type Retry =
-  | { kind: 'load'; level: Level; puzzleIndex: number }
+  | { kind: 'load'; plan: Plan; puzzleIndex: number }
   | { kind: 'check' }
   | { kind: 'hint'; tier: number };
 
 export interface GameState {
   phase: Phase;
+  /** How this round picks its puzzles. Null before a round starts. */
+  plan: Plan | null;
+  /** The level of the current puzzle; null until the first one has loaded in a "Play" round. */
   level: Level | null;
   /** 0-based position of the current puzzle in the round. */
   puzzleIndex: number;
@@ -67,6 +86,7 @@ export interface GameState {
 
 const INITIAL: GameState = {
   phase: 'choose-level',
+  plan: null,
   level: null,
   puzzleIndex: 0,
   puzzle: null,
@@ -93,8 +113,8 @@ const FRESH_STEP = {
 } satisfies Partial<GameState>;
 
 type Action =
-  | { type: 'loading'; level: Level; puzzleIndex: number }
-  | { type: 'loaded'; puzzle: PuzzlePublic }
+  | { type: 'loading'; plan: Plan; level: Level | null; puzzleIndex: number }
+  | { type: 'loaded'; puzzle: PuzzlePublic; level: Level }
   | { type: 'failed' }
   | { type: 'resumed' }
   | { type: 'selected'; value: number }
@@ -115,6 +135,7 @@ function reducer(state: GameState, action: Action): GameState {
       return {
         ...INITIAL,
         phase: 'loading',
+        plan: action.plan,
         level: action.level,
         puzzleIndex: action.puzzleIndex,
       };
@@ -124,6 +145,7 @@ function reducer(state: GameState, action: Action): GameState {
         ...FRESH_STEP,
         phase: 'playing',
         puzzle: action.puzzle,
+        level: action.level,
         stepIndex: 0,
         answers: [],
       };
@@ -174,6 +196,9 @@ export interface MissingNumberGame {
   state: GameState;
   /** Number of puzzles in a round. */
   roundSize: number;
+  /** Starts a round that follows the backend's recommendation, puzzle by puzzle. */
+  play: () => void;
+  /** Starts a round at one level. */
   chooseLevel: (level: Level) => void;
   select: (value: number) => void;
   /** Sends the boxed number to the server. Does nothing without one. */
@@ -222,26 +247,45 @@ export function useMissingNumberGame(timing: GameTiming = DEFAULT_TIMING): Missi
   }, []);
 
   const loadPuzzle = useCallback(
-    async (level: Level, puzzleIndex: number) => {
-      dispatch({ type: 'loading', level, puzzleIndex });
-      const length = ROUND_LENGTHS[puzzleIndex] ?? ROUND_LENGTHS[0];
-      const result = await newMissingNumber({ level, length }, abort.current?.signal);
+    async (plan: Plan, puzzleIndex: number) => {
+      const signal = abort.current?.signal;
+      // In a "Play" round the level shown stays the last one until the answer is in.
+      const known = plan.kind === 'fixed' ? plan.level : latest.current.level;
+      dispatch({ type: 'loading', plan, level: known, puzzleIndex });
+
+      let level: Level;
+      let length: number;
+      if (plan.kind === 'fixed') {
+        level = plan.level;
+        length = ROUND_LENGTHS[puzzleIndex] ?? ROUND_LENGTHS[0];
+      } else {
+        const recommended = await getNextPuzzle(signal);
+        if (!alive()) return;
+        // For adults and for development. Never shown to the child.
+        if (import.meta.env.DEV) console.debug('[missing-number] next', recommended);
+        // No recommendation: a short, easy puzzle, and not a word about it.
+        const usable = recommended !== null && isLevel(recommended.level) && recommended.length > 0;
+        level = usable && isLevel(recommended.level) ? recommended.level : FALLBACK.level;
+        length = usable ? recommended.length : FALLBACK.length;
+      }
+
+      const result = await newMissingNumber({ level, length }, signal);
       if (!alive()) return;
-      if (result.status === 'ok') dispatch({ type: 'loaded', puzzle: result.data });
-      else fail({ kind: 'load', level, puzzleIndex });
+      if (result.status === 'ok') dispatch({ type: 'loaded', puzzle: result.data, level });
+      else fail({ kind: 'load', plan, puzzleIndex });
     },
     [fail],
   );
 
   /**
    * What every call about an existing puzzle does when it does not succeed.
-   * A puzzle from an older generator version is replaced by a fresh one at
-   * the same level, without a word; anything else shows the friendly error.
+   * A puzzle from an older generator version is replaced by a fresh one,
+   * picked the same way, without a word; anything else shows the friendly error.
    */
   const handleFailure = useCallback(
     (result: ApiResult<unknown>, retry: Retry) => {
-      const { level, puzzleIndex } = latest.current;
-      if (result.status === 'gone' && level !== null) void loadPuzzle(level, puzzleIndex);
+      const { plan, puzzleIndex } = latest.current;
+      if (result.status === 'gone' && plan !== null) void loadPuzzle(plan, puzzleIndex);
       else fail(retry);
     },
     [fail, loadPuzzle],
@@ -329,9 +373,9 @@ export function useMissingNumberGame(timing: GameTiming = DEFAULT_TIMING): Missi
   }, [fetchHint]);
 
   const next = useCallback(() => {
-    const { level, puzzleIndex, feedback } = latest.current;
-    if (level === null || feedback === 'complete') dispatch({ type: 'restarted' });
-    else void loadPuzzle(level, puzzleIndex + 1);
+    const { plan, puzzleIndex, feedback } = latest.current;
+    if (plan === null || feedback === 'complete') dispatch({ type: 'restarted' });
+    else void loadPuzzle(plan, puzzleIndex + 1);
   }, [loadPuzzle]);
 
   const retry = useCallback(() => {
@@ -339,7 +383,7 @@ export function useMissingNumberGame(timing: GameTiming = DEFAULT_TIMING): Missi
     if (again === null) return;
     failed.current = null;
     if (again.kind === 'load') {
-      void loadPuzzle(again.level, again.puzzleIndex);
+      void loadPuzzle(again.plan, again.puzzleIndex);
       return;
     }
     // The puzzle is still there: go back to it, then repeat the call.
@@ -351,7 +395,11 @@ export function useMissingNumberGame(timing: GameTiming = DEFAULT_TIMING): Missi
   return {
     state,
     roundSize: ROUND_LENGTHS.length,
-    chooseLevel: useCallback((level: Level) => void loadPuzzle(level, 0), [loadPuzzle]),
+    play: useCallback(() => void loadPuzzle({ kind: 'adaptive' }, 0), [loadPuzzle]),
+    chooseLevel: useCallback(
+      (level: Level) => void loadPuzzle({ kind: 'fixed', level }, 0),
+      [loadPuzzle],
+    ),
     select,
     check: useCallback(() => void check(), [check]),
     requestHint,

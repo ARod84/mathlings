@@ -184,7 +184,9 @@ class Attempt(SQLModel, table=True):
     # A topic id, kept as plain text: a later taxonomy import may drop the topic,
     # and that must not break or erase history.
     reteach_topic_id: str | None = None
-    # The puzzle's topics, primary first.
+    # The topics this step practises, primary first (levels.step_topic_ids).
+    # Narrower than the puzzle's list. Rows from before migration 0003 held the
+    # puzzle's list; that migration rewrote them.
     topic_ids: list[str] = Field(sa_column=Column(JSON, nullable=False))
     # 1 for this player's first try at this step, 2 for the second, and so on.
     attempt_on_step: int

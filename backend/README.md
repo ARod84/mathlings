@@ -367,7 +367,8 @@ the error is logged (without the player id) and the child still gets their answe
 | `GET /me/summary` | `player_since`, `totals`, and per topic: `attempts`, `steps`, `first_try_correct_rate`, `hints_per_step`, `top_mistakes` (three most frequent rules with counts), `last_practised` |
 | `DELETE /me`      | 204. Deletes the player and every attempt and hint row. 204 for an unknown id too                                                                                                  |
 
-How the summary counts: an attempt counts under every topic of its puzzle. A step is a first try
+How the summary counts: an attempt counts under every topic of its step (see
+[Per-step topics](#per-step-topics)). A step is a first try
 (`attempt_on_step = 1`). `first_try_correct_rate` is the share of steps answered right on the first
 try. `hints_per_step` is hint requests divided by steps; a hint for a step that was never checked
 counts in `totals` only, because only an attempt knows the step's topics.
@@ -375,17 +376,164 @@ counts in `totals` only, because only an attempt knows the step's topics.
 **Statement budgets**, checked by tests. The header adds a fixed cost that does not grow with the
 history:
 
-| Request                              | Without the header | With it | Added statements                                       |
-| ------------------------------------ | ------------------ | ------- | ------------------------------------------------------ |
-| `POST /missing-number`, `GET /{id}`  | 1                  | 1       | none                                                   |
-| `GET .../hints/{tier}`               | 1                  | 3       | create-or-touch the player, insert the row             |
-| `POST .../check`, right answer       | 1                  | 4       | create-or-touch the player, both counts in one, insert |
-| `POST .../check`, recognized mistake | 2                  | 5       | the same three                                         |
-| `GET /players/me/summary`            |                    | 5       | player, per topic, mistakes, hints, totals             |
-| `DELETE /players/me`                 |                    | 3       | attempts, hints, player                                |
+| Request                              | Without the header | With it | Added statements                                                    |
+| ------------------------------------ | ------------------ | ------- | ------------------------------------------------------------------- |
+| `POST /missing-number`, `GET /{id}`  | 1                  | 1       | none                                                                |
+| `GET .../hints/{tier}`               | 1                  | 3       | create-or-touch the player, insert the row                          |
+| `POST .../check`, right answer       | 1                  | 4       | create-or-touch the player, both counts in one, insert              |
+| `POST .../check`, recognized mistake | 2                  | 5       | the same three                                                      |
+| `GET /players/me/summary`            |                    | 6       | player, per topic, mistakes, hints, totals, first tries for mastery |
+| `GET /players/me/next`               |                    | 3       | taxonomy freshness check, first tries, topic names                  |
+| `DELETE /players/me`                 |                    | 3       | attempts, hints, player                                             |
 
 The summary aggregates in SQL (`json_each` unpacks the JSON lists), so what comes back is one row
 per topic, or per topic and rule, whatever the number of attempts.
 
-**Not built yet:** adaptive difficulty, mastery scores, accounts, any dashboard, Number Pyramid
+**Not built yet:** accounts, any dashboard, Number Pyramid
 results (that game runs in the browser), and a retention policy or clean-up job.
+
+## Adaptive practice
+
+`app/adaptive/` estimates how well a player knows each topic from their stored attempts, and
+recommends the next level and chain length for Missing Number Chains. Every recommendation says
+which rule produced it and why. Nothing new is stored: mastery is replayed from the attempt
+history on every call.
+
+| File                        | Role                                                                     |
+| --------------------------- | ------------------------------------------------------------------------ |
+| `app/adaptive/constants.py` | Every number: the BKT parameters and the policy thresholds.              |
+| `app/adaptive/bkt.py`       | Bayesian Knowledge Tracing and the evidence rules. Plain Python.         |
+| `app/adaptive/policy.py`    | `recommend_from(observations)`: the rules below. Plain Python.           |
+| `app/adaptive/service.py`   | `AdaptiveService`: reads a player's first tries (one query). No FastAPI. |
+| `app/adaptive/simulate.py`  | The offline simulator.                                                   |
+
+### Per-step topics
+
+An attempt carries the topics of its own step, not of its whole puzzle
+(`levels.step_topic_ids(level, form)`). At levels 1 and 2 every step practises
+`mt_3JgrHY221M`, and only the answer-left forms `c=a+?` and `c=?-b` also practise
+`mt_oIzycTBeE4` (what the equals sign means). At level 3 every step practises `mt_XuHmIn2xje` and
+`mt_ehGS_uVSJv`. A puzzle's `topic_ids` in the API are still the union of its steps' topics, and
+`shared/game-topics.json` lists that union per level. Migration `0003` rewrote the attempt rows
+stored before this, from their level and form.
+
+### Mastery: Bayesian Knowledge Tracing
+
+One estimate, `p_known`, per player, topic **and level**. Levels 1 and 2 practise the same topic
+with bigger numbers, and with one shared estimate the confidence earned at level 1 hid trouble at
+level 2, so a step only updates the estimate of its own level.
+
+| Parameter | Value | Meaning                                               |
+| --------- | ----- | ----------------------------------------------------- |
+| `p_init`  | 0.30  | Prior that the topic is already known                 |
+| `p_learn` | 0.15  | Chance of learning it at each practice opportunity    |
+| `p_slip`  | 0.10  | Knows it, answers wrong anyway                        |
+| `p_guess` | 0.25  | Does not know it, answers right anyway (four options) |
+
+**These are priors, not fitted values.** They were set by hand. Fitting them (for example with
+EM) needs attempt data from real children, which does not exist yet. That is an open item; until
+then `p_known` is a rough, explainable estimate, not a measurement.
+
+What counts as one observation:
+
+- Only the first try at a step (`attempt_on_step = 1`). A retry is not independent evidence.
+- If a strategy hint or the worked step was fetched before that first try
+  (`hint_tier_before >= 2`), the step counts as incorrect. A tier 1 hint changes nothing.
+- The observation applies to every topic of the step, at the step's level.
+- Observations are replayed in time order, at most the latest 200 per topic and level.
+
+### Recommendation policy
+
+`recommend(player_id)` returns `level`, `length`, `reason_code`, `reason` (a sentence for an
+adult, never shown to a child), `focus_rule` and the mastery values used. The current level is
+the level of the player's latest first try. The rules are tried in this order:
+
+| `reason_code` | When                                                                                                                                                                    | Result                                                         |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `cold_start`  | No observations                                                                                                                                                         | Level 1, chains of 2                                           |
+| `promote`     | The level's primary topic has `p_known` >= 0.95 at this level, at least 6 observations at this level, and at least 5 of the last 6 first tries at this level were right | Next level, chains of 2                                        |
+| `step_down`   | `p_known` <= 0.35 with at least 6 observations at this level                                                                                                            | Previous level, chains of 2                                    |
+| `consolidate` | Otherwise                                                                                                                                                               | Same level; chains of 2 if `p_known` < 0.5, 3 if < 0.7, else 4 |
+
+- **No oscillation.** After any change of level, 4 observations at the new level are required
+  before the level may change again.
+- **Ends of the scale.** There is no promotion from level 3 and no step-down from level 1; there
+  `consolidate` decides.
+- **`focus_rule`.** If the same mistake rule matched at least 2 times in the last 8 first tries,
+  it is named (for example `ADD_VISIBLE`) and mentioned in `reason`. Information only: nothing
+  acts on it yet. It goes back to null once the rule has matched fewer than 2 times in the last
+  8 first tries.
+
+### API
+
+| Route                                             | Returns                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/players/me/next?game=missing-number` | `{level, length, reason_code, reason, focus_rule, mastery: [{topic_id, name, level, p_known, observations}]}`. Header required. A player with no attempts, known or not, gets `cold_start`. Three statements, whatever the history: the taxonomy freshness check, the first tries, the topic names. |
+| `GET /api/v1/players/me/summary`                  | Now also `mastery: [{topic_id, level, p_known, observations, last_practised}]`.                                                                                                                                                                                                                            |
+
+### Offline simulator
+
+```bash
+uv run python -m app.adaptive.simulate --learners 500 --steps 120 --seed 1
+```
+
+Synthetic learners play through the real loop in memory, with no HTTP: recommend, generate a
+verified puzzle, answer its steps, pass the answers through the same evidence rules, recommend
+again. Each learner has a hidden true skill per level (the chance they really know how to do a
+step), a learning rate, and slip and guess behaviour. Four kinds: fast, slow, already strong, and
+one who picks the "add the visible numbers" option whenever they are wrong. The same seed always
+gives the same report.
+
+- **Run on:** 2026-11-13
+- **Generator version:** `2`
+- **Parameters:** the priors above; promote at 0.95 with 5 of the last 6 right; step down at
+  0.35; 6 observations for a level change; 4 after one
+
+| Kind        | Learners | Reached level 3 | Average steps to level 3 | Falsely promoted at least once | False / all promotions | Recommended level 1 after 40 steps | Level changes (average / most) | `focus_rule` within 30 steps |
+| ----------- | -------- | --------------- | ------------------------ | ------------------------------ | ---------------------- | ---------------------------------- | ------------------------------ | ---------------------------- |
+| fast        | 125      | 100%            | 26.6                     | 0.0%                           | 0 / 283                | 0.8%                               | 2.53 / 8                       | 25.6%                        |
+| slow        | 125      | 96.0%           | 67.3                     | 79.2%                          | 162 / 445              | 56.0%                              | 5.22 / 15                      | 41.6%                        |
+| strong      | 125      | 100%            | 14.6                     | 0.0%                           | 0 / 255                | 0.0%                               | 2.08 / 4                       | 2.4%                         |
+| add_visible | 125      | 93.6%           | 67.2                     | 81.6%                          | 184 / 483              | 53.6%                              | 5.93 / 11                      | 99.2%                        |
+
+| Check                                                                              | Result                   | Target                |
+| ---------------------------------------------------------------------------------- | ------------------------ | --------------------- |
+| Learners ever promoted while their true skill at the level they left was below 0.6 | **40.2%**                | <= 5%: **missed**     |
+| Promotion decisions that were false, by the same test                              | 346 of 1,466 (**23.6%**) | (reported, no target) |
+| Strong learners still recommended level 1 after 40 steps                           | 0.0%                     | <= 5%: met            |
+| Persistent-misconception learners with `focus_rule` `ADD_VISIBLE` within 30 steps  | 99.2%                    | (reported)            |
+| Level changes per learner, all kinds                                               | 3.94                     | (reported)            |
+
+### Known limitation: false promotions
+
+The false-promotion target is not met, and the policy was deliberately not tuned further to meet
+it on synthetic data. An earlier version (one estimate per topic, promote at 0.85) gave 51.4% of
+learners. Per-level estimates, the 0.95 threshold and the "5 of the last 6" rule brought that to
+40.2% of learners, or 23.6% of promotion decisions.
+
+Why it stays high: with four options a learner who does not know a step is still right a quarter
+of the time. A learner whose true skill is 0.5 answers right about 59% of the time, and gets 5 of
+6 right about one time in five. Six answers cannot tell that learner from a strong one, and the
+policy looks again before every puzzle, so over 120 steps most weak learners get promoted at
+least once. Strong and fast learners are never falsely promoted.
+
+Why a false promotion is recoverable: the next level has its own estimate that starts from the
+prior, chains restart at 2 steps, and `step_down` sends the learner back after 6 observations if
+`p_known` there is 0.35 or less. The cost is a handful of puzzles that are too hard, not being
+stuck. That cost is real, and it shows in the table: slow and misconception learners change level
+5 to 6 times on average.
+
+What this evidence is worth: the learners are a model written by hand, not children. The run
+shows how the policy behaves on learners who act the way the model says. It does not validate
+the BKT parameters.
+
+**Open items**
+
+- Fit the BKT parameters on real attempt data.
+- Reduce false promotions. Candidates, none tried: a longer window before promoting, or lower
+  `p_learn` and `p_guess` once there is data to justify them.
+
+Tests: `tests/test_adaptive.py` (per-step topics, the migration, BKT by hand, each policy rule,
+the evidence rules through real play, statement budgets, a small deterministic simulation) and
+`tests/test_next_api.py`. The full simulation is marked `slow`; the false-promotion target is a
+strict expected failure there, so it will flag itself the day it is met.

@@ -27,7 +27,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.players.service import GAME_MISSING_NUMBER, AttemptRecord, PlayerService
 from app.puzzles.diagnoser import Diagnosis, diagnose
 from app.puzzles.ids import MAX_SEED, InvalidPuzzleId, OutdatedPuzzleId
-from app.puzzles.levels import GENERATOR_VERSION, LEVELS
+from app.puzzles.levels import GENERATOR_VERSION, LEVELS, step_topic_ids
 from app.puzzles.misconceptions import MisconceptionCatalog, MisconceptionResolutionError
 from app.puzzles.models import Equation, NumberToken, Puzzle
 from app.puzzles.schemas import (
@@ -279,6 +279,7 @@ class PuzzleService:
     def _attempt_record(
         self, puzzle: Puzzle, step_index: int, answer: int, diagnosis: Diagnosis
     ) -> AttemptRecord:
+        step = puzzle.steps[step_index]
         primary_topic_id = LEVELS[puzzle.level].primary_topic_id
         links = (self.catalog.link_for(rule, primary_topic_id) for rule in diagnosis.matched_rules)
         return AttemptRecord(
@@ -287,7 +288,7 @@ class PuzzleService:
             game=GAME_MISSING_NUMBER,
             level=puzzle.level,
             step_index=step_index,
-            form=puzzle.steps[step_index].form,
+            form=step.form,
             answer=answer,
             correct=diagnosis.correct,
             matched_rules=[rule.value for rule in diagnosis.matched_rules],
@@ -296,7 +297,8 @@ class PuzzleService:
                 dict.fromkeys(link.error_pattern_id for link in links if link is not None)
             ),
             reteach_topic_id=diagnosis.reteach_topic_id,
-            topic_ids=list(puzzle.topic_ids),
+            # The step's own topics, not the puzzle's: see levels.step_topic_ids.
+            topic_ids=step_topic_ids(puzzle.level, step.form),
         )
 
     @staticmethod
