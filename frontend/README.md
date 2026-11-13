@@ -117,6 +117,17 @@ compile time. A request no handler expects fails the test. `backend.playerIds` l
 `localStorage` (`src/test/storage.ts`), because Node 25 has a `localStorage` global of its own that
 hides the one from jsdom.
 
+Two rules that keep these tests steady, both learned from a flaky run (13 failures in 35 runs of
+the suite, none in 35 after):
+
+- **Wait for what lasts.** The games' tests pass a short `timing` (20 ms), so the "correct"
+  feedback is over almost at once, and the answer often comes back while `user.click` is still
+  being awaited. Wait for the next step or the solved screen, not for `data-feedback="correct"`.
+  A test that is about that feedback passes a longer `timing` instead.
+- **Whole-round tests use `userEvent.setup({ delay: null })`.** By default user-event waits on a
+  zero-length timer between the events of a click. On Windows that timer takes about 12 ms, so a
+  round of thirty clicks ran at 3 to 5 seconds against the 5 second limit.
+
 ## Missing Number Chains
 
 `src/games/missing-number`: equations with one missing number, linked in a chain. A round is five

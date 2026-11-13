@@ -135,7 +135,11 @@ describe('"Play" follows the recommendation', () => {
   });
 
   it('asks /next again before every puzzle, and the round is still five puzzles', async () => {
-    const user = userEvent.setup();
+    // A whole round is about thirty clicks. By default user-event waits on a
+    // zero-length timer between the events of each click, and on Windows such
+    // a timer takes about 12 ms, which alone brought this test close to the
+    // 5 s limit. Nothing here depends on those waits: every result is awaited.
+    const user = userEvent.setup({ delay: null });
     // The round adapts as it goes: up a level, longer chains, then back down.
     const plan = [
       [1, 2],

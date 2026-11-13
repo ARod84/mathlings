@@ -134,7 +134,12 @@ describe('Missing Number Chains with localStorage blocked', () => {
     await user.click(screen.getByRole('button', { name: String(CHAIN[0]?.answer) }));
     await user.click(screen.getByRole('button', { name: 'Check' }));
 
-    await waitFor(() => expect(shell).toHaveAttribute('data-feedback', 'correct'));
+    // Not the "correct" feedback: with FAST it lasts 20 ms, and the answer
+    // comes back while the click above is still being awaited, so it can be
+    // over before the test looks. The second step appearing is what lasts.
+    const steps = within(screen.getByRole('list', { name: 'Steps' }));
+    await waitFor(() => expect(steps.getAllByRole('listitem')).toHaveLength(2));
+    expect(shell).toHaveAttribute('data-feedback', 'idle');
     expect(backend.requests.check).toHaveLength(1);
     expect(backend.requests.hint).toHaveLength(1);
     expect(backend.playerIds).toEqual([null, null, null]);

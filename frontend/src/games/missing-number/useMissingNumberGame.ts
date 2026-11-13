@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef } from 'react';
 import { getNextPuzzle } from '../../api/player';
 import {
   checkStep,
@@ -223,8 +223,11 @@ export function useMissingNumberGame(timing: GameTiming = DEFAULT_TIMING): Missi
   const [state, dispatch] = useReducer(reducer, INITIAL);
 
   // The callbacks below run after awaits, so they read the latest state from a ref.
+  // A layout effect, not a plain one: the ref has to change together with the
+  // page. Otherwise there is a moment when the next step is on screen while the
+  // ref still says the last one is being marked, and a click then is dropped.
   const latest = useRef(state);
-  useEffect(() => {
+  useLayoutEffect(() => {
     latest.current = state;
   });
 
