@@ -1,6 +1,7 @@
 import { Play } from 'lucide-react';
 import { GAMES } from '../games/registry';
 import { ROUTE_HASH } from '../router';
+import { ForgetProgress } from './ForgetProgress';
 import styles from './Home.module.css';
 
 /** The home screen: one card per game in the registry. */
@@ -28,6 +29,10 @@ export function Home() {
           </li>
         ))}
       </ul>
+
+      <footer className={styles.footer}>
+        <ForgetProgress />
+      </footer>
     </div>
   );
 }

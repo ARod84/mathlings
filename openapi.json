@@ -743,15 +743,36 @@
         ],
         "summary": "Start a new missing-number chain",
         "operationId": "new_missing_number_puzzle_api_v1_puzzles_missing_number_post",
+        "parameters": [
+          {
+            "name": "X-Player-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid4"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored.",
+              "title": "X-Player-Id"
+            },
+            "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored."
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/NewPuzzleRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -803,6 +824,25 @@
               "type": "string",
               "title": "Puzzle Id"
             }
+          },
+          {
+            "name": "X-Player-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid4"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored.",
+              "title": "X-Player-Id"
+            },
+            "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored."
           }
         ],
         "responses": {
@@ -884,6 +924,25 @@
               "type": "integer",
               "title": "Index"
             }
+          },
+          {
+            "name": "X-Player-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid4"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored.",
+              "title": "X-Player-Id"
+            },
+            "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored."
           }
         ],
         "requestBody": {
@@ -984,6 +1043,25 @@
               "type": "integer",
               "title": "Tier"
             }
+          },
+          {
+            "name": "X-Player-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid4"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored.",
+              "title": "X-Player-Id"
+            },
+            "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored."
           }
         ],
         "responses": {
@@ -1023,6 +1101,119 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PuzzleGoneBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/players/me/summary": {
+      "get": {
+        "tags": [
+          "Players"
+        ],
+        "summary": "Practice summary for the player in the header",
+        "operationId": "get_summary_api_v1_players_me_summary_get",
+        "parameters": [
+          {
+            "name": "X-Player-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid4",
+              "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login.",
+              "title": "X-Player-Id"
+            },
+            "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerSummary"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The player tables do not exist yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nothing is stored for this id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerNotFoundBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/players/me": {
+      "delete": {
+        "tags": [
+          "Players"
+        ],
+        "summary": "Delete the player and all of their history",
+        "operationId": "delete_player_api_v1_players_me_delete",
+        "parameters": [
+          {
+            "name": "X-Player-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid4",
+              "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login.",
+              "title": "X-Player-Id"
+            },
+            "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "503": {
+            "description": "The player tables do not exist yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             }
@@ -1372,6 +1563,25 @@
         "title": "LinkedToken",
         "description": "Where a token sits in an equation: which side, and its place on that side."
       },
+      "MistakeCount": {
+        "properties": {
+          "rule": {
+            "type": "string",
+            "title": "Rule",
+            "description": "Mistake-rule name, for example ADD_VISIBLE."
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule",
+          "count"
+        ],
+        "title": "MistakeCount"
+      },
       "NewPuzzleRequest": {
         "properties": {
           "level": {
@@ -1453,6 +1663,99 @@
           "symbol"
         ],
         "title": "OperatorToken"
+      },
+      "PlayerNotFoundBody": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "PlayerNotFoundBody"
+      },
+      "PlayerSummary": {
+        "properties": {
+          "player_since": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Player Since"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PracticeTotals"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/TopicPractice"
+            },
+            "type": "array",
+            "title": "Topics",
+            "description": "Most practised first."
+          }
+        },
+        "type": "object",
+        "required": [
+          "player_since",
+          "totals",
+          "topics"
+        ],
+        "title": "PlayerSummary"
+      },
+      "PracticeTotals": {
+        "properties": {
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts"
+          },
+          "steps": {
+            "type": "integer",
+            "title": "Steps"
+          },
+          "correct": {
+            "type": "integer",
+            "title": "Correct",
+            "description": "Checked answers that were right."
+          },
+          "hint_requests": {
+            "type": "integer",
+            "title": "Hint Requests"
+          },
+          "first_try_correct_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Try Correct Rate"
+          },
+          "hints_per_step": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hints Per Step"
+          }
+        },
+        "type": "object",
+        "required": [
+          "attempts",
+          "steps",
+          "correct",
+          "hint_requests",
+          "first_try_correct_rate",
+          "hints_per_step"
+        ],
+        "title": "PracticeTotals"
       },
       "PrerequisiteItem": {
         "properties": {
@@ -1828,6 +2131,72 @@
         ],
         "title": "TopicPage"
       },
+      "TopicPractice": {
+        "properties": {
+          "topic_id": {
+            "type": "string",
+            "title": "Topic Id"
+          },
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts",
+            "description": "Checked answers on puzzles tagged with this topic."
+          },
+          "steps": {
+            "type": "integer",
+            "title": "Steps",
+            "description": "Different steps tried."
+          },
+          "first_try_correct_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Try Correct Rate",
+            "description": "Share of steps answered right on the first try, 0 to 1."
+          },
+          "hints_per_step": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hints Per Step",
+            "description": "Hint tiers fetched, per step tried."
+          },
+          "top_mistakes": {
+            "items": {
+              "$ref": "#/components/schemas/MistakeCount"
+            },
+            "type": "array",
+            "title": "Top Mistakes",
+            "description": "The three most frequent known mistakes, most frequent first."
+          },
+          "last_practised": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Practised"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic_id",
+          "attempts",
+          "steps",
+          "first_try_correct_rate",
+          "hints_per_step",
+          "top_mistakes",
+          "last_practised"
+        ],
+        "title": "TopicPractice"
+      },
       "TopicResearch": {
         "properties": {
           "topic_id": {
@@ -2032,6 +2401,10 @@
     {
       "name": "Puzzles",
       "description": "Missing-number chains. Stateless: a puzzle is rebuilt from its id."
+    },
+    {
+      "name": "Players",
+      "description": "Anonymous practice history, kept only when the browser sends X-Player-Id. The id is a pseudonymous identifier, not authentication."
     },
     {
       "name": "Meta",

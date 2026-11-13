@@ -72,6 +72,9 @@ at any other commit. To upgrade, change the constant, review the new data, updat
 | `teaching_research` | One row per topic: `pedagogy`, `learn`, `assess`, `sources` as JSON, plus `confidence` |
 | `error_pattern`     | One row per typical mistake, taken out of `assess.errorPatterns`                       |
 | `cluster`           | Parent-friendly summaries per subject, domain and age band                             |
+| `player`            | An anonymous player: a UUID the browser made, first seen, last seen                    |
+| `attempt`           | One checked answer by a player (migration `0002`; see [Players](#players))             |
+| `hint_request`      | One hint tier a player fetched                                                         |
 
 In `error_pattern`, `distractor` feeds wrong answer options, `next_move` feeds hints, and
 `reteach_prerequisite_id` says which topic to step back to. `position` is the mistake's place in
@@ -304,7 +307,8 @@ Ids from an older version get a `410` from the API, and the frontend quietly sta
 | `GET /{puzzle_id}/steps/{index}/hints/{tier}` | tier 1–3                                         | `{ tier, text }`     |
 
 - **Stateless.** Every request rebuilds the puzzle from its id (`verified.regenerate`) and verifies
-  it again. Nothing is stored.
+  it again. No puzzle is stored. Practice history is stored only when the request carries
+  `X-Player-Id`; see [Players](#players).
 - **Public shape.** `PuzzlePublic` has the equations, four shuffled `options` per step and
   `hint_tiers`. The order of the options is fixed by the puzzle id and step, so a reload looks the
   same. Answers, rule names, error-pattern ids and hint text stay on the server.
@@ -320,3 +324,68 @@ Ids from an older version get a `410` from the API, and the frontend quietly sta
 - **Check log.** Each check writes one line to the `app.puzzles.checks` logger: puzzle id, step,
   correct, matched rules and latency. The same fields are on the record as `puzzle_check`. No
   personal data, and not the answer itself.
+
+## Players
+
+Anonymous practice history, so that a later adaptive engine knows which topics a child gets right,
+which mistakes they repeat and how often they need a hint. The privacy rules are in the
+[root README](../README.md#privacy); the short version is in the docstring of
+`app/players/service.py`. The player id is a pseudonymous identifier, not authentication.
+
+| File                     | Role                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| `app/players/service.py` | `PlayerService`: record an attempt or a hint, summary, delete. No FastAPI.    |
+| `app/players/schemas.py` | Pydantic response models.                                                     |
+| `app/api/v1/players.py`  | The `X-Player-Id` header (`OptionalPlayer`, `RequiredPlayer`) and the routes. |
+
+**The header.** `X-Player-Id` is a UUID version 4 made by the browser.
+
+| Header                      | Puzzle routes                                   | Player routes             |
+| --------------------------- | ----------------------------------------------- | ------------------------- |
+| Missing                     | Stateless, exactly as before; nothing is stored | 422                       |
+| Malformed, or not version 4 | 422                                             | 422                       |
+| Valid, never seen           | The player row is made on the first write       | Summary: 404. Delete: 204 |
+
+Only `check` and `hint` write. `POST /missing-number` and `GET /{puzzle_id}` validate the header
+and store nothing. A request that fails (404, 410, 422) stores nothing.
+
+**What a check stores.** One `attempt` row: the puzzle id and generator version, `game`
+(`missing-number`), level, step, form, the answer, `correct`, `matched_rules`,
+`error_pattern_ids`, `reteach_topic_id`, the puzzle's `topic_ids`, plus two derived numbers:
+
+- `attempt_on_step`: 1 for this player's first try at this step, 2 for the second, and so on.
+- `hint_tier_before`: the highest hint tier this player fetched for this step before this check;
+  0 for none.
+
+A hint stores one `hint_request` row. Recording never changes a response body. If the write fails,
+the error is logged (without the player id) and the child still gets their answer.
+
+**Routes**, under `/api/v1/players`, both with the header required:
+
+| Route             | Returns                                                                                                                                                                            |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /me/summary` | `player_since`, `totals`, and per topic: `attempts`, `steps`, `first_try_correct_rate`, `hints_per_step`, `top_mistakes` (three most frequent rules with counts), `last_practised` |
+| `DELETE /me`      | 204. Deletes the player and every attempt and hint row. 204 for an unknown id too                                                                                                  |
+
+How the summary counts: an attempt counts under every topic of its puzzle. A step is a first try
+(`attempt_on_step = 1`). `first_try_correct_rate` is the share of steps answered right on the first
+try. `hints_per_step` is hint requests divided by steps; a hint for a step that was never checked
+counts in `totals` only, because only an attempt knows the step's topics.
+
+**Statement budgets**, checked by tests. The header adds a fixed cost that does not grow with the
+history:
+
+| Request                              | Without the header | With it | Added statements                                       |
+| ------------------------------------ | ------------------ | ------- | ------------------------------------------------------ |
+| `POST /missing-number`, `GET /{id}`  | 1                  | 1       | none                                                   |
+| `GET .../hints/{tier}`               | 1                  | 3       | create-or-touch the player, insert the row             |
+| `POST .../check`, right answer       | 1                  | 4       | create-or-touch the player, both counts in one, insert |
+| `POST .../check`, recognized mistake | 2                  | 5       | the same three                                         |
+| `GET /players/me/summary`            |                    | 5       | player, per topic, mistakes, hints, totals             |
+| `DELETE /players/me`                 |                    | 3       | attempts, hints, player                                |
+
+The summary aggregates in SQL (`json_each` unpacks the JSON lists), so what comes back is one row
+per topic, or per topic and rule, whatever the number of attempts.
+
+**Not built yet:** adaptive difficulty, mastery scores, accounts, any dashboard, Number Pyramid
+results (that game runs in the browser), and a retention policy or clean-up job.

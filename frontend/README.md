@@ -85,6 +85,7 @@ To add a game:
 | `src/api/schema.d.ts` | Types generated from `../openapi.json`. Never edited by hand.                    |
 | `src/api/client.ts`   | The one configured `openapi-fetch` client.                                       |
 | `src/api/puzzles.ts`  | `newMissingNumber`, `getPuzzle`, `checkStep`, `getHint`, each returning a result |
+| `src/api/player.ts`   | The anonymous player id: `getPlayerId`, `forgetPlayer`                           |
 
 Every function in `puzzles.ts` returns `{ status: 'ok', data }` or one of `notFound`, `gone`,
 `unavailable`, `network`. Components branch on that name and never read an HTTP status code.
@@ -93,11 +94,28 @@ When the backend's API changes: export `openapi.json` there, then run `npm run a
 test fails if `schema.d.ts` is out of date. `openapi-typescript` asks for TypeScript 5 as a peer;
 the `overrides` entry in `package.json` lets it install alongside TypeScript 6, which it works with.
 
+### The player id
+
+`getPlayerId()` returns a random UUID kept in `localStorage` under `mathlings.playerId`, making it
+on first call. A middleware in `client.ts` sends it as `X-Player-Id` on every puzzle request, and
+the backend keeps practice history under it. It is a pseudonymous identifier, not a login; the
+[root README](../README.md#privacy) has the privacy rules.
+
+- If `localStorage` is unavailable (private mode, blocked storage), `getPlayerId()` returns `null`,
+  no header is sent, nothing is stored, and the game plays as usual.
+- `forgetPlayer()` calls `DELETE /api/v1/players/me` and then removes the key. If the delete fails
+  the key is kept, so it can be tried again.
+- The home screen footer has the "Forget my progress on this device" button, with a confirm step
+  inside the page.
+
 ### Testing against the API
 
 Tests never call a real server. `src/test/puzzleBackend.ts` is a pretend puzzle API on MSW whose
 responses are typed from `schema.d.ts`, so a change to the API's shape breaks the fixtures at
-compile time. A request no handler expects fails the test.
+compile time. A request no handler expects fails the test. `backend.playerIds` lists the
+`X-Player-Id` header of every request. `src/test/setup.ts` gives each test an empty in-memory
+`localStorage` (`src/test/storage.ts`), because Node 25 has a `localStorage` global of its own that
+hides the one from jsdom.
 
 ## Missing Number Chains
 

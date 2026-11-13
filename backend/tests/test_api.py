@@ -120,13 +120,15 @@ def test_cors_origin_comes_from_settings(tmp_path: Path):
 def test_every_route_has_a_tag_a_summary_and_a_response_model(client: TestClient):
     document = client.get("/openapi.json").json()
 
-    assert len(document["paths"]) == 14
+    assert len(document["paths"]) == 16
     for path, operations in document["paths"].items():
-        if "/puzzles" not in path:
+        if "/puzzles" not in path and "/players" not in path:
             assert list(operations) == ["get"], path
         for method, operation in operations.items():
             assert operation["tags"], (method, path)
             assert operation["summary"], (method, path)
+            if "204" in operation["responses"]:
+                continue  # DELETE /players/me answers with no body
             success = "201" if "201" in operation["responses"] else "200"
             schema = operation["responses"][success]["content"]["application/json"]["schema"]
             assert schema != {}, (method, path)

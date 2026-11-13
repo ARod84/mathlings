@@ -8,11 +8,13 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import inspect
 from sqlmodel import Session
 
+from app.api.v1 import players as players_api
 from app.api.v1 import puzzles as puzzles_api
 from app.api.v1 import taxonomy as taxonomy_api
 from app.config import Settings, get_settings
 from app.db import make_engine
-from app.models import Topic
+from app.models import Player, Topic
+from app.players.service import PlayerNotFound
 from app.puzzles.service import (
     HintTierNotFound,
     PuzzleNotFound,
@@ -48,6 +50,11 @@ OPENAPI_TAGS = [
         "name": "Puzzles",
         "description": "Missing-number chains. Stateless: a puzzle is rebuilt from its id.",
     },
+    {
+        "name": "Players",
+        "description": "Anonymous practice history, kept only when the browser sends "
+        "X-Player-Id. The id is a pseudonymous identifier, not authentication.",
+    },
     {"name": "Meta", "description": "Service health, dataset version and attribution."},
 ]
 
@@ -69,8 +76,17 @@ def create_app(settings: Settings | None = None, graph: PrerequisiteGraph | None
                 app.state.has_tables = inspect(engine).has_table(Topic.__tablename__)
             return app.state.has_tables
 
+        def players_ready() -> bool:
+            # The same idea for the player tables (migration 0002).
+            if not app.state.has_player_tables:
+                app.state.has_player_tables = inspect(engine).has_table(Player.__tablename__)
+            return app.state.has_player_tables
+
         app.state.has_tables = False
         app.state.taxonomy_ready = taxonomy_ready
+        app.state.has_player_tables = False
+        app.state.players_ready = players_ready
+        players_ready()
         # Load the prerequisite graph once, up front. An empty or missing
         # database is not an error here: /health reports it.
         if taxonomy_ready():
@@ -95,7 +111,7 @@ def create_app(settings: Settings | None = None, graph: PrerequisiteGraph | None
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "DELETE"],
         allow_headers=["*"],
     )
 
@@ -165,6 +181,16 @@ def create_app(settings: Settings | None = None, graph: PrerequisiteGraph | None
     def puzzles_unavailable(_request: Request, error: PuzzlesUnavailable) -> JSONResponse:
         return JSONResponse(status_code=503, content={"detail": str(error)})
 
+    @app.exception_handler(PlayerNotFound)
+    def player_not_found(_request: Request, _error: PlayerNotFound) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"detail": "Player not found"})
+
+    @app.exception_handler(players_api.PlayersUnavailable)
+    def players_unavailable(
+        _request: Request, error: players_api.PlayersUnavailable
+    ) -> JSONResponse:
+        return JSONResponse(status_code=503, content={"detail": str(error)})
+
     @app.get("/health", response_model=Health, tags=["Meta"], summary="Service health")
     def health(request: Request) -> Health:
         loaded = request.app.state.taxonomy_ready() and graph.loaded and graph.topic_count > 0
@@ -172,6 +198,7 @@ def create_app(settings: Settings | None = None, graph: PrerequisiteGraph | None
 
     app.include_router(taxonomy_api.router)
     app.include_router(puzzles_api.router)
+    app.include_router(players_api.router)
     return app
 
 

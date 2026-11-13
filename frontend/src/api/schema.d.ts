@@ -242,6 +242,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/players/me/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Practice summary for the player in the header */
+        get: operations["get_summary_api_v1_players_me_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/players/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete the player and all of their history */
+        delete: operations["delete_player_api_v1_players_me_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -368,6 +402,16 @@ export interface components {
              */
             index: number;
         };
+        /** MistakeCount */
+        MistakeCount: {
+            /**
+             * Rule
+             * @description Mistake-rule name, for example ADD_VISIBLE.
+             */
+            rule: string;
+            /** Count */
+            count: number;
+        };
         /** NewPuzzleRequest */
         NewPuzzleRequest: {
             /** Level */
@@ -406,6 +450,43 @@ export interface components {
              * @enum {string}
              */
             symbol: "+" | "-";
+        };
+        /** PlayerNotFoundBody */
+        PlayerNotFoundBody: {
+            /** Detail */
+            detail: string;
+        };
+        /** PlayerSummary */
+        PlayerSummary: {
+            /**
+             * Player Since
+             * Format: date-time
+             */
+            player_since: string;
+            totals: components["schemas"]["PracticeTotals"];
+            /**
+             * Topics
+             * @description Most practised first.
+             */
+            topics: components["schemas"]["TopicPractice"][];
+        };
+        /** PracticeTotals */
+        PracticeTotals: {
+            /** Attempts */
+            attempts: number;
+            /** Steps */
+            steps: number;
+            /**
+             * Correct
+             * @description Checked answers that were right.
+             */
+            correct: number;
+            /** Hint Requests */
+            hint_requests: number;
+            /** First Try Correct Rate */
+            first_try_correct_rate: number | null;
+            /** Hints Per Step */
+            hints_per_step: number | null;
         };
         /** PrerequisiteItem */
         PrerequisiteItem: {
@@ -567,6 +648,41 @@ export interface components {
             limit: number;
             /** Offset */
             offset: number;
+        };
+        /** TopicPractice */
+        TopicPractice: {
+            /** Topic Id */
+            topic_id: string;
+            /**
+             * Attempts
+             * @description Checked answers on puzzles tagged with this topic.
+             */
+            attempts: number;
+            /**
+             * Steps
+             * @description Different steps tried.
+             */
+            steps: number;
+            /**
+             * First Try Correct Rate
+             * @description Share of steps answered right on the first try, 0 to 1.
+             */
+            first_try_correct_rate: number | null;
+            /**
+             * Hints Per Step
+             * @description Hint tiers fetched, per step tried.
+             */
+            hints_per_step: number | null;
+            /**
+             * Top Mistakes
+             * @description The three most frequent known mistakes, most frequent first.
+             */
+            top_mistakes: components["schemas"]["MistakeCount"][];
+            /**
+             * Last Practised
+             * Format: date-time
+             */
+            last_practised: string;
         };
         /** TopicResearch */
         TopicResearch: {
@@ -1102,7 +1218,10 @@ export interface operations {
     new_missing_number_puzzle_api_v1_puzzles_missing_number_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored. */
+                "X-Player-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1144,7 +1263,10 @@ export interface operations {
     get_puzzle_api_v1_puzzles__puzzle_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored. */
+                "X-Player-Id"?: string | null;
+            };
             path: {
                 puzzle_id: string;
             };
@@ -1202,7 +1324,10 @@ export interface operations {
     check_step_api_v1_puzzles__puzzle_id__steps__index__check_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored. */
+                "X-Player-Id"?: string | null;
+            };
             path: {
                 puzzle_id: string;
                 index: number;
@@ -1265,7 +1390,10 @@ export interface operations {
     get_hint_api_v1_puzzles__puzzle_id__steps__index__hints__tier__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored. */
+                "X-Player-Id"?: string | null;
+            };
             path: {
                 puzzle_id: string;
                 index: number;
@@ -1312,6 +1440,95 @@ export interface operations {
                 };
             };
             /** @description Puzzles cannot be served right now */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_summary_api_v1_players_me_summary_get: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. */
+                "X-Player-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerSummary"];
+                };
+            };
+            /** @description Nothing is stored for this id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerNotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The player tables do not exist yet */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_player_api_v1_players_me_delete: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. */
+                "X-Player-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The player tables do not exist yet */
             503: {
                 headers: {
                     [name: string]: unknown;

@@ -92,3 +92,8 @@
   transform: translateY(var(--size-press));
   box-shadow: 0 1px 0 0 var(--color-outline);
 }
+
+.footer {
+  margin-top: var(--space-4);
+  padding-bottom: var(--space-6);
+}
