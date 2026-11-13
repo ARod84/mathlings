@@ -22,6 +22,10 @@ from app.puzzles.ids import InvalidPuzzleId, parse_puzzle_id
 from app.puzzles.levels import (
     ANSWER_LEFT_FORMS,
     DISTRACTORS_PER_STEP,
+    FOCUS_BY_CODE,
+    FOCUS_CODES,
+    FOCUS_TARGET_FORMS,
+    FOCUS_UNTARGETED_FROM_LENGTH,
     GENERATOR_VERSION,
     HINT_TIERS,
     LEVELS,
@@ -29,6 +33,7 @@ from app.puzzles.levels import (
     MIN_STEPS,
     PUZZLE_TYPE,
     LevelSpec,
+    answer_left_limit,
     topic_ids_for,
 )
 from app.puzzles.misconceptions import MisconceptionCatalog
@@ -70,6 +75,11 @@ class FailureName(StrEnum):
     HINT_REVEALS_ANSWER = "hint_reveals_answer"
     HINT_MISSING_ANSWER = "hint_missing_answer"
     WRONG_TOPICS = "wrong_topics"
+    # A focused puzzle (one built to target a mistake rule):
+    UNSUPPORTED_FOCUS = "unsupported_focus"
+    FOCUS_DISTRACTOR_MISSING = "focus_distractor_missing"
+    FOCUS_TOO_MANY_ANSWER_LEFT = "focus_too_many_answer_left"
+    FOCUS_NO_UNTARGETED_STEP = "focus_no_untargeted_step"
     UNKNOWN_TOPIC = "unknown_topic"
 
 
@@ -167,7 +177,11 @@ def _has_standalone_number(text: str, number: int) -> bool:
 
 
 def _check_step(
-    index: int, step: PuzzleStep, spec: LevelSpec, catalog: MisconceptionCatalog
+    index: int,
+    step: PuzzleStep,
+    spec: LevelSpec,
+    catalog: MisconceptionCatalog,
+    focus: MistakeRule | None = None,
 ) -> list[Failure]:
     failures: list[Failure] = []
 
@@ -222,8 +236,11 @@ def _check_step(
         label = f"{distractor.rule.value}={distractor.value}"
         if distractor.value == step.answer:
             fail(FailureName.DISTRACTOR_EQUALS_ANSWER, f"{label} is the answer")
-        if not 0 <= distractor.value <= spec.max_value:
-            fail(FailureName.DISTRACTOR_OUT_OF_RANGE, f"{label} not within 0..{spec.max_value}")
+        # A mistake's value may run past the level's range, up to distractor_max;
+        # a filler may not.
+        limit = spec.max_value if distractor.rule is MistakeRule.NEAR_MISS else spec.distractor_max
+        if not 0 <= distractor.value <= limit:
+            fail(FailureName.DISTRACTOR_OUT_OF_RANGE, f"{label} not within 0..{limit}")
         if not form_ok:
             continue  # a rule cannot be recomputed on an equation of the wrong shape
         if distractor.rule is MistakeRule.NEAR_MISS:
@@ -237,6 +254,16 @@ def _check_step(
             fail(
                 FailureName.DISTRACTOR_PATTERN_MISMATCH,
                 f"{label} is tagged {distractor.error_pattern_id}",
+            )
+
+    # ---- the focus rule's wrong answer, first, wherever the rule gives one ----
+    if focus is not None and form_ok:
+        expected = distractor_value(focus, step, spec)
+        first = step.distractors[0] if step.distractors else None
+        if expected is not None and (first is None or first.rule is not focus):
+            fail(
+                FailureName.FOCUS_DISTRACTOR_MISSING,
+                f"{focus.value} gives {expected} here; it must be the first distractor",
             )
 
     # ---- hints ----
@@ -279,16 +306,30 @@ def verify(
             ]
         )
 
+    # The focus is read from the id, which is what a puzzle is rebuilt from.
+    # The puzzle's own focus field has to say the same.
+    focus: MistakeRule | None = None
     try:
         key = parse_puzzle_id(puzzle.puzzle_id)
-        id_matches = (key.generator_version, key.level, key.length, key.seed) == (
+        id_matches = (key.generator_version, key.level, key.length, key.seed, key.focus) == (
             puzzle.generator_version,
             puzzle.level,
             len(puzzle.steps),
             puzzle.seed,
+            FOCUS_CODES.get(puzzle.focus) if puzzle.focus else None,
         )
+        if key.focus is not None:
+            focus = FOCUS_BY_CODE.get(key.focus)
+            if focus is None:
+                failures.append(
+                    Failure(FailureName.UNSUPPORTED_FOCUS, f"unknown focus code {key.focus!r}")
+                )
     except InvalidPuzzleId:
         id_matches = False
+    if puzzle.focus is not None and puzzle.focus not in FOCUS_TARGET_FORMS:
+        failures.append(
+            Failure(FailureName.UNSUPPORTED_FOCUS, f"{puzzle.focus.value} cannot be a focus")
+        )
     if not id_matches:
         failures.append(
             Failure(FailureName.PUZZLE_ID_MISMATCH, f"{puzzle.puzzle_id} does not describe it")
@@ -300,7 +341,7 @@ def verify(
         )
 
     for index, step in enumerate(puzzle.steps):
-        failures.extend(_check_step(index, step, spec, catalog))
+        failures.extend(_check_step(index, step, spec, catalog, focus))
 
         # ---- how the step sits in the chain ----
         if index == 0:
@@ -332,13 +373,28 @@ def verify(
 
     forms = [step.form for step in puzzle.steps]
     answer_left = sum(form in ANSWER_LEFT_FORMS for form in forms)
-    if spec.max_answer_left_steps is not None and answer_left > spec.max_answer_left_steps:
+    limit = answer_left_limit(spec, focus)
+    if limit is not None and answer_left > limit:
+        # A focus may raise the limit; going past the raised limit has its own name.
+        raised = limit != spec.max_answer_left_steps
         failures.append(
             Failure(
-                FailureName.TOO_MANY_ANSWER_LEFT,
-                f"{answer_left} answer-left steps, at most {spec.max_answer_left_steps}",
+                FailureName.FOCUS_TOO_MANY_ANSWER_LEFT
+                if raised
+                else FailureName.TOO_MANY_ANSWER_LEFT,
+                f"{answer_left} answer-left steps, at most {limit}",
             )
         )
+
+    if focus is not None and len(forms) >= FOCUS_UNTARGETED_FROM_LENGTH:
+        targets = FOCUS_TARGET_FORMS[focus]
+        if all(form in targets for form in forms):
+            failures.append(
+                Failure(
+                    FailureName.FOCUS_NO_UNTARGETED_STEP,
+                    f"every step is a form {focus.value} targets; one must not be",
+                )
+            )
 
     expected_topics = topic_ids_for(spec, forms)
     if puzzle.topic_ids != expected_topics:

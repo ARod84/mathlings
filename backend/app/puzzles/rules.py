@@ -123,9 +123,9 @@ def rule_output(rule: MistakeRule, step: PuzzleStep, spec: LevelSpec) -> int | N
     """What a child making this mistake would answer, or None.
 
     None when the rule does not apply to the form or the level, or when the
-    mistake lands on the right answer or below zero. The value may be above
-    the level's range: a child typing freely can still give it, so the
-    diagnoser needs to see it.
+    mistake lands on the right answer or below zero. The value has no upper
+    limit here: a child typing freely can give any number, so the diagnoser
+    needs to see it. distractor_value applies the cap for answer options.
     """
     function = RULES.get(rule)
     if function is None:
@@ -141,10 +141,12 @@ def rule_output(rule: MistakeRule, step: PuzzleStep, spec: LevelSpec) -> int | N
 def distractor_value(rule: MistakeRule, step: PuzzleStep, spec: LevelSpec) -> int | None:
     """The rule's output if it can be offered as an answer option, else None.
 
-    Stricter than rule_output: an option must also be inside the level's range.
+    Stricter than rule_output only in that an option may not exceed the
+    level's distractor_max. That cap is above max_value: a mistake often
+    lands past the level's range, and those are the answers worth offering.
     """
     value = rule_output(rule, step, spec)
-    if value is None or value > spec.max_value:
+    if value is None or value > spec.distractor_max:
         return None
     return value
 

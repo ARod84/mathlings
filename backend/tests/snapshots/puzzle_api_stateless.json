@@ -1,0 +1,239 @@
+{
+ "new": {
+  "puzzle_id": "mnc-3-1-2-16-8889",
+  "level": 1,
+  "length": 2,
+  "topic_ids": [
+   "mt_3JgrHY221M",
+   "mt_oIzycTBeE4"
+  ],
+  "steps": [
+   {
+    "index": 0,
+    "equation": {
+     "left": [
+      {
+       "kind": "number",
+       "value": 7
+      }
+     ],
+     "right": [
+      {
+       "kind": "number",
+       "value": 5
+      },
+      {
+       "kind": "operator",
+       "symbol": "+"
+      },
+      {
+       "kind": "unknown"
+      }
+     ]
+    },
+    "options": [
+     3,
+     1,
+     12,
+     2
+    ],
+    "hint_tiers": 3,
+    "linked_token": null
+   },
+   {
+    "index": 1,
+    "equation": {
+     "left": [
+      {
+       "kind": "unknown"
+      },
+      {
+       "kind": "operator",
+       "symbol": "-"
+      },
+      {
+       "kind": "number",
+       "value": 2
+      }
+     ],
+     "right": [
+      {
+       "kind": "number",
+       "value": 8
+      }
+     ]
+    },
+    "options": [
+     10,
+     9,
+     11,
+     6
+    ],
+    "hint_tiers": 3,
+    "linked_token": {
+     "side": "left",
+     "index": 2
+    }
+   }
+  ]
+ },
+ "get": {
+  "puzzle_id": "mnc-3-1-2-16-8889",
+  "level": 1,
+  "length": 2,
+  "topic_ids": [
+   "mt_3JgrHY221M",
+   "mt_oIzycTBeE4"
+  ],
+  "steps": [
+   {
+    "index": 0,
+    "equation": {
+     "left": [
+      {
+       "kind": "number",
+       "value": 7
+      }
+     ],
+     "right": [
+      {
+       "kind": "number",
+       "value": 5
+      },
+      {
+       "kind": "operator",
+       "symbol": "+"
+      },
+      {
+       "kind": "unknown"
+      }
+     ]
+    },
+    "options": [
+     3,
+     1,
+     12,
+     2
+    ],
+    "hint_tiers": 3,
+    "linked_token": null
+   },
+   {
+    "index": 1,
+    "equation": {
+     "left": [
+      {
+       "kind": "unknown"
+      },
+      {
+       "kind": "operator",
+       "symbol": "-"
+      },
+      {
+       "kind": "number",
+       "value": 2
+      }
+     ],
+     "right": [
+      {
+       "kind": "number",
+       "value": 8
+      }
+     ]
+    },
+    "options": [
+     10,
+     9,
+     11,
+     6
+    ],
+    "hint_tiers": 3,
+    "linked_token": {
+     "side": "left",
+     "index": 2
+    }
+   }
+  ]
+ },
+ "checks": {
+  "2": {
+   "correct": true,
+   "feedback": "correct",
+   "diagnosis": {
+    "matched_rules": [],
+    "unrecognized": false,
+    "reteach_topic": null
+   },
+   "next_step": 1
+  },
+  "12": {
+   "correct": false,
+   "feedback": "try_again",
+   "diagnosis": {
+    "matched_rules": [
+     "ADD_VISIBLE"
+    ],
+    "unrecognized": false,
+    "reteach_topic": {
+     "id": "mt_oIzycTBeE4",
+     "name": "What the equals sign means"
+    }
+   },
+   "next_step": null
+  },
+  "3": {
+   "correct": false,
+   "feedback": "try_again",
+   "diagnosis": {
+    "matched_rules": [
+     "OFF_BY_ONE_OVER"
+    ],
+    "unrecognized": false,
+    "reteach_topic": {
+     "id": "mt_oIzycTBeE4",
+     "name": "What the equals sign means"
+    }
+   },
+   "next_step": null
+  },
+  "1": {
+   "correct": false,
+   "feedback": "try_again",
+   "diagnosis": {
+    "matched_rules": [
+     "OFF_BY_ONE_UNDER"
+    ],
+    "unrecognized": false,
+    "reteach_topic": {
+     "id": "mt_oIzycTBeE4",
+     "name": "What the equals sign means"
+    }
+   },
+   "next_step": null
+  },
+  "9999": {
+   "correct": false,
+   "feedback": "try_again",
+   "diagnosis": {
+    "matched_rules": [],
+    "unrecognized": true,
+    "reteach_topic": null
+   },
+   "next_step": null
+  }
+ },
+ "hints": [
+  {
+   "tier": 1,
+   "text": "The = sign means both sides are worth the same. The answer does not have to come last."
+  },
+  {
+   "tier": 2,
+   "text": "7 is the same as 5 plus what? Try 7 − 5."
+  },
+  {
+   "tier": 3,
+   "text": "7 − 5 = 2, so the missing number is 2. Check: 5 + 2 = 7."
+  }
+ ]
+}

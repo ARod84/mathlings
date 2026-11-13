@@ -1,8 +1,8 @@
 """Builds a missing-number chain from a seed. Reproducible, and nothing else.
 
-    generate(seed, level, length, catalog) -> Puzzle
+    generate(seed, level, length, catalog, focus=None) -> Puzzle
 
-The same four inputs and GENERATOR_VERSION always give the same puzzle: all
+The same inputs and GENERATOR_VERSION always give the same puzzle: all
 randomness comes from one local random.Random(seed). Bump GENERATOR_VERSION in
 levels.py whenever a change here (or in rules, hints or levels) can alter the
 output for an existing seed.
@@ -16,6 +16,12 @@ hidden. From the second step on, the previous answer must be one of the two
 visible numbers (the linking rule), so each step picks a form and a position
 for that linked number, then chooses the one remaining free number so that
 everything stays inside the level's range.
+
+Focus: with a mistake rule as `focus`, the forms where that mistake happens
+are picked more often, its wrong answer takes the first option slot wherever
+it exists, and the first hint is worded around it (levels.py lists what each
+focus changes). Without a focus nothing extra is drawn from the random
+generator, so the puzzle for a seed is exactly what it was before focus existed.
 """
 
 import random
@@ -27,18 +33,27 @@ from app.puzzles.ids import MAX_SEED, make_puzzle_id
 from app.puzzles.levels import (
     ANSWER_LEFT_FORMS,
     DISTRACTORS_PER_STEP,
+    FOCUS_CODES,
+    FOCUS_NUMBER_DRAWS,
+    FOCUS_TARGET_FORMS,
+    FOCUS_UNTARGETED_FROM_LENGTH,
+    FOCUS_WEIGHT_FACTOR,
+    FORM_WEIGHTS,
     GENERATOR_VERSION,
     LEVELS,
     MAX_STEPS,
     MIN_STEPS,
     LevelSpec,
+    answer_left_limit,
+    supported_focus,
     topic_ids_for,
 )
 from app.puzzles.misconceptions import MisconceptionCatalog
 from app.puzzles.models import Distractor, Form, HintSource, MistakeRule, Puzzle, PuzzleStep
 from app.puzzles.rules import distractor_value
 
-# Rules with a taxonomy error pattern are tried first, then the others.
+# The order mistake rules are tried in within a tier. _distractors puts the
+# rules that have a taxonomy error pattern ahead of the ones that do not.
 DISTRACTOR_RULE_ORDER: tuple[MistakeRule, ...] = (
     MistakeRule.ADD_VISIBLE,
     MistakeRule.ANSWER_LEFT_BACKWARDS,
@@ -65,6 +80,26 @@ def _pick(rng: random.Random, low: int, high: int, preferred_low: int) -> int | 
     if low > high:
         return None
     return rng.randint(max(low, preferred_low) if preferred_low <= high else low, high)
+
+
+def _weighted_order(
+    rng: random.Random, options: list[tuple[Form, int | None]], targets: frozenset[Form]
+) -> list[tuple[Form, int | None]]:
+    """The options in a random order where heavier forms tend to come first.
+
+    Each option draws a key u ** (1 / weight), u uniform in [0, 1), and the
+    options are tried from the largest key down. The first one is then picked
+    with probability proportional to its form's weight (FORM_WEIGHTS), and
+    every option keeps some chance of coming first. The forms a focus targets
+    (`targets`) weigh FOCUS_WEIGHT_FACTOR times as much.
+    """
+
+    def weight(form: Form) -> float:
+        return FORM_WEIGHTS[form] * (FOCUS_WEIGHT_FACTOR if form in targets else 1.0)
+
+    keyed = [(rng.random() ** (1.0 / weight(form)), form, position) for form, position in options]
+    keyed.sort(key=lambda item: item[0], reverse=True)
+    return [(form, position) for _key, form, position in keyed]
 
 
 def _choose_numbers(
@@ -127,11 +162,29 @@ def _acceptable(numbers: _Numbers, spec: LevelSpec) -> bool:
 
 
 def _distractors(
-    rng: random.Random, step: PuzzleStep, spec: LevelSpec, catalog: MisconceptionCatalog
+    rng: random.Random,
+    step: PuzzleStep,
+    spec: LevelSpec,
+    catalog: MisconceptionCatalog,
+    focus: MistakeRule | None = None,
 ) -> list[Distractor] | None:
+    """Three wrong answers for a step, the most diagnosable first.
+
+    0. the focus rule, when the puzzle has a focus
+    1. mistake rules with a taxonomy error pattern
+    2. the other mistake rules
+    3. NEAR_MISS fillers, only if the first two leave a slot empty
+
+    Within tiers 1 and 2 the order is fixed (DISTRACTOR_RULE_ORDER); the
+    fillers are picked by the seed.
+    """
     chosen: list[Distractor] = []
     used = {step.answer}
-    for rule in DISTRACTOR_RULE_ORDER:
+    # sorted() is stable, so each tier keeps DISTRACTOR_RULE_ORDER.
+    by_tier = sorted(
+        DISTRACTOR_RULE_ORDER, key=lambda rule: (rule is not focus, not catalog.is_linked(rule))
+    )
+    for rule in by_tier:
         if len(chosen) == DISTRACTORS_PER_STEP:
             break
         value = distractor_value(rule, step, spec)
@@ -163,6 +216,7 @@ def _build_step(
     form: Form,
     numbers: _Numbers,
     position: int | None,
+    focus: MistakeRule | None = None,
 ) -> PuzzleStep | None:
     bare = PuzzleStep(
         equation=build_equation(form, numbers.first, numbers.second),
@@ -170,9 +224,9 @@ def _build_step(
         form=form,
         link_position=position,
         distractors=[],
-        hints=build_hints(form, numbers.first, numbers.second, numbers.answer),
+        hints=build_hints(form, numbers.first, numbers.second, numbers.answer, focus),
     )
-    distractors = _distractors(rng, bare, spec, catalog)
+    distractors = _distractors(rng, bare, spec, catalog, focus)
     if distractors is None:
         return None
     sources: dict[str, HintSource] = {}
@@ -187,8 +241,18 @@ def _build_step(
     )
 
 
-def generate(seed: int, level: int, length: int, catalog: MisconceptionCatalog) -> Puzzle:
-    """One puzzle for this exact seed. Raises GenerationError if the seed cannot work."""
+def generate(
+    seed: int,
+    level: int,
+    length: int,
+    catalog: MisconceptionCatalog,
+    focus: MistakeRule | None = None,
+) -> Puzzle:
+    """One puzzle for this exact seed. Raises GenerationError if the seed cannot work.
+
+    A `focus` the generator does not act on (levels.supported_focus) is the
+    same as no focus.
+    """
     if level not in LEVELS:
         raise ValueError(f"unknown level {level}; choose from {sorted(LEVELS)}")
     if not MIN_STEPS <= length <= MAX_STEPS:
@@ -197,32 +261,64 @@ def generate(seed: int, level: int, length: int, catalog: MisconceptionCatalog) 
         raise ValueError(f"seed must be between 0 and {MAX_SEED}")
 
     spec = LEVELS[level]
+    focus = supported_focus(focus)
+    targets = FOCUS_TARGET_FORMS.get(focus, frozenset()) if focus else frozenset()
+    max_answer_left = answer_left_limit(spec, focus)
     rng = random.Random(seed)
     steps: list[PuzzleStep] = []
 
     for index in range(length):
         previous = steps[-1] if steps else None
         answer_left_used = sum(step.form in ANSWER_LEFT_FORMS for step in steps)
-        answer_left_allowed = (
-            spec.max_answer_left_steps is None or answer_left_used < spec.max_answer_left_steps
+        answer_left_allowed = max_answer_left is None or answer_left_used < max_answer_left
+        # The last step of a longer focused chain must be one the focus does
+        # not target, if every step so far was targeted.
+        needs_untargeted = (
+            bool(targets)
+            and length >= FOCUS_UNTARGETED_FROM_LENGTH
+            and index == length - 1
+            and all(step.form in targets for step in steps)
         )
         options: list[tuple[Form, int | None]] = [
             (form, position)
             for form in ALL_FORMS
             if (previous is None or form != previous.form)
             and (answer_left_allowed or form not in ANSWER_LEFT_FORMS)
+            and not (needs_untargeted and form in targets)
             for position in ((None,) if previous is None else (0, 1))
         ]
-        rng.shuffle(options)
+        options = _weighted_order(rng, options, targets)
 
         step = None
         for form, position in options:
-            numbers = _choose_numbers(
-                rng, spec, form, previous.answer if previous else None, position
-            )
-            if numbers is None or not _acceptable(numbers, spec):
-                continue
-            step = _build_step(rng, spec, catalog, form, numbers, position)
+            # A targeted step is worth more when the mistake has a value to
+            # offer. So for a targeted form the numbers are drawn a few times
+            # looking for one, and if the linked number makes that impossible
+            # where it is, the other place it can go is tried as well. Only if
+            # all of that fails is a step without the option accepted.
+            # Without a focus this is one draw at one position, as it always was.
+            targeted = form in targets
+            positions = [position]
+            if targeted:
+                positions += [p for f, p in options if f == form and p != position]
+            without_option = None
+            for link_position in positions:
+                for _draw in range(FOCUS_NUMBER_DRAWS if targeted else 1):
+                    numbers = _choose_numbers(
+                        rng, spec, form, previous.answer if previous else None, link_position
+                    )
+                    if numbers is None or not _acceptable(numbers, spec):
+                        continue
+                    candidate = _build_step(rng, spec, catalog, form, numbers, link_position, focus)
+                    if candidate is None:
+                        continue
+                    if not targeted or candidate.distractors[0].rule is focus:
+                        step = candidate
+                        break
+                    without_option = without_option or candidate
+                if step is not None:
+                    break
+            step = step or without_option
             if step is not None:
                 break
         if step is None:
@@ -232,10 +328,13 @@ def generate(seed: int, level: int, length: int, catalog: MisconceptionCatalog) 
         steps.append(step)
 
     return Puzzle(
-        puzzle_id=make_puzzle_id(GENERATOR_VERSION, level, length, seed),
+        puzzle_id=make_puzzle_id(
+            GENERATOR_VERSION, level, length, seed, FOCUS_CODES[focus] if focus else None
+        ),
         generator_version=GENERATOR_VERSION,
         seed=seed,
         level=level,
         steps=steps,
         topic_ids=topic_ids_for(spec, [step.form for step in steps]),
+        focus=focus,
     )

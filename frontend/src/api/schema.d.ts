@@ -242,6 +242,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/players/me/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Practice summary for the player in the header */
+        get: operations["get_summary_api_v1_players_me_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/players/me/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the player in the header should play next, and why
+         * @description A player with no stored attempts, known or not, gets the cold start.
+         *
+         *     `reason`, `focus_rule` and `mastery` are for adults and for development.
+         *     Nothing in this response is meant to be shown to a child.
+         */
+        get: operations["get_next_api_v1_players_me_next_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/players/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete the player and all of their history */
+        delete: operations["delete_player_api_v1_players_me_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -368,6 +425,35 @@ export interface components {
              */
             index: number;
         };
+        /** MistakeCount */
+        MistakeCount: {
+            /**
+             * Rule
+             * @description Mistake-rule name, for example ADD_VISIBLE.
+             */
+            rule: string;
+            /** Count */
+            count: number;
+        };
+        /**
+         * MistakeRule
+         * @description A known way of getting a step wrong. See rules.py for what each one computes.
+         * @enum {string}
+         */
+        MistakeRule: "ADD_VISIBLE" | "ANSWER_LEFT_BACKWARDS" | "POSITION_CONFUSION" | "PLACE_VALUE_SLIP" | "OFF_BY_ONE_OVER" | "OFF_BY_ONE_UNDER" | "NEAR_MISS";
+        /** NamedMastery */
+        NamedMastery: {
+            /** Topic Id */
+            topic_id: string;
+            /** Name */
+            name: string;
+            /** Level */
+            level: number;
+            /** P Known */
+            p_known: number;
+            /** Observations */
+            observations: number;
+        };
         /** NewPuzzleRequest */
         NewPuzzleRequest: {
             /** Level */
@@ -383,6 +469,40 @@ export interface components {
              * @description Fixes the puzzle. Leave out for a random one.
              */
             seed?: number | null;
+            /** @description A mistake rule to target, as `focus` from /players/me/next gives it. ADD_VISIBLE, ANSWER_LEFT_BACKWARDS and POSITION_CONFUSION change the puzzle; any other rule name is accepted and has no effect. Never tell the child about it. */
+            focus?: components["schemas"]["MistakeRule"] | null;
+        };
+        /** NextPuzzle */
+        NextPuzzle: {
+            /** Level */
+            level: number;
+            /**
+             * Length
+             * @description Number of steps in the chain.
+             */
+            length: number;
+            /**
+             * Reason Code
+             * @enum {string}
+             */
+            reason_code: "cold_start" | "promote" | "step_down" | "consolidate";
+            /**
+             * Reason
+             * @description Why, in a sentence for an adult. Never show it to a child.
+             */
+            reason: string;
+            /**
+             * Focus Rule
+             * @description A mistake rule that keeps coming up, for example ADD_VISIBLE. Says what was noticed; `focus` says what to do about it.
+             */
+            focus_rule: string | null;
+            /** @description The rule to generate this puzzle with: pass it as `focus` to POST /puzzles/missing-number. Null when there is nothing to target, or when the previous puzzle was focused (at most every other puzzle is). */
+            focus: components["schemas"]["MistakeRule"] | null;
+            /**
+             * Mastery
+             * @description The mastery values the decision used: the recommended level's topics first, then everything else the player has practised.
+             */
+            mastery: components["schemas"]["NamedMastery"][];
         };
         /** NumberToken */
         NumberToken: {
@@ -406,6 +526,48 @@ export interface components {
              * @enum {string}
              */
             symbol: "+" | "-";
+        };
+        /** PlayerNotFoundBody */
+        PlayerNotFoundBody: {
+            /** Detail */
+            detail: string;
+        };
+        /** PlayerSummary */
+        PlayerSummary: {
+            /**
+             * Player Since
+             * Format: date-time
+             */
+            player_since: string;
+            totals: components["schemas"]["PracticeTotals"];
+            /**
+             * Topics
+             * @description Most practised first.
+             */
+            topics: components["schemas"]["TopicPractice"][];
+            /**
+             * Mastery
+             * @description Estimated mastery per topic and level, from the first try at each step.
+             */
+            mastery?: components["schemas"]["TopicMasteryOut"][];
+        };
+        /** PracticeTotals */
+        PracticeTotals: {
+            /** Attempts */
+            attempts: number;
+            /** Steps */
+            steps: number;
+            /**
+             * Correct
+             * @description Checked answers that were right.
+             */
+            correct: number;
+            /** Hint Requests */
+            hint_requests: number;
+            /** First Try Correct Rate */
+            first_try_correct_rate: number | null;
+            /** Hints Per Step */
+            hints_per_step: number | null;
         };
         /** PrerequisiteItem */
         PrerequisiteItem: {
@@ -547,6 +709,28 @@ export interface components {
              */
             assessment_prompt: string;
         };
+        /** TopicMasteryOut */
+        TopicMasteryOut: {
+            /** Topic Id */
+            topic_id: string;
+            /**
+             * Level
+             * @description Each level keeps its own estimate of the same topic.
+             */
+            level: number;
+            /**
+             * P Known
+             * @description Estimated probability that the topic is known, 0 to 1. From Bayesian Knowledge Tracing with hand-set (not fitted) parameters.
+             */
+            p_known: number;
+            /**
+             * Observations
+             * @description First tries the estimate is built from (at most 200).
+             */
+            observations: number;
+            /** Last Practised */
+            last_practised: string | null;
+        };
         /** TopicNotFoundBody */
         TopicNotFoundBody: {
             /** Detail */
@@ -567,6 +751,41 @@ export interface components {
             limit: number;
             /** Offset */
             offset: number;
+        };
+        /** TopicPractice */
+        TopicPractice: {
+            /** Topic Id */
+            topic_id: string;
+            /**
+             * Attempts
+             * @description Checked answers on puzzles tagged with this topic.
+             */
+            attempts: number;
+            /**
+             * Steps
+             * @description Different steps tried.
+             */
+            steps: number;
+            /**
+             * First Try Correct Rate
+             * @description Share of steps answered right on the first try, 0 to 1.
+             */
+            first_try_correct_rate: number | null;
+            /**
+             * Hints Per Step
+             * @description Hint tiers fetched, per step tried.
+             */
+            hints_per_step: number | null;
+            /**
+             * Top Mistakes
+             * @description The three most frequent known mistakes, most frequent first.
+             */
+            top_mistakes: components["schemas"]["MistakeCount"][];
+            /**
+             * Last Practised
+             * Format: date-time
+             */
+            last_practised: string;
         };
         /** TopicResearch */
         TopicResearch: {
@@ -1102,7 +1321,10 @@ export interface operations {
     new_missing_number_puzzle_api_v1_puzzles_missing_number_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored. */
+                "X-Player-Id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1144,7 +1366,10 @@ export interface operations {
     get_puzzle_api_v1_puzzles__puzzle_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored. */
+                "X-Player-Id"?: string | null;
+            };
             path: {
                 puzzle_id: string;
             };
@@ -1202,7 +1427,10 @@ export interface operations {
     check_step_api_v1_puzzles__puzzle_id__steps__index__check_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored. */
+                "X-Player-Id"?: string | null;
+            };
             path: {
                 puzzle_id: string;
                 index: number;
@@ -1265,7 +1493,10 @@ export interface operations {
     get_hint_api_v1_puzzles__puzzle_id__steps__index__hints__tier__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored. */
+                "X-Player-Id"?: string | null;
+            };
             path: {
                 puzzle_id: string;
                 index: number;
@@ -1312,6 +1543,139 @@ export interface operations {
                 };
             };
             /** @description Puzzles cannot be served right now */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_summary_api_v1_players_me_summary_get: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. */
+                "X-Player-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerSummary"];
+                };
+            };
+            /** @description Nothing is stored for this id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerNotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The player tables do not exist yet */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_next_api_v1_players_me_next_get: {
+        parameters: {
+            query: {
+                /** @description The game to recommend for. Only Missing Number Chains adapts so far. */
+                game: "missing-number";
+            };
+            header: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. */
+                "X-Player-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NextPuzzle"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The taxonomy has not been imported yet */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_player_api_v1_players_me_delete: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. */
+                "X-Player-Id": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The player tables do not exist yet */
             503: {
                 headers: {
                     [name: string]: unknown;

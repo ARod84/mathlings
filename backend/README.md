@@ -72,6 +72,9 @@ at any other commit. To upgrade, change the constant, review the new data, updat
 | `teaching_research` | One row per topic: `pedagogy`, `learn`, `assess`, `sources` as JSON, plus `confidence` |
 | `error_pattern`     | One row per typical mistake, taken out of `assess.errorPatterns`                       |
 | `cluster`           | Parent-friendly summaries per subject, domain and age band                             |
+| `player`            | An anonymous player: a UUID the browser made, first seen, last seen                    |
+| `attempt`           | One checked answer by a player (migration `0002`; see [Players](#players))             |
+| `hint_request`      | One hint tier a player fetched                                                         |
 
 In `error_pattern`, `distractor` feeds wrong answer options, `next_move` feeds hints, and
 `reteach_prerequisite_id` says which topic to step back to. `position` is the mistake's place in
@@ -227,45 +230,177 @@ uv run python -m app.puzzles.report --samples 2          # example puzzles
 uv run python -m app.puzzles.report --catalog            # rule -> error pattern table
 ```
 
-Results of `--all --count 5000` against the real imported database:
+The report was run on generator version 1, then again after the changes that make version 2.
+Version 3 added focus and changed nothing else: without a focus it produces, seed for seed, the
+puzzle version 2 did, so the Version 2 column is also version 3 with no focus. The version 3
+numbers, with a column per focus, are under [Focus](#focus).
+`--all --count 5000` against the real imported database, both with the same report code:
 
-| Level | Verified on the first try | Average retries | Distractors linked to a taxonomy error pattern | Slowest generation |
-| ----- | ------------------------- | --------------- | ---------------------------------------------- | ------------------ |
-| 1     | 5000 of 5000 (100.0%)     | 0.0000          | 5610 of 37500 (15.0%)                          | 1.08 ms            |
-| 2     | 5000 of 5000 (100.0%)     | 0.0000          | 5751 of 37500 (15.3%)                          | 5.52 ms            |
-| 3     | 5000 of 5000 (100.0%)     | 0.0000          | 5850 of 37500 (15.6%)                          | 34.42 ms           |
+| Metric                                            | Level | Version 1             | Version 2             |
+| ------------------------------------------------- | ----- | --------------------- | --------------------- |
+| **Steps with at least one linked distractor**     | 1     | 5610 of 12500 (44.9%) | 8991 of 12500 (71.9%) |
+|                                                   | 2     | 5751 of 12500 (46.0%) | 8906 of 12500 (71.2%) |
+|                                                   | 3     | 5850 of 12500 (46.8%) | 8918 of 12500 (71.3%) |
+| Steps where a linked rule applied but was dropped | 1     | 2681 (21.4%)          | 0 (0.0%)              |
+| for being out of range (always `ADD_VISIBLE`)     | 2     | 2520 (20.2%)          | 0 (0.0%)              |
+|                                                   | 3     | 2423 (19.4%)          | 0 (0.0%)              |
+| Distractors linked to a taxonomy error pattern    | 1     | 5610 of 37500 (15.0%) | 8991 of 37500 (24.0%) |
+|                                                   | 2     | 5751 of 37500 (15.3%) | 8906 of 37500 (23.7%) |
+|                                                   | 3     | 5850 of 37500 (15.6%) | 8918 of 37500 (23.8%) |
+| `NEAR_MISS` fillers, share of distractors         | 1     | 19.3%                 | 9.4%                  |
+|                                                   | 2     | 18.3%                 | 9.6%                  |
+|                                                   | 3     | 5.9%                  | 3.1%                  |
+| Steps of the form `a − □ = c`                     | 1     | 18.1%                 | 11.0%                 |
+|                                                   | 2     | 18.4%                 | 11.2%                 |
+|                                                   | 3     | 16.4%                 | 9.2%                  |
+| Verified on the first try                         | 1     | 5000 of 5000 (100.0%) | 5000 of 5000 (100.0%) |
+|                                                   | 2     | 5000 of 5000 (100.0%) | 5000 of 5000 (100.0%) |
+|                                                   | 3     | 5000 of 5000 (100.0%) | 5000 of 5000 (100.0%) |
+| Slowest generation (best of 3)                    | 1     | 0.55 ms               | 1.09 ms               |
+|                                                   | 2     | 2.14 ms               | 2.27 ms               |
+|                                                   | 3     | 16.64 ms              | 13.85 ms              |
 
-- **Run on:** 2026-11-12
-- **Generator version:** `1`
+- **Run on:** 2026-11-13 for version 3; the Version 1 and Version 2 columns are from 2026-11-12
+- **Generator version:** `3` (identical to version 2 when no focus is given; the "Version 1"
+  column is the earlier baseline)
 - **Taxonomy commit:** `ce4eb95df6d0675762daef4d2318f9e545e73d98`
 
 Seeds 0 to 4999 per level, chain lengths 1 to 4 in turn (12,500 steps and 37,500 distractors per
-level). Everything except the timings is the same on every run; the timings are from one laptop.
+level). Average retries were 0 in both versions. Everything except the timings is the same on every
+run. The slowest ten seeds are timed again three times and the best time kept, so that one pause
+of the machine does not pass for slow code; the largest single timings seen were about 40 ms.
 
-The linked share is low by design, not by accident. A step has at most one linked distractor, so
-15% of distractors is about 45% of steps. Only three rules have a taxonomy pattern, each applies to
-some forms only (`a − □ = c` has none), and a mistake whose result falls outside the level's range
-cannot be offered as an option. The other distractors are the off-by-one slips, the column slip at
-level 3 and near-miss fillers, none of which the taxonomy describes. A test fails if the version or
-commit above stops matching the code, so the table cannot go stale unnoticed.
+**Why per-step coverage is the number to watch.** The game is multiple choice, so a wrong answer
+can only be diagnosed if the child picked an option that comes from a known mistake. A step has at
+most one linked distractor out of three, so the share of all distractors can never get near 100%;
+the share of steps with one can.
+
+**What changed between the versions.**
+
+1. A mistake's value may run past the level's range, up to `distractor_max` (40, 200 and 2000 for
+   levels 1 to 3). A child at "up to 20" who adds the visible numbers of `8 + □ = 15` really does
+   write 23, and before it was dropped. The answer and the near-miss fillers stay in range.
+2. Distractors are picked in tiers: rules with a taxonomy pattern, then the other mistake rules,
+   then near-miss fillers only for slots still empty.
+3. The forms where a linked misconception can show are picked a little more often than
+   `a − □ = c`, where none can. The weights are `FORM_WEIGHTS` in `levels.py`:
+
+   | Form   | `a+?=c` | `?+b=c` | `a-?=c` | `?-b=c` | `c=a+?` | `c=?-b` |
+   | ------ | ------- | ------- | ------- | ------- | ------- | ------- |
+   | Weight | 3       | 3       | 1.5     | 3       | 3       | 3       |
+
+**Why coverage stops at about 72%.** `a − □ = c` has no linked rule, and the two subtraction slips
+(`POSITION_CONFUSION`, `ANSWER_LEFT_BACKWARDS`) only give a value when `c ≥ b`, which is about half
+of those steps. A test fails if the version or commit above stops matching the code, and another
+checks the coverage targets (70% at levels 1 and 2, 60% at level 3) on generated puzzles.
 
 Bump `GENERATOR_VERSION` in `levels.py` whenever a change can alter the puzzle a seed produces. A
 puzzle also depends on the pinned taxonomy commit, through the error-pattern ids and hint sources.
+Ids from an older version get a `410` from the API, and the frontend quietly starts a new puzzle.
+
+### Focus
+
+A puzzle can be generated to target one mistake rule, the **focus**, for a child who keeps making
+that mistake. `generate_verified(seed, level, length, focus=None, ...)`.
+
+| Focus                   | Forms it targets          | Extra rule                                                          |
+| ----------------------- | ------------------------- | ------------------------------------------------------------------- |
+| `ADD_VISIBLE`           | `a+?=c`, `?+b=c`, `c=a+?` |                                                                     |
+| `ANSWER_LEFT_BACKWARDS` | `c=?-b`                   | At levels 1 and 2 a chain may have 2 answer-left steps instead of 1 |
+| `POSITION_CONFUSION`    | `?-b=c`                   |                                                                     |
+| any other rule          | none                      | Treated as no focus, and logged                                     |
+
+What a focus changes, and nothing else:
+
+- **Forms.** A targeted form's weight is multiplied by 3 (`FOCUS_WEIGHT_FACTOR`).
+- **Options.** On every step where the focus rule gives a value that can be offered, that wrong
+  answer is there, in the first slot. For a targeted step the generator draws the numbers up to 6
+  times, and tries the other place the linked number can go, looking for values where it exists.
+- **Not pure drill.** A chain of 3 or more steps keeps at least one step the focus does not target.
+- **Hints.** On targeted steps, tier 1 is a line about the idea behind the mistake. It may quote
+  the visible numbers and never the answer. Tiers 2 and 3 are unchanged.
+- **Everything else holds:** no form twice in a row, no negative values, `distractor_max`.
+
+| Focus                   | Tier 1 on a targeted step                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `ADD_VISIBLE`           | "The box isn't always the answer to a sum. What number makes both sides worth the same?"                     |
+| `ANSWER_LEFT_BACKWARDS` | "The answer can be on the left! Read it as: what number, take away 3, leaves 5?" (for `5 = □ − 3`)           |
+| `POSITION_CONFUSION`    | "The box comes first here. What number do you start with, so that taking away 3 leaves 5?" (for `□ − 3 = 5`) |
+
+**Ids.** The focus is part of the id, as a two-letter code before the checksum: `av`, `ab` or
+`pc`. `mnc-3-2-3-9ix-bdf1` has no focus; `mnc-3-2-3-9ix-av-6856` is the same seed with
+`ADD_VISIBLE`. The checksum covers the code, so a changed or added code gives a 404. The public
+puzzle does not say whether it has a focus, and the child is never told.
+
+**Without a focus nothing changed.** With `focus=None` no extra random number is drawn, so each
+seed gives exactly the puzzle version 2 gave, apart from the id and the version stamp. A test
+compares 2,000 seeds against fingerprints written by version 2 before focus existed
+(`tests/snapshots/generator_v2_focus_none.json`); it was also run before the version bump, with
+2,000 of 2,000 identical. The version is 3 because ids changed shape and focused puzzles are new.
+
+**The verifier** reads the focus from the id and adds four failure names:
+
+| Failure                      | Means                                                                                   |
+| ---------------------------- | --------------------------------------------------------------------------------------- |
+| `unsupported_focus`          | The focus is not a rule that can be targeted, or the id has an unknown code             |
+| `focus_distractor_missing`   | A step where the focus rule gives a value does not have it as the first distractor      |
+| `focus_too_many_answer_left` | More answer-left steps than the focus allows (more than 2 with `ANSWER_LEFT_BACKWARDS`) |
+| `focus_no_untargeted_step`   | A chain of 3 or more where every step is a targeted form                                |
+
+A focus in the puzzle that disagrees with the id is `puzzle_id_mismatch`. Without the focus that
+raises it, the answer-left limit is still 1 and still `too_many_answer_left`.
+
+**Quality report, version 3.** `uv run python -m app.puzzles.report --all --count 5000`, with
+`--focus RULE` for the other columns, against the real imported database on 2026-11-13. The
+"no focus" column equals the Version 2 column above, as it must.
+
+| Metric                                                       | Level  | No focus     | `ADD_VISIBLE` | `ANSWER_LEFT_BACKWARDS` | `POSITION_CONFUSION` |
+| ------------------------------------------------------------ | ------ | ------------ | ------------- | ----------------------- | -------------------- |
+| Verified on the first try                                    | 1      | 5000 of 5000 | 5000 of 5000  | 5000 of 5000            | 5000 of 5000         |
+|                                                              | 2      | 5000 of 5000 | 5000 of 5000  | 5000 of 5000            | 5000 of 5000         |
+|                                                              | 3      | 5000 of 5000 | 5000 of 5000  | 5000 of 5000            | 5000 of 5000         |
+| **Steps with at least one linked distractor**                | 1      | 71.9%        | 81.9%         | 84.6%                   | 86.0%                |
+|                                                              | 2      | 71.2%        | 81.1%         | 84.0%                   | 85.4%                |
+|                                                              | 3      | 71.3%        | 81.5%         | 84.9%                   | 84.5%                |
+| `NEAR_MISS` fillers, share of distractors                    | 1      | 9.4%         | 6.0%          | 5.1%                    | 4.7%                 |
+|                                                              | 2      | 9.6%         | 6.3%          | 5.3%                    | 4.9%                 |
+|                                                              | 3      | 3.1%         | 2.0%          | 1.7%                    | 1.7%                 |
+| Steps of a form the focus targets (same forms with no focus) | 1      |              | 69.9% (53.1%) | 33.0% (13.9%)           | 36.8% (22.0%)        |
+|                                                              | 2      |              | 69.5% (54.2%) | 32.9% (13.7%)           | 36.3% (20.9%)        |
+|                                                              | 3      |              | 69.3% (52.5%) | 35.3% (19.3%)           | 34.6% (19.0%)        |
+| Targeted steps that offer the focus wrong answer             | 1      |              | 100%          | 99.4%                   | 99.7%                |
+|                                                              | 2      |              | 100%          | 99.1%                   | 99.3%                |
+|                                                              | 3      |              | 100%          | 99.0%                   | 99.2%                |
+| Chains with two answer-left steps (most in one chain)        | 1      | 0 (1)        | 0 (1)         | 1665 (2)                | 0 (1)                |
+|                                                              | 2      | 0 (1)        | 0 (1)         | 1674 (2)                | 0 (1)                |
+|                                                              | 3      | 1068 (4)     | 1049 (4)      | 1690 (4)                | 725 (4)              |
+| Chains of 3 or more with no untargeted step                  | 1 to 3 |              | 0             | 0                       | 0                    |
+| Slowest generation (best of 3)                               | 1      | 0.57 ms      | 0.67 ms       | 1.17 ms                 | 1.17 ms              |
+|                                                              | 2      | 1.63 ms      | 1.73 ms       | 1.80 ms                 | 1.81 ms              |
+|                                                              | 3      | 12.55 ms     | 10.58 ms      | 13.28 ms                | 15.93 ms             |
+
+Average retries were 0 in every column. The coverage targets (70% at levels 1 and 2, 60% at level 3) are met with no focus and exceeded with each focus. The one-form focuses reach about a third
+of steps and not more, because a form cannot repeat in a row and a chain keeps an untargeted
+step. Level 3 has no answer-left limit, with or without a focus.
 
 ### Puzzle API
 
 `app/puzzles/service.py` (`PuzzleService`, no FastAPI) and the thin routes in
 `app/api/v1/puzzles.py` put the library on HTTP, under `/api/v1/puzzles`.
 
-| Route                                         | Body or params                                   | Returns              |
-| --------------------------------------------- | ------------------------------------------------ | -------------------- |
-| `POST /missing-number`                        | `{ level: 1–3, length: 1–4 (default 3), seed? }` | `PuzzlePublic` (201) |
-| `GET /{puzzle_id}`                            |                                                  | `PuzzlePublic`       |
-| `POST /{puzzle_id}/steps/{index}/check`       | `{ answer: 0–10000 }`                            | `CheckResult`        |
-| `GET /{puzzle_id}/steps/{index}/hints/{tier}` | tier 1–3                                         | `{ tier, text }`     |
+| Route                                         | Body or params                                           | Returns              |
+| --------------------------------------------- | -------------------------------------------------------- | -------------------- |
+| `POST /missing-number`                        | `{ level: 1–3, length: 1–4 (default 3), seed?, focus? }` | `PuzzlePublic` (201) |
+| `GET /{puzzle_id}`                            |                                                          | `PuzzlePublic`       |
+| `POST /{puzzle_id}/steps/{index}/check`       | `{ answer: 0–10000 }`                                    | `CheckResult`        |
+| `GET /{puzzle_id}/steps/{index}/hints/{tier}` | tier 1–3                                                 | `{ tier, text }`     |
 
+- **Focus.** `focus` is a mistake-rule name, as `/players/me/next` gives it; see [Focus](#focus).
+  Left out or null: an ordinary puzzle. A rule that cannot be targeted is accepted and changes
+  nothing. Anything that is not a rule name: 422.
 - **Stateless.** Every request rebuilds the puzzle from its id (`verified.regenerate`) and verifies
-  it again. Nothing is stored.
+  it again. No puzzle is stored. Practice history is stored only when the request carries
+  `X-Player-Id`; see [Players](#players).
 - **Public shape.** `PuzzlePublic` has the equations, four shuffled `options` per step and
   `hint_tiers`. The order of the options is fixed by the puzzle id and step, so a reload looks the
   same. Answers, rule names, error-pattern ids and hint text stay on the server.
@@ -281,3 +416,261 @@ puzzle also depends on the pinned taxonomy commit, through the error-pattern ids
 - **Check log.** Each check writes one line to the `app.puzzles.checks` logger: puzzle id, step,
   correct, matched rules and latency. The same fields are on the record as `puzzle_check`. No
   personal data, and not the answer itself.
+
+## Players
+
+Anonymous practice history, so that a later adaptive engine knows which topics a child gets right,
+which mistakes they repeat and how often they need a hint. The privacy rules are in the
+[root README](../README.md#privacy); the short version is in the docstring of
+`app/players/service.py`. The player id is a pseudonymous identifier, not authentication.
+
+| File                     | Role                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| `app/players/service.py` | `PlayerService`: record an attempt or a hint, summary, delete. No FastAPI.    |
+| `app/players/schemas.py` | Pydantic response models.                                                     |
+| `app/api/v1/players.py`  | The `X-Player-Id` header (`OptionalPlayer`, `RequiredPlayer`) and the routes. |
+
+**The header.** `X-Player-Id` is a UUID version 4 made by the browser.
+
+| Header                      | Puzzle routes                                   | Player routes             |
+| --------------------------- | ----------------------------------------------- | ------------------------- |
+| Missing                     | Stateless, exactly as before; nothing is stored | 422                       |
+| Malformed, or not version 4 | 422                                             | 422                       |
+| Valid, never seen           | The player row is made on the first write       | Summary: 404. Delete: 204 |
+
+Only `check` and `hint` write. `POST /missing-number` and `GET /{puzzle_id}` validate the header
+and store nothing. A request that fails (404, 410, 422) stores nothing.
+
+**What a check stores.** One `attempt` row: the puzzle id and generator version, `game`
+(`missing-number`), level, step, form, the answer, `correct`, `matched_rules`,
+`error_pattern_ids`, `reteach_topic_id`, the puzzle's `topic_ids`, plus two derived numbers:
+
+- `attempt_on_step`: 1 for this player's first try at this step, 2 for the second, and so on.
+- `hint_tier_before`: the highest hint tier this player fetched for this step before this check;
+  0 for none.
+
+A hint stores one `hint_request` row. Recording never changes a response body. If the write fails,
+the error is logged (without the player id) and the child still gets their answer.
+
+**Routes**, under `/api/v1/players`, both with the header required:
+
+| Route             | Returns                                                                                                                                                                            |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /me/summary` | `player_since`, `totals`, and per topic: `attempts`, `steps`, `first_try_correct_rate`, `hints_per_step`, `top_mistakes` (three most frequent rules with counts), `last_practised` |
+| `DELETE /me`      | 204. Deletes the player and every attempt and hint row. 204 for an unknown id too                                                                                                  |
+
+How the summary counts: an attempt counts under every topic of its step (see
+[Per-step topics](#per-step-topics)). A step is a first try
+(`attempt_on_step = 1`). `first_try_correct_rate` is the share of steps answered right on the first
+try. `hints_per_step` is hint requests divided by steps; a hint for a step that was never checked
+counts in `totals` only, because only an attempt knows the step's topics.
+
+**Statement budgets**, checked by tests. The header adds a fixed cost that does not grow with the
+history:
+
+| Request                              | Without the header | With it | Added statements                                                    |
+| ------------------------------------ | ------------------ | ------- | ------------------------------------------------------------------- |
+| `POST /missing-number`, `GET /{id}`  | 1                  | 1       | none                                                                |
+| `GET .../hints/{tier}`               | 1                  | 3       | create-or-touch the player, insert the row                          |
+| `POST .../check`, right answer       | 1                  | 4       | create-or-touch the player, both counts in one, insert              |
+| `POST .../check`, recognized mistake | 2                  | 5       | the same three                                                      |
+| `GET /players/me/summary`            |                    | 6       | player, per topic, mistakes, hints, totals, first tries for mastery |
+| `GET /players/me/next`               |                    | 3       | taxonomy freshness check, first tries, topic names                  |
+| `DELETE /players/me`                 |                    | 3       | attempts, hints, player                                             |
+
+The summary aggregates in SQL (`json_each` unpacks the JSON lists), so what comes back is one row
+per topic, or per topic and rule, whatever the number of attempts.
+
+**Not built yet:** accounts, any dashboard, Number Pyramid
+results (that game runs in the browser), and a retention policy or clean-up job.
+
+## Adaptive practice
+
+`app/adaptive/` estimates how well a player knows each topic from their stored attempts, and
+recommends the next level and chain length for Missing Number Chains. Every recommendation says
+which rule produced it and why. Nothing new is stored: mastery is replayed from the attempt
+history on every call.
+
+| File                        | Role                                                                     |
+| --------------------------- | ------------------------------------------------------------------------ |
+| `app/adaptive/constants.py` | Every number: the BKT parameters and the policy thresholds.              |
+| `app/adaptive/bkt.py`       | Bayesian Knowledge Tracing and the evidence rules. Plain Python.         |
+| `app/adaptive/policy.py`    | `recommend_from(observations)`: the rules below. Plain Python.           |
+| `app/adaptive/service.py`   | `AdaptiveService`: reads a player's first tries (one query). No FastAPI. |
+| `app/adaptive/simulate.py`  | The offline simulator.                                                   |
+
+### Per-step topics
+
+An attempt carries the topics of its own step, not of its whole puzzle
+(`levels.step_topic_ids(level, form)`). At levels 1 and 2 every step practises
+`mt_3JgrHY221M`, and only the answer-left forms `c=a+?` and `c=?-b` also practise
+`mt_oIzycTBeE4` (what the equals sign means). At level 3 every step practises `mt_XuHmIn2xje` and
+`mt_ehGS_uVSJv`. A puzzle's `topic_ids` in the API are still the union of its steps' topics, and
+`shared/game-topics.json` lists that union per level. Migration `0003` rewrote the attempt rows
+stored before this, from their level and form.
+
+### Mastery: Bayesian Knowledge Tracing
+
+One estimate, `p_known`, per player, topic **and level**. Levels 1 and 2 practise the same topic
+with bigger numbers, and with one shared estimate the confidence earned at level 1 hid trouble at
+level 2, so a step only updates the estimate of its own level.
+
+| Parameter | Value | Meaning                                               |
+| --------- | ----- | ----------------------------------------------------- |
+| `p_init`  | 0.30  | Prior that the topic is already known                 |
+| `p_learn` | 0.15  | Chance of learning it at each practice opportunity    |
+| `p_slip`  | 0.10  | Knows it, answers wrong anyway                        |
+| `p_guess` | 0.25  | Does not know it, answers right anyway (four options) |
+
+**These are priors, not fitted values.** They were set by hand. Fitting them (for example with
+EM) needs attempt data from real children, which does not exist yet. That is an open item; until
+then `p_known` is a rough, explainable estimate, not a measurement.
+
+What counts as one observation:
+
+- Only the first try at a step (`attempt_on_step = 1`). A retry is not independent evidence.
+- If a strategy hint or the worked step was fetched before that first try
+  (`hint_tier_before >= 2`), the step counts as incorrect. A tier 1 hint changes nothing.
+- The observation applies to every topic of the step, at the step's level.
+- Observations are replayed in time order, at most the latest 200 per topic and level.
+
+### Recommendation policy
+
+`recommend(player_id)` returns `level`, `length`, `reason_code`, `reason` (a sentence for an
+adult, never shown to a child), `focus_rule` and the mastery values used. The current level is
+the level of the player's latest first try. The rules are tried in this order:
+
+| `reason_code` | When                                                                                                                                                                    | Result                                                         |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `cold_start`  | No observations                                                                                                                                                         | Level 1, chains of 2                                           |
+| `promote`     | The level's primary topic has `p_known` >= 0.95 at this level, at least 6 observations at this level, and at least 5 of the last 6 first tries at this level were right | Next level, chains of 2                                        |
+| `step_down`   | `p_known` <= 0.35 with at least 6 observations at this level                                                                                                            | Previous level, chains of 2                                    |
+| `consolidate` | Otherwise                                                                                                                                                               | Same level; chains of 2 if `p_known` < 0.5, 3 if < 0.7, else 4 |
+
+- **No oscillation.** After any change of level, 4 observations at the new level are required
+  before the level may change again.
+- **Ends of the scale.** There is no promotion from level 3 and no step-down from level 1; there
+  `consolidate` decides.
+- **`focus_rule`.** If the same mistake rule matched at least 2 times in the last 8 first tries,
+  it is named (for example `ADD_VISIBLE`) and mentioned in `reason`.
+- **`focus`.** The rule to generate the next puzzle with (see [Focus](#focus)), or null. It is
+  `focus_rule` when the generator can target that rule, with one cap: if the puzzle the player
+  worked on last was focused, `focus` is null. So at most every other puzzle is focused: the
+  1st, 3rd and 5th of a round at most. This is worked out from the stored attempts alone; a
+  focused puzzle is recognised by the code in its id.
+- **Release.** There is no separate rule. `focus_rule` goes back to null once the rule has
+  matched fewer than 2 times in the last 8 first tries, which is 7 clean first tries after two
+  matches in a row, and `focus` goes with it.
+
+### API
+
+| Route                                             | Returns                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/players/me/next?game=missing-number` | `{level, length, reason_code, reason, focus_rule, focus, mastery: [{topic_id, name, level, p_known, observations}]}`. Header required. A player with no attempts, known or not, gets `cold_start`. Three statements, whatever the history: the taxonomy freshness check, the first tries, the topic names. |
+| `GET /api/v1/players/me/summary`                  | Now also `mastery: [{topic_id, level, p_known, observations, last_practised}]`.                                                                                                                                                                                                                            |
+
+### Offline simulator
+
+```bash
+uv run python -m app.adaptive.simulate --learners 500 --steps 120 --seed 1   # --focus on
+uv run python -m app.adaptive.simulate --focus off    # ignore the recommended focus
+```
+
+Synthetic learners play through the real loop in memory, with no HTTP: recommend, generate a
+verified puzzle, answer its steps, pass the answers through the same evidence rules, recommend
+again. Each learner has a hidden true skill per level (the chance they really know how to do a
+step), a learning rate, and slip and guess behaviour. Four kinds: fast, slow, already strong, and
+one who picks the "add the visible numbers" option whenever they are wrong. The same seed always
+gives the same report.
+
+- **Run on:** 2026-11-13
+- **Generator version:** `3`, with `--focus on` (the default: puzzles are generated with the
+  focus the policy recommends, as the game does)
+- **Parameters:** the priors above; promote at 0.95 with 5 of the last 6 right; step down at
+  0.35; 6 observations for a level change; 4 after one
+
+| Kind        | Learners | Reached level 3 | Average steps to level 3 | Falsely promoted at least once | False / all promotions | Recommended level 1 after 40 steps | Level changes (average / most) | `focus_rule` within 30 steps |
+| ----------- | -------- | --------------- | ------------------------ | ------------------------------ | ---------------------- | ---------------------------------- | ------------------------------ | ---------------------------- |
+| fast        | 125      | 100%            | 26.6                     | 0.0%                           | 0 / 283                | 0.8%                               | 2.53 / 8                       | 25.6%                        |
+| slow        | 125      | 96.0%           | 67.3                     | 79.2%                          | 162 / 445              | 56.0%                              | 5.22 / 15                      | 40.8%                        |
+| strong      | 125      | 100%            | 14.6                     | 0.0%                           | 0 / 255                | 0.0%                               | 2.08 / 4                       | 2.4%                         |
+| add_visible | 125      | 94.4%           | 66.7                     | 83.2%                          | 183 / 469              | 55.2%                              | 5.67 / 12                      | 99.2%                        |
+
+| Check                                                                              | Result                   | Target                |
+| ---------------------------------------------------------------------------------- | ------------------------ | --------------------- |
+| Learners ever promoted while their true skill at the level they left was below 0.6 | **40.6%**                | <= 5%: **missed**     |
+| Promotion decisions that were false, by the same test                              | 345 of 1,452 (**23.8%**) | (reported, no target) |
+| Strong learners still recommended level 1 after 40 steps                           | 0.0%                     | <= 5%: met            |
+| Persistent-misconception learners with `focus_rule` `ADD_VISIBLE` within 30 steps  | 99.2%                    | (reported)            |
+| Level changes per learner, all kinds                                               | 3.88                     | (reported)            |
+
+With `--focus off` the same run gives 40.2% and 346 of 1,466 (23.6%), exactly the numbers from
+before focus existed. The small difference comes from different puzzles being drawn, not from any
+effect of focus on the learners: they do not react to it (see below).
+
+### Focus mechanics in the simulator
+
+For the 125 "add_visible" learners, who pick the add-the-visible-numbers option whenever they are
+wrong and it is offered:
+
+|                                                                      | `--focus off`              | `--focus on`              |
+| -------------------------------------------------------------------- | -------------------------- | ------------------------- |
+| Puzzles generated with a focus                                       | 0 of 4,781                 | 1,262 of 4,752 (26.6%)    |
+| ...as a share of the puzzles made while a mistake was flagged        | 0%                         | 46.4%                     |
+| Focused puzzles back to back (the cap says never)                    | 0                          | **0: the cap holds**      |
+| First tries from the last matched mistake to the flag being released | 2.9 on average, 10 at most | 3.3 on average, 9 at most |
+| Steps of a form `ADD_VISIBLE` applies to                             | 53.0%                      | 57.2%                     |
+| Steps that offer the `ADD_VISIBLE` wrong answer                      | 53.0%                      | 57.2%                     |
+
+- **How often.** About a quarter of all puzzles, and just under half of those made while the flag
+  was up: the cap allows every other one.
+- **The cap.** No focused puzzle ever followed another, in 4,752 puzzles.
+- **Release.** The flag needs 2 matches in the last 8 first tries, so it drops at most 7 first
+  tries after the mistake stops. The policy only looks before each puzzle, which can add up to 3
+  more; hence 9 or 10 at most. The average is low because the flag often drops while one recent
+  match is still in the window.
+- **Small shift in forms.** These forms are already more than half of all steps without a focus,
+  and only every other flagged puzzle is focused, so the overall share moves from 53% to 57%.
+
+**What this does not show: any learning effect.** The simulator reports no difference in skill,
+accuracy or speed between focus on and off, on purpose. A synthetic learner unlearns a
+misconception only if the simulator says so, at whatever rate we write down, so an "improvement"
+would be our own assumption shown back to us. The learners here do not react to focus at all. The
+simulator validates the mechanics: focus is offered when it should be, capped, and released.
+Whether focused practice helps a child needs real children's data.
+
+### Known limitation: false promotions
+
+The false-promotion target is not met, and the policy was deliberately not tuned further to meet
+it on synthetic data. An earlier version (one estimate per topic, promote at 0.85) gave 51.4% of
+learners. Per-level estimates, the 0.95 threshold and the "5 of the last 6" rule brought that to
+40.2% of learners, or 23.6% of promotion decisions (40.6% and 23.8% with focus on).
+
+Why it stays high: with four options a learner who does not know a step is still right a quarter
+of the time. A learner whose true skill is 0.5 answers right about 59% of the time, and gets 5 of
+6 right about one time in five. Six answers cannot tell that learner from a strong one, and the
+policy looks again before every puzzle, so over 120 steps most weak learners get promoted at
+least once. Strong and fast learners are never falsely promoted.
+
+Why a false promotion is recoverable: the next level has its own estimate that starts from the
+prior, chains restart at 2 steps, and `step_down` sends the learner back after 6 observations if
+`p_known` there is 0.35 or less. The cost is a handful of puzzles that are too hard, not being
+stuck. That cost is real, and it shows in the table: slow and misconception learners change level
+5 to 6 times on average.
+
+What this evidence is worth: the learners are a model written by hand, not children. The run
+shows how the policy behaves on learners who act the way the model says. It does not validate
+the BKT parameters.
+
+**Open items**
+
+- Fit the BKT parameters on real attempt data.
+- Reduce false promotions. Candidates, none tried: a longer window before promoting, or lower
+  `p_learn` and `p_guess` once there is data to justify them.
+- Measure whether focused puzzles help, on real attempt data. The simulator cannot.
+- A mistake rule for `a-?=c`, the one form no focus can target.
+
+Tests: `tests/test_adaptive.py` (per-step topics, the migration, BKT by hand, each policy rule,
+the evidence rules through real play, statement budgets, a small deterministic simulation) and
+`tests/test_next_api.py`. The full simulation is marked `slow`; the false-promotion target is a
+strict expected failure there, so it will flag itself the day it is met.

@@ -14,7 +14,7 @@ from app.puzzles.ids import MAX_SEED, make_puzzle_id
 from app.puzzles.levels import GENERATOR_VERSION, LEVELS
 from app.puzzles.models import MistakeRule, Puzzle
 from app.puzzles.rules import rule_output
-from app.puzzles.schemas import LinkedToken
+from app.puzzles.schemas import MAX_ANSWER, LinkedToken
 from app.puzzles.service import (
     PuzzleNotFound,
     PuzzleRuntime,
@@ -393,6 +393,26 @@ def test_each_check_writes_one_structured_log_line(client: TestClient, caplog):
     assert f"answer={wrong}" not in message
 
 
+def test_an_option_above_the_level_range_can_be_checked_and_is_diagnosed(client: TestClient):
+    # The check body accepts answers up to MAX_ANSWER, which has to cover every
+    # value a distractor can take.
+    assert max(spec.distractor_max for spec in LEVELS.values()) <= MAX_ANSWER
+
+    for seed in range(200):
+        puzzle = internal(client, new_puzzle(client, level=1, length=4, seed=seed)["puzzle_id"])
+        for index, step in enumerate(puzzle.steps):
+            over = [d for d in step.distractors if d.value > LEVELS[1].max_value]
+            if not over or over[0].rule is not MistakeRule.ADD_VISIBLE:
+                continue
+            public = client.get(f"{PUZZLES}/{puzzle.puzzle_id}").json()
+            assert over[0].value in public["steps"][index]["options"]
+            result = check(client, puzzle.puzzle_id, index, over[0].value)
+            assert result["diagnosis"]["matched_rules"] == ["ADD_VISIBLE"]
+            assert result["diagnosis"]["reteach_topic"] == EQUALS_SIGN
+            return
+    raise AssertionError("no above-range ADD_VISIBLE option found")
+
+
 # ---- hints ----
 
 
@@ -444,18 +464,22 @@ def test_an_id_with_a_valid_checksum_but_impossible_values_is_404(client: TestCl
 
 
 def test_an_id_from_an_older_generator_is_410(client: TestClient):
-    old = make_puzzle_id("0", 1, 3, 42)
+    # Real ids that the version 1 and version 2 generators handed out.
+    assert make_puzzle_id("1", 1, 3, 2) == "mnc-1-1-3-2-b555"
+    assert make_puzzle_id("2", 1, 2, 42) == "mnc-2-1-2-16-eb38"
+    assert GENERATOR_VERSION == "3"
 
-    for response in (
-        client.get(f"{PUZZLES}/{old}"),
-        client.post(f"{PUZZLES}/{old}/steps/0/check", json={"answer": 1}),
-        client.get(f"{PUZZLES}/{old}/steps/0/hints/1"),
-    ):
-        assert response.status_code == 410
-        assert response.json() == {
-            "detail": "Puzzle version is no longer available",
-            "current_version": GENERATOR_VERSION,
-        }
+    for old in (make_puzzle_id("0", 1, 3, 42), "mnc-1-1-3-2-b555", "mnc-2-1-2-16-eb38"):
+        for response in (
+            client.get(f"{PUZZLES}/{old}"),
+            client.post(f"{PUZZLES}/{old}/steps/0/check", json={"answer": 1}),
+            client.get(f"{PUZZLES}/{old}/steps/0/hints/1"),
+        ):
+            assert response.status_code == 410
+            assert response.json() == {
+                "detail": "Puzzle version is no longer available",
+                "current_version": GENERATOR_VERSION,
+            }
 
 
 def test_an_id_from_an_unknown_version_is_404_not_410(client: TestClient):

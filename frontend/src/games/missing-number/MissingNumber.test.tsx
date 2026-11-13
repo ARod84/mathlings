@@ -64,14 +64,14 @@ describe('start screen', () => {
   it('offers three levels named by number range, and nothing else to do yet', () => {
     render(<MissingNumber />);
 
-    const levels = within(screen.getByRole('group', { name: 'Number size' }));
+    const levels = within(screen.getByRole('group', { name: 'Or choose a range' }));
     expect(levels.getAllByRole('button').map((button) => button.textContent)).toEqual([
       'Up to 20',
       'Up to 100',
       'Up to 1000',
     ]);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'How big should the numbers be?',
+      'Ready to find some missing numbers?',
     );
     expect(screen.getByText('0 / 5')).toBeInTheDocument();
     for (const name of ['Hint', 'Check', 'Reset'] as const) expect(action(name)).toBeDisabled();
@@ -231,7 +231,11 @@ describe('playing a puzzle', () => {
   });
 
   it('finishes the round after the fifth puzzle, then goes back to the start screen', async () => {
-    const user = userEvent.setup();
+    // A whole round is about thirty clicks. By default user-event waits on a
+    // zero-length timer between the events of each click, and on Windows such
+    // a timer takes about 12 ms, which alone brought this test close to the
+    // 5 s limit. Nothing here depends on those waits: every result is awaited.
+    const user = userEvent.setup({ delay: null });
     await start(user, 'Up to 100');
 
     for (const [puzzle, length] of ROUND_LENGTHS.entries()) {
@@ -252,7 +256,7 @@ describe('playing a puzzle', () => {
     expect(backend.requests.new.every((request) => request.level === 2)).toBe(true);
 
     await user.click(within(complete).getByRole('button', { name: 'Play again' }));
-    expect(screen.getByRole('group', { name: 'Number size' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Or choose a range' })).toBeInTheDocument();
     expect(screen.getByText('0 / 5')).toBeInTheDocument();
     expect(backend.requests.new).toHaveLength(5);
   });

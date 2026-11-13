@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.puzzles.ids import MAX_SEED
 from app.puzzles.levels import HINT_TIERS, MAX_STEPS, MIN_STEPS
-from app.puzzles.models import Equation
+from app.puzzles.models import Equation, MistakeRule
 
 MAX_ANSWER = 10_000
 
@@ -32,6 +32,12 @@ class NewPuzzleRequest(BaseModel):
         ge=0,
         le=MAX_SEED,
         description="Fixes the puzzle. Leave out for a random one.",
+    )
+    focus: MistakeRule | None = Field(
+        default=None,
+        description="A mistake rule to target, as `focus` from /players/me/next gives it. "
+        "ADD_VISIBLE, ANSWER_LEFT_BACKWARDS and POSITION_CONFUSION change the puzzle; any "
+        "other rule name is accepted and has no effect. Never tell the child about it.",
     )
 
 

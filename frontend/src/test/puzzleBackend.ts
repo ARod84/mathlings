@@ -132,11 +132,15 @@ export interface PuzzleBackend {
   handlers: HttpHandler[];
   /** Everything the app asked for, in order. */
   requests: {
-    new: { level: number; length: number; seed?: number | null }[];
+    new: { level: number; length: number; seed?: number | null; focus?: string | null }[];
     get: string[];
     check: { puzzleId: string; step: number; answer: number }[];
     hint: { puzzleId: string; step: number; tier: number }[];
   };
+  /** The JSON body of every new-puzzle request, exactly as it was sent. */
+  newBodies: Record<string, unknown>[];
+  /** The X-Player-Id header of every request, in order; null where there was none. */
+  playerIds: (string | null)[];
   /** Make the next call to a route fail once. */
   failNext: (route: Route, failure: Failure) => void;
   /** Hold every answer back by this many milliseconds. */
@@ -166,9 +170,13 @@ export function createPuzzleBackend(chain: FixtureStep[] = CHAIN): PuzzleBackend
   const backend: PuzzleBackend = {
     handlers: [],
     requests: { new: [], get: [], check: [], hint: [] },
+    newBodies: [],
+    playerIds: [],
     failNext: (route, failure) => pending[route].push(failure),
     delayMs: 0,
   };
+
+  const seen = (request: Request) => backend.playerIds.push(request.headers.get('X-Player-Id'));
 
   const pause = () =>
     backend.delayMs > 0
@@ -191,8 +199,15 @@ export function createPuzzleBackend(chain: FixtureStep[] = CHAIN): PuzzleBackend
 
   backend.handlers = [
     http.post('*/api/v1/puzzles/missing-number', async ({ request }) => {
+      seen(request);
       const body = (await request.json()) as Schemas['NewPuzzleRequest'];
-      backend.requests.new.push({ level: body.level, length: body.length ?? 3, seed: body.seed });
+      backend.newBodies.push(body as Record<string, unknown>);
+      backend.requests.new.push({
+        level: body.level,
+        length: body.length ?? 3,
+        seed: body.seed,
+        focus: body.focus,
+      });
       await pause();
       const failure = pending.new.shift();
       if (failure !== undefined) return failureResponse(failure);
@@ -203,7 +218,8 @@ export function createPuzzleBackend(chain: FixtureStep[] = CHAIN): PuzzleBackend
       return HttpResponse.json(toPublic(puzzleId, body.level, steps), { status: 201 });
     }),
 
-    http.get('*/api/v1/puzzles/:puzzleId', async ({ params }) => {
+    http.get('*/api/v1/puzzles/:puzzleId', async ({ params, request }) => {
+      seen(request);
       const puzzleId = String(params.puzzleId);
       backend.requests.get.push(puzzleId);
       await pause();
@@ -215,6 +231,7 @@ export function createPuzzleBackend(chain: FixtureStep[] = CHAIN): PuzzleBackend
     }),
 
     http.post('*/api/v1/puzzles/:puzzleId/steps/:index/check', async ({ params, request }) => {
+      seen(request);
       const puzzleId = String(params.puzzleId);
       const index = Number(params.index);
       const { answer } = (await request.json()) as Schemas['CheckRequest'];
@@ -235,7 +252,8 @@ export function createPuzzleBackend(chain: FixtureStep[] = CHAIN): PuzzleBackend
       return HttpResponse.json(result);
     }),
 
-    http.get('*/api/v1/puzzles/:puzzleId/steps/:index/hints/:tier', async ({ params }) => {
+    http.get('*/api/v1/puzzles/:puzzleId/steps/:index/hints/:tier', async ({ params, request }) => {
+      seen(request);
       const puzzleId = String(params.puzzleId);
       const index = Number(params.index);
       const tier = Number(params.tier);

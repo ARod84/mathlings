@@ -111,11 +111,52 @@ def test_a_rule_never_returns_the_right_answer_or_a_negative():
             assert value is None or (value >= 0 and value != step.answer)
 
 
-def test_a_value_above_the_range_is_diagnosable_but_not_offered():
-    step = make_step("a+?=c", 15, 18)  # a child adding gets 33, above level 1's 20
-    assert rule_output(ADD, step, LEVELS[1]) == 33
+def test_a_mistake_past_the_level_range_is_offered_up_to_the_cap():
+    # 8 + □ = 15: a child who adds the visible numbers writes 23. That is past
+    # level 1's 20, and it is exactly the option worth showing.
+    step = make_step("a+?=c", 8, 15)
+    assert rule_output(ADD, step, LEVELS[1]) == 23
+    assert distractor_value(ADD, step, LEVELS[1]) == 23
+    assert 23 in [d.value for d in step.distractors]
+    assert step.distractors[0].rule is ADD
+    assert step.distractors[0].error_pattern_id == "mt_3JgrHY221M#0"
+
+    # The largest sum two level-1 numbers can make is still under the cap of 40.
+    assert distractor_value(ADD, make_step("a+?=c", 19, 20), LEVELS[1]) == 39
+
+
+def test_a_mistake_past_the_cap_is_diagnosable_but_not_offered():
+    # 25 + □ = 30 is not a level-1 step; it is here to push the sum past 40.
+    step = make_step("a+?=c", 25, 30)
+    assert rule_output(ADD, step, LEVELS[1]) == 55
     assert distractor_value(ADD, step, LEVELS[1]) is None
-    assert distractor_value(ADD, make_step("a+?=c", 8, 11), LEVELS[1]) == 19
+    assert 55 not in [d.value for d in step.distractors]
+
+
+@pytest.mark.parametrize(
+    ("level", "max_value", "distractor_max"), [(1, 20, 40), (2, 100, 200), (3, 1000, 2000)]
+)
+def test_each_level_has_a_cap_above_its_range(level, max_value, distractor_max):
+    spec = LEVELS[level]
+    assert (spec.max_value, spec.distractor_max) == (max_value, distractor_max)
+
+    # Exactly at the cap is offered; one more is not.
+    at_cap = make_step("a+?=c", distractor_max // 2, distractor_max // 2, level=level)
+    over = make_step("a+?=c", distractor_max // 2, distractor_max // 2 + 1, level=level)
+    assert distractor_value(ADD, at_cap, spec) == distractor_max
+    assert distractor_value(ADD, over, spec) is None
+    assert rule_output(ADD, over, spec) == distractor_max + 1
+
+
+def test_fillers_and_negatives_do_not_get_the_higher_cap():
+    step = make_step("a+?=c", 1, 20)  # answer 19
+    # 21 and 22 are near the answer but past level 1's range: not valid fillers.
+    assert not is_near_miss(21, step, LEVELS[1])
+    assert not is_near_miss(22, step, LEVELS[1])
+    assert is_near_miss(17, step, LEVELS[1])
+    # One over the answer is the off-by-one rule, and it may be 21 > 20.
+    assert distractor_value(OVER, make_step("a+?=c", 0, 20), LEVELS[1]) == 21
+    assert distractor_value(POSITION, make_step("?-b=c", 9, 5), LEVELS[1]) is None
 
 
 def test_near_miss_is_a_filler_not_a_rule():

@@ -1,5 +1,5 @@
-import { RotateCcw } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { Play, RotateCcw } from 'lucide-react';
+import { useEffect, useId, useRef } from 'react';
 import type { Equation, Level } from '../../api/puzzles';
 import type { HouseKey } from '../../design/tokens';
 import { GameShell } from '../../shell';
@@ -23,7 +23,7 @@ const LEVELS: { level: Level; label: string }[] = [
 ];
 
 const INSTRUCTIONS = {
-  'choose-level': 'How big should the numbers be?',
+  'choose-level': 'Ready to find some missing numbers?',
   loading: 'Getting your puzzle ready…',
   playing: 'Find the missing number',
   error: 'Let’s try that again',
@@ -80,6 +80,7 @@ export function MissingNumber({
   const { phase, puzzle, stepIndex, selected, answers } = state;
   const playing = phase === 'playing' && puzzle !== null;
   const currentStep = playing ? puzzle.steps[stepIndex] : undefined;
+  const rangeLabelId = useId();
 
   // After a correct answer the next step slides in, and focus goes with it.
   const currentRef = useRef<HTMLLIElement>(null);
@@ -128,17 +129,27 @@ export function MissingNumber({
       onExit={onExit}
     >
       {phase === 'choose-level' && (
-        <div className={styles.levels} role="group" aria-label="Number size">
-          {LEVELS.map(({ level, label }) => (
-            <button
-              key={level}
-              type="button"
-              className={styles.level}
-              onClick={() => game.chooseLevel(level)}
-            >
-              {label}
-            </button>
-          ))}
+        <div className={styles.start}>
+          {/* The main way in: the backend picks the level and chain length. */}
+          <button type="button" className={styles.play} onClick={game.play}>
+            <Play aria-hidden="true" size={26} strokeWidth={3} fill="currentColor" />
+            <span>Play</span>
+          </button>
+          <p className={styles.rangeLabel} id={rangeLabelId}>
+            Or choose a range
+          </p>
+          <div className={styles.levels} role="group" aria-labelledby={rangeLabelId}>
+            {LEVELS.map(({ level, label }) => (
+              <button
+                key={level}
+                type="button"
+                className={styles.level}
+                onClick={() => game.chooseLevel(level)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

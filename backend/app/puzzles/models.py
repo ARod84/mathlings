@@ -97,3 +97,6 @@ class Puzzle(_Frozen):
     steps: list[PuzzleStep]
     # Taxonomy topics this puzzle practises, primary first.
     topic_ids: list[str]
+    # The mistake this puzzle was built to target, if any (levels.FOCUS_TARGET_FORMS).
+    # Never sent to the browser.
+    focus: MistakeRule | None = None

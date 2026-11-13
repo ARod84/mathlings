@@ -3,7 +3,7 @@
 import re
 
 from app.config import BACKEND_DIR
-from app.puzzles.levels import GENERATOR_VERSION, LEVELS
+from app.puzzles.levels import FORM_WEIGHTS, GENERATOR_VERSION, LEVELS
 from app.taxonomy.constants import TAXONOMY_COMMIT
 
 
@@ -23,10 +23,29 @@ def test_readme_report_names_the_current_generator_version_and_taxonomy_commit()
     assert re.search(r"\*\*Run on:\*\* \d{4}-\d{2}-\d{2}", section)
 
 
-def test_readme_report_has_a_row_for_every_level():
-    rows = re.findall(r"^\| (\d) +\| (\d+) of (\d+) \(", report_section(), flags=re.MULTILINE)
+def test_readme_report_compares_both_versions_for_every_level():
+    section = report_section()
+    assert "| Version 1 " in section
+    assert "| Version 2 " in section
 
-    assert [int(level) for level, _passed, _total in rows] == sorted(LEVELS)
-    for _level, passed, total in rows:
-        assert int(total) == 5000
-        assert 0 <= int(passed) <= int(total)
+    # The coverage rows: "| ... | <level> | a of b (x%) | c of d (y%) |"
+    start = section.index("Steps with at least one linked distractor")
+    rows = re.findall(
+        r"\| (\d) +\| \d+ of \d+ \((\d+\.\d)%\) \| \d+ of \d+ \((\d+\.\d)%\) \|",
+        section[start : section.index("Steps where a linked rule applied")],
+    )
+    assert [int(level) for level, _before, _after in rows] == sorted(LEVELS)
+    for _level, before, after in rows:
+        assert float(after) > float(before)
+
+
+def test_readme_records_the_form_weights():
+    section = report_section()
+    row = next(line for line in section.splitlines() if line.strip().startswith("| Weight"))
+    recorded = [float(cell) for cell in row.strip().strip("|").split("|")[1:]]
+
+    assert recorded == list(FORM_WEIGHTS.values())
+    header = next(line for line in section.splitlines() if line.strip().startswith("| Form"))
+    assert [cell.strip().strip("`") for cell in header.strip().strip("|").split("|")[1:]] == list(
+        FORM_WEIGHTS
+    )

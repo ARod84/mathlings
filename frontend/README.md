@@ -85,6 +85,7 @@ To add a game:
 | `src/api/schema.d.ts` | Types generated from `../openapi.json`. Never edited by hand.                    |
 | `src/api/client.ts`   | The one configured `openapi-fetch` client.                                       |
 | `src/api/puzzles.ts`  | `newMissingNumber`, `getPuzzle`, `checkStep`, `getHint`, each returning a result |
+| `src/api/player.ts`   | The anonymous player id (`getPlayerId`, `forgetPlayer`) and `getNextPuzzle`      |
 
 Every function in `puzzles.ts` returns `{ status: 'ok', data }` or one of `notFound`, `gone`,
 `unavailable`, `network`. Components branch on that name and never read an HTTP status code.
@@ -93,16 +94,57 @@ When the backend's API changes: export `openapi.json` there, then run `npm run a
 test fails if `schema.d.ts` is out of date. `openapi-typescript` asks for TypeScript 5 as a peer;
 the `overrides` entry in `package.json` lets it install alongside TypeScript 6, which it works with.
 
+### The player id
+
+`getPlayerId()` returns a random UUID kept in `localStorage` under `mathlings.playerId`, making it
+on first call. A middleware in `client.ts` sends it as `X-Player-Id` on every puzzle request, and
+the backend keeps practice history under it. It is a pseudonymous identifier, not a login; the
+[root README](../README.md#privacy) has the privacy rules.
+
+- If `localStorage` is unavailable (private mode, blocked storage), `getPlayerId()` returns `null`,
+  no header is sent, nothing is stored, and the game plays as usual.
+- `forgetPlayer()` calls `DELETE /api/v1/players/me` and then removes the key. If the delete fails
+  the key is kept, so it can be tried again.
+- The home screen footer has the "Forget my progress on this device" button, with a confirm step
+  inside the page.
+
 ### Testing against the API
 
 Tests never call a real server. `src/test/puzzleBackend.ts` is a pretend puzzle API on MSW whose
 responses are typed from `schema.d.ts`, so a change to the API's shape breaks the fixtures at
-compile time. A request no handler expects fails the test.
+compile time. A request no handler expects fails the test. `backend.playerIds` lists the
+`X-Player-Id` header of every request. `src/test/setup.ts` gives each test an empty in-memory
+`localStorage` (`src/test/storage.ts`), because Node 25 has a `localStorage` global of its own that
+hides the one from jsdom.
+
+Two rules that keep these tests steady, both learned from a flaky run (13 failures in 35 runs of
+the suite, none in 35 after):
+
+- **Wait for what lasts.** The games' tests pass a short `timing` (20 ms), so the "correct"
+  feedback is over almost at once, and the answer often comes back while `user.click` is still
+  being awaited. Wait for the next step or the solved screen, not for `data-feedback="correct"`.
+  A test that is about that feedback passes a longer `timing` instead.
+- **Whole-round tests use `userEvent.setup({ delay: null })`.** By default user-event waits on a
+  zero-length timer between the events of a click. On Windows that timer takes about 12 ms, so a
+  round of thirty clicks ran at 3 to 5 seconds against the 5 second limit.
 
 ## Missing Number Chains
 
-`src/games/missing-number`: equations with one missing number, linked in a chain. The child picks
-a number size (up to 20, 100 or 1000) and plays five puzzles with 2, 2, 3, 3 and 4 steps.
+`src/games/missing-number`: equations with one missing number, linked in a chain. A round is five
+puzzles.
+
+- **Start screen.** One big "Play" button, and under it a smaller row, "Or choose a range" (up
+  to 20, 100 or 1000).
+- **Play.** Before each puzzle of the round the game asks `GET /players/me/next` and uses the
+  level and chain length it recommends, so the round adapts as the child plays. With no player
+  id, or if the call fails, the puzzle is level 1 with 2 steps, and nothing is said about it.
+  The reason, the mastery values and the focus rule are logged with `console.debug` in
+  development and never reach the page.
+- **Focus.** If `/next` returns a `focus` (a mistake to target), the game passes it unchanged
+  in the new-puzzle request. When it is null the field is not sent. Nothing changes on screen,
+  and the child is never told a puzzle is focused.
+- **A chosen range.** Five puzzles at that level with 2, 2, 3, 3 and 4 steps; `/next` is not
+  called.
 
 - **One step at a time.** Solved steps stay above, faded, with their answer filled in. The current
   step is big, and later steps are not on the page. When a new step appears, the number just

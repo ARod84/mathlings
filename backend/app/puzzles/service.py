@@ -3,6 +3,10 @@
 Stateless: nothing about a puzzle is stored. A puzzle is rebuilt from its
 puzzle_id on every call and verified again before it is used.
 
+The one thing that can be stored is practice history, and only when the caller
+passes a player id to `check` or `hint` (and the service was given a
+PlayerService). Without one, nothing is written. See app/players/service.py.
+
     runtime = PuzzleRuntime()                  # one per process
     runtime.refresh(taxonomy_service)          # resolves the catalog when needed
     service = PuzzleService(taxonomy_service, runtime.require_catalog())
@@ -15,12 +19,17 @@ import logging
 import random
 import secrets
 import time
+import uuid
+from collections.abc import Callable
 
-from app.puzzles.diagnoser import diagnose
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.players.service import GAME_MISSING_NUMBER, AttemptRecord, PlayerService
+from app.puzzles.diagnoser import Diagnosis, diagnose
 from app.puzzles.ids import MAX_SEED, InvalidPuzzleId, OutdatedPuzzleId
-from app.puzzles.levels import GENERATOR_VERSION
+from app.puzzles.levels import GENERATOR_VERSION, LEVELS, step_topic_ids
 from app.puzzles.misconceptions import MisconceptionCatalog, MisconceptionResolutionError
-from app.puzzles.models import Equation, NumberToken, Puzzle
+from app.puzzles.models import Equation, MistakeRule, NumberToken, Puzzle
 from app.puzzles.schemas import (
     CheckResult,
     DiagnosisPublic,
@@ -166,29 +175,54 @@ def to_public(puzzle: Puzzle) -> PuzzlePublic:
 
 
 class PuzzleService:
-    def __init__(self, taxonomy: TaxonomyService, catalog: MisconceptionCatalog) -> None:
+    def __init__(
+        self,
+        taxonomy: TaxonomyService,
+        catalog: MisconceptionCatalog,
+        players: PlayerService | None = None,
+    ) -> None:
         self.taxonomy = taxonomy
         self.catalog = catalog
+        self.players = players
         self._topic_exists = topic_exists(taxonomy)
         self._step_back = first_step_back(taxonomy)
 
-    def new_puzzle(self, level: int, length: int = 3, seed: int | None = None) -> PuzzlePublic:
+    def new_puzzle(
+        self,
+        level: int,
+        length: int = 3,
+        seed: int | None = None,
+        focus: MistakeRule | None = None,
+    ) -> PuzzlePublic:
         """A new verified puzzle. Without a seed, one is drawn at random.
+
+        `focus` targets a mistake rule (see levels.FOCUS_TARGET_FORMS). The
+        public puzzle does not say whether it has one.
 
         Raises verified.PuzzleGenerationFailed if every attempt fails.
         """
         if seed is None:
             seed = secrets.randbelow(MAX_SEED + 1)
         puzzle = generate_verified(
-            seed, level, length, catalog=self.catalog, topic_exists=self._topic_exists
+            seed,
+            level,
+            length,
+            focus=focus,
+            catalog=self.catalog,
+            topic_exists=self._topic_exists,
         )
         return to_public(puzzle)
 
     def get_puzzle(self, puzzle_id: str) -> PuzzlePublic:
         return to_public(self._rebuild(puzzle_id))
 
-    def check(self, puzzle_id: str, step_index: int, answer: int) -> CheckResult:
-        """Check one answer. Never reveals the right answer when the child is wrong."""
+    def check(
+        self, puzzle_id: str, step_index: int, answer: int, player_id: uuid.UUID | None = None
+    ) -> CheckResult:
+        """Check one answer. Never reveals the right answer when the child is wrong.
+
+        With a player id the attempt is stored; the result is the same either way.
+        """
         started = time.perf_counter()
         puzzle = self._rebuild(puzzle_id)
         self._require_step(puzzle, step_index)
@@ -231,16 +265,65 @@ class PuzzleService:
             latency_ms,
             extra={"puzzle_check": fields},
         )
+        players = self.players
+        if player_id is not None and players is not None:
+            record = self._attempt_record(puzzle, step_index, answer, diagnosis)
+            self._store(players, lambda: players.record_attempt(player_id, record))
         return result
 
-    def hint(self, puzzle_id: str, step_index: int, tier: int) -> HintOut:
-        """One hint tier, from 1 (meaning) to 3 (worked step, which shows the answer)."""
+    def hint(
+        self, puzzle_id: str, step_index: int, tier: int, player_id: uuid.UUID | None = None
+    ) -> HintOut:
+        """One hint tier, from 1 (meaning) to 3 (worked step, which shows the answer).
+
+        With a player id the request is stored; the hint is the same either way.
+        """
         puzzle = self._rebuild(puzzle_id)
         self._require_step(puzzle, step_index)
         hints = puzzle.steps[step_index].hints
         if not 1 <= tier <= len(hints):
             raise HintTierNotFound(tier, len(hints))
+        players = self.players
+        if player_id is not None and players is not None:
+            self._store(
+                players, lambda: players.record_hint(player_id, puzzle_id, step_index, tier)
+            )
         return HintOut(tier=tier, text=hints[tier - 1])
+
+    def _attempt_record(
+        self, puzzle: Puzzle, step_index: int, answer: int, diagnosis: Diagnosis
+    ) -> AttemptRecord:
+        step = puzzle.steps[step_index]
+        primary_topic_id = LEVELS[puzzle.level].primary_topic_id
+        links = (self.catalog.link_for(rule, primary_topic_id) for rule in diagnosis.matched_rules)
+        return AttemptRecord(
+            puzzle_id=puzzle.puzzle_id,
+            generator_version=puzzle.generator_version,
+            game=GAME_MISSING_NUMBER,
+            level=puzzle.level,
+            step_index=step_index,
+            form=step.form,
+            answer=answer,
+            correct=diagnosis.correct,
+            matched_rules=[rule.value for rule in diagnosis.matched_rules],
+            # In the order of matched_rules; a rule without a taxonomy pattern adds nothing.
+            error_pattern_ids=list(
+                dict.fromkeys(link.error_pattern_id for link in links if link is not None)
+            ),
+            reteach_topic_id=diagnosis.reteach_topic_id,
+            # The step's own topics, not the puzzle's: see levels.step_topic_ids.
+            topic_ids=step_topic_ids(puzzle.level, step.form),
+        )
+
+    @staticmethod
+    def _store(players: PlayerService, write: Callable[[], None]) -> None:
+        """Run one history write. If the database refuses it, the child still gets
+        their answer: the failure is logged (without the player id) and dropped."""
+        try:
+            write()
+        except SQLAlchemyError:
+            players.session.rollback()
+            logger.exception("Could not store practice history; the response is unaffected")
 
     def _rebuild(self, puzzle_id: str) -> Puzzle:
         try:

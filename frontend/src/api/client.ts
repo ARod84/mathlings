@@ -1,4 +1,5 @@
 import createClient from 'openapi-fetch';
+import { getPlayerId, PLAYER_ID_HEADER } from './player';
 import type { paths } from './schema';
 
 /*
@@ -18,4 +19,18 @@ export const api = createClient<paths>({
   // Looked up on every call, not captured once here, so anything that wraps
   // the global fetch later (the mock server in tests, for one) is honored.
   fetch: (request) => globalThis.fetch(request),
+});
+
+/*
+ * Puzzle requests carry the anonymous player id, when this device has one, so
+ * the backend can keep practice history. Without an id (storage blocked) the
+ * header is left out and the backend stores nothing. See player.ts.
+ */
+api.use({
+  onRequest({ request, schemaPath }) {
+    if (!schemaPath.startsWith('/api/v1/puzzles')) return undefined;
+    const playerId = getPlayerId();
+    if (playerId !== null) request.headers.set(PLAYER_ID_HEADER, playerId);
+    return request;
+  },
 });

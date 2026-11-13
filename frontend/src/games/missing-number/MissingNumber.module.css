@@ -149,24 +149,72 @@
   opacity: 0.5;
 }
 
-/* ---- Start screen: three big level buttons ---- */
+/* ---- Start screen: one big Play button, then a smaller row of ranges ---- */
+
+.start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 28rem;
+}
+
+.play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 18rem;
+  min-height: 5.5rem;
+  padding: 0 var(--space-8);
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-lg);
+  background: var(--color-gold);
+  color: var(--color-ink);
+  font: var(--font-weight-heavy) var(--font-size-display) / 1 var(--font-display);
+  cursor: pointer;
+  box-shadow: var(--shadow-button);
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+}
+
+.play:hover {
+  background: var(--color-gold-deep);
+}
+
+.play:active {
+  transform: translateY(var(--size-press));
+  box-shadow: 0 1px 0 0 var(--color-outline);
+}
+
+.rangeLabel {
+  margin-top: var(--space-4);
+  font: var(--font-weight-bold) var(--font-size-md) / var(--line-height-body) var(--font-body);
+  color: var(--color-ink);
+}
 
 .levels {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
   width: 100%;
-  max-width: 22rem;
 }
 
 .level {
-  min-height: 4.5rem;
-  padding: 0 var(--space-6);
+  flex: 1 1 7rem;
+  min-height: 3.25rem;
+  padding: 0 var(--space-3);
   border: var(--size-outline) solid var(--color-outline);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: var(--house-strong);
   color: var(--color-on-dark);
-  font: var(--font-weight-heavy) var(--font-size-2xl) / 1 var(--font-display);
+  font: var(--font-weight-heavy) var(--font-size-lg) / 1 var(--font-display);
+  white-space: nowrap;
   cursor: pointer;
   box-shadow: var(--shadow-button);
   transition:

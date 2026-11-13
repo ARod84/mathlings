@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from app.puzzles.equations import build_equation
+from app.puzzles.ids import make_puzzle_id
 from app.puzzles.models import (
     Distractor,
     Equation,
@@ -137,6 +138,49 @@ def test_distractor_out_of_range():
     )
 
     assert F.DISTRACTOR_OUT_OF_RANGE in check(broken).names
+
+
+def test_a_mistake_value_past_the_level_range_is_accepted_up_to_the_cap():
+    # 8 + □ = 15 at level 1, with 23 (8 + 15) as an option: above 20, within 40.
+    puzzle = make_puzzle([make_step("a+?=c", 8, 15)])
+    assert 23 in [d.value for d in puzzle.steps[0].distractors]
+    assert check(puzzle).ok, check(puzzle).failures
+
+    # 19 + □ = 20 gives 39, the largest a level-1 sum can be.
+    assert check(make_puzzle([make_step("a+?=c", 19, 20)])).ok
+
+
+def test_a_mistake_value_past_the_cap_is_rejected():
+    puzzle = make_puzzle([make_step("a+?=c", 8, 15)])
+    kept = puzzle.steps[0].distractors[:2]
+    over_cap = Distractor(
+        value=41, rule=MistakeRule.ADD_VISIBLE, error_pattern_id="mt_3JgrHY221M#0"
+    )
+    result = check(replace_step(puzzle, 0, distractors=[over_cap, kept[1], kept[0]]))
+
+    assert F.DISTRACTOR_OUT_OF_RANGE in result.names
+    detail = next(f.detail for f in result.failures if f.name is F.DISTRACTOR_OUT_OF_RANGE)
+    assert "0..40" in detail
+
+
+def test_a_filler_past_the_level_range_is_rejected_even_under_the_cap():
+    # 1 + □ = 20 is 19. A filler at 21 is "near", and under 40, but fillers stay in range.
+    puzzle = make_puzzle([make_step("a+?=c", 1, 20)])
+    kept = puzzle.steps[0].distractors[:2]
+    filler = Distractor(value=21, rule=MistakeRule.NEAR_MISS)
+    result = check(replace_step(puzzle, 0, distractors=[*kept, filler]))
+
+    assert F.DISTRACTOR_OUT_OF_RANGE in result.names
+    detail = next(f.detail for f in result.failures if f.name is F.DISTRACTOR_OUT_OF_RANGE)
+    assert "0..20" in detail
+
+
+def test_the_answer_and_visible_numbers_do_not_get_the_higher_cap():
+    # 8 + □ = 30 would need 22: the cap is for mistakes, not for the puzzle itself.
+    result = check(make_puzzle([make_step("a+?=c", 8, 30)]))
+
+    assert F.VALUE_OUT_OF_RANGE in result.names
+    assert F.NO_UNIQUE_SOLUTION in result.names
 
 
 def test_wrong_number_of_distractors():
@@ -348,6 +392,132 @@ def test_brute_force_solving_handles_every_form():
         assert check(right).ok, (form, check(right).failures)
         wrong = replace_step(right, 0, answer=answer + 2)
         assert F.WRONG_ANSWER in check(wrong).names, form
+
+
+# ---- focused puzzles ----
+
+AV = MistakeRule.ADD_VISIBLE
+ALB = MistakeRule.ANSWER_LEFT_BACKWARDS
+PC = MistakeRule.POSITION_CONFUSION
+
+
+def focused_chain(focus: MistakeRule = AV) -> Puzzle:
+    """8 + □ = 11,  □ − 3 = 5,  14 − □ = 8, built as a puzzle with a focus."""
+    return make_puzzle(
+        [
+            make_step("a+?=c", 8, 11, focus=focus),
+            make_step("?-b=c", 3, 5, link_position=0, focus=focus),
+            make_step("a-?=c", 14, 8, link_position=1, focus=focus),
+        ],
+        focus=focus,
+    )
+
+
+def test_hand_built_focused_puzzles_pass():
+    for focus in (AV, ALB, PC):
+        result = check(focused_chain(focus))
+        assert result.ok, (focus, result.failures)
+    # The focus is in the id, and that is where the verifier reads it from.
+    assert "-av-" in focused_chain(AV).puzzle_id
+    assert "-pc-" in focused_chain(PC).puzzle_id
+
+
+def test_the_focus_in_the_id_and_in_the_puzzle_must_agree():
+    plain, focused = example_chain(), focused_chain(AV)
+
+    says_focus_but_id_does_not = plain.model_copy(update={"focus": AV})
+    id_says_focus_but_puzzle_does_not = focused.model_copy(update={"focus": None})
+    another_focus = focused.model_copy(update={"focus": PC})
+
+    for puzzle in (says_focus_but_id_does_not, id_says_focus_but_puzzle_does_not, another_focus):
+        assert F.PUZZLE_ID_MISMATCH in check(puzzle).names
+
+
+def test_a_rule_that_cannot_be_a_focus_is_rejected():
+    for rule in (MistakeRule.OFF_BY_ONE_OVER, MistakeRule.PLACE_VALUE_SLIP, MistakeRule.NEAR_MISS):
+        puzzle = example_chain().model_copy(update={"focus": rule})
+        assert F.UNSUPPORTED_FOCUS in check(puzzle).names
+
+    # An id with a focus code nobody defined.
+    chain = example_chain()
+    unknown = chain.model_copy(
+        update={"puzzle_id": make_puzzle_id(chain.generator_version, 1, 3, chain.seed, "zz")}
+    )
+    assert F.UNSUPPORTED_FOCUS in check(unknown).names
+
+
+def test_the_focus_distractor_must_be_there_and_come_first():
+    puzzle = focused_chain(AV)
+    first = puzzle.steps[0]
+    assert first.distractors[0].rule is AV  # 8 + 11 = 19
+
+    # Present, but not in the first slot.
+    moved = replace_step(puzzle, 0, distractors=list(reversed(first.distractors)))
+    assert check(moved).names == {F.FOCUS_DISTRACTOR_MISSING}
+
+    # Not there at all: a filler in its place (3 − 2 = 1 is already an option, so 5).
+    filler = Distractor(value=5, rule=MistakeRule.NEAR_MISS)
+    assert filler.value not in [d.value for d in first.distractors]
+    dropped = replace_step(puzzle, 0, distractors=[filler, *first.distractors[1:]])
+    assert check(dropped).names == {F.FOCUS_DISTRACTOR_MISSING}
+
+    # The same options without a focus are fine: the rule only binds focused puzzles.
+    plain = example_chain()
+    unfocused = replace_step(plain, 0, distractors=list(reversed(plain.steps[0].distractors)))
+    assert check(unfocused).ok
+
+
+def test_the_focus_distractor_is_not_demanded_where_the_rule_gives_nothing():
+    # 5 = □ − 9: answer-left-backwards would be 5 − 9, below zero, so there is no value.
+    puzzle = make_puzzle([make_step("c=?-b", 5, 9, focus=ALB)], focus=ALB)
+
+    assert all(d.rule is not ALB for d in puzzle.steps[0].distractors)
+    assert check(puzzle).ok
+    # □ − 3 = 5 with a position-confusion focus: 5 − 3 = 2 has to be first.
+    with_value = make_puzzle([make_step("?-b=c", 3, 5, focus=PC)], focus=PC)
+    assert with_value.steps[0].distractors[0].rule is PC
+    assert check(with_value).ok
+
+
+def answer_left_chain(count: int, focus: MistakeRule | None) -> Puzzle:
+    """5 = □ − 3,  12 = 8 + □,  9 = □ − 4: one, two or three answer-left steps."""
+    steps = [
+        make_step("c=?-b", 5, 3, focus=focus),
+        make_step("c=a+?", 12, 8, link_position=1, focus=focus),
+        make_step("c=?-b", 9, 4, link_position=1, focus=focus),
+    ]
+    return make_puzzle(steps[:count], focus=focus)
+
+
+def test_answer_left_limit_with_and_without_the_focus_that_raises_it():
+    assert check(answer_left_chain(1, None)).ok
+    assert check(answer_left_chain(2, None)).names == {F.TOO_MANY_ANSWER_LEFT}
+
+    # ANSWER_LEFT_BACKWARDS allows two at levels 1 and 2, and no more.
+    assert check(answer_left_chain(2, ALB)).ok
+    assert check(answer_left_chain(3, ALB)).names == {F.FOCUS_TOO_MANY_ANSWER_LEFT}
+
+    # Another focus does not raise the limit.
+    assert F.TOO_MANY_ANSWER_LEFT in check(answer_left_chain(2, AV)).names
+
+
+def test_a_longer_focused_chain_needs_a_step_the_focus_does_not_target():
+    # 8 + □ = 11,  □ + 3 = 10,  7 + □ = 12: every form is one ADD_VISIBLE targets.
+    steps = [
+        make_step("a+?=c", 8, 11, focus=AV),
+        make_step("?+b=c", 3, 10, link_position=0, focus=AV),
+        make_step("a+?=c", 7, 12, link_position=0, focus=AV),
+    ]
+
+    assert check(make_puzzle(steps, focus=AV)).names == {F.FOCUS_NO_UNTARGETED_STEP}
+    # Two steps may both be targeted, and without a focus there is no such rule.
+    assert check(make_puzzle(steps[:2], focus=AV)).ok
+    plain = [
+        make_step("a+?=c", 8, 11),
+        make_step("?+b=c", 3, 10, link_position=0),
+        make_step("a+?=c", 7, 12, link_position=0),
+    ]
+    assert check(make_puzzle(plain)).ok
 
 
 def test_the_verifier_does_not_import_the_generator():
