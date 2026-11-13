@@ -79,7 +79,19 @@ def research(topic_id, assess):
         },
         "learn": {
             "summary": "A short activity sequence.",
-            "activities": [{"title": "Build it", "steps": ["Make both numbers with blocks"]}],
+            "activities": [
+                {
+                    "title": "Build it",
+                    "feedback": ["If the trade is skipped, count the ones together."],
+                    "rationale": "Concrete before abstract.",
+                    "sourceClaims": ["A fixture claim"],
+                    "learnerActions": [
+                        "Make both numbers with blocks",
+                        "Trade ten ones for a ten",
+                    ],
+                    "intendedInsight": "Ten ones are worth one ten.",
+                }
+            ],
             "constraints": [],
             "reviewNotes": [],
             "schemaVersion": 1,

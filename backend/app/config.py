@@ -15,6 +15,9 @@ class Settings(BaseSettings):
 
     database_path: Path = BACKEND_DIR / "data" / "app.db"
     taxonomy_path: Path = BACKEND_DIR / "vendor" / "os-taxonomy"
+    # Browser origins allowed to call the API: the Vite dev server by default.
+    # Set as a JSON list, e.g. MATHLINGS_CORS_ORIGINS='["http://localhost:5173"]'.
+    cors_origins: list[str] = ["http://localhost:5173"]
 
     @property
     def database_url(self) -> str:

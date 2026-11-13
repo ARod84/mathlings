@@ -36,6 +36,7 @@ from app.taxonomy.constants import (
     SCOPE_SUBJECT,
     TAXONOMY_COMMIT,
 )
+from app.taxonomy.service import reload_graph
 from app.taxonomy.source import (
     CycleError,
     TaxonomyError,
@@ -407,7 +408,13 @@ def run_import(engine: Engine, taxonomy_path: Path, commit_sha: str) -> ImportSu
     source = load_source(taxonomy_path)
     plan = build_plan(source)
     with Session(engine) as session, session.begin():
-        return apply_plan(session, plan, source, commit_sha)
+        summary = apply_plan(session, plan, source, commit_sha)
+    # Refresh the in-memory prerequisite graph for anything in this process
+    # that uses it. A running API server is a separate process: it notices the
+    # new import by itself (see service.ensure_graph_fresh).
+    with Session(engine) as session:
+        reload_graph(session)
+    return summary
 
 
 def checked_commit(taxonomy_path: Path) -> str:

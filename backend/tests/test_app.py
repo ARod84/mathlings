@@ -2,19 +2,11 @@ from pathlib import Path
 
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
-from fastapi.testclient import TestClient
 from sqlalchemy import Engine, inspect
 from sqlmodel import SQLModel
 
 import app.models  # noqa: F401
 from app.config import Settings
-from app.main import app as fastapi_app
-
-
-def test_health():
-    response = TestClient(fastapi_app).get("/health")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
 
 
 def test_settings_defaults_and_environment(monkeypatch, tmp_path: Path):
@@ -22,10 +14,13 @@ def test_settings_defaults_and_environment(monkeypatch, tmp_path: Path):
     assert defaults.database_path.name == "app.db"
     assert defaults.database_path.parent.name == "data"
     assert defaults.taxonomy_path.parts[-2:] == ("vendor", "os-taxonomy")
+    assert defaults.cors_origins == ["http://localhost:5173"]
 
     monkeypatch.setenv("MATHLINGS_DATABASE_PATH", str(tmp_path / "other.db"))
     monkeypatch.setenv("MATHLINGS_TAXONOMY_PATH", str(tmp_path / "tax"))
+    monkeypatch.setenv("MATHLINGS_CORS_ORIGINS", '["https://a.example","https://b.example"]')
     overridden = Settings(_env_file=None)
+    assert overridden.cors_origins == ["https://a.example", "https://b.example"]
     assert overridden.database_path == tmp_path / "other.db"
     assert overridden.taxonomy_path == tmp_path / "tax"
     assert overridden.database_url.startswith("sqlite:///")

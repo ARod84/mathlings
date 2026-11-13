@@ -8,7 +8,7 @@ The database answers two questions:
 - **What mistakes do kids typically make here, and what should we do about them?** The
   `error_pattern` table.
 
-So far the API has one endpoint, `GET /health`.
+The API is read-only; see [The API](#the-api) below.
 
 Stack: Python 3.12, [uv](https://docs.astral.sh/uv/), FastAPI, SQLModel on SQLite, Alembic, pytest,
 ruff, pydantic-settings.
@@ -38,10 +38,11 @@ uv run uvicorn app.main:app --reload      # API at http://localhost:8000/health
 
 Read from the environment, or from `backend/.env`.
 
-| Variable                  | Default              | Meaning                           |
-| ------------------------- | -------------------- | --------------------------------- |
-| `MATHLINGS_DATABASE_PATH` | `data/app.db`        | The SQLite file (gitignored)      |
-| `MATHLINGS_TAXONOMY_PATH` | `vendor/os-taxonomy` | The dataset checkout (gitignored) |
+| Variable                  | Default                     | Meaning                                                 |
+| ------------------------- | --------------------------- | ------------------------------------------------------- |
+| `MATHLINGS_DATABASE_PATH` | `data/app.db`               | The SQLite file (gitignored)                            |
+| `MATHLINGS_TAXONOMY_PATH` | `vendor/os-taxonomy`        | The dataset checkout (gitignored)                       |
+| `MATHLINGS_CORS_ORIGINS`  | `["http://localhost:5173"]` | Browser origins allowed to call the API, as a JSON list |
 
 ## The pinned dataset
 
@@ -100,3 +101,54 @@ rows are updated in place and the summary lists what was added, changed and remo
 `app.taxonomy.prompts.render_assessment_prompt(template, name)` fills the `{{name}}` placeholder.
 Without a name it rewords the prompt to speak to the reader: "If {{name}} writes..., can they..."
 becomes "If you write..., can you...".
+
+## The API
+
+All routes are `GET` under `/api/v1`. Interactive docs are at `http://localhost:8000/docs`.
+
+| Route                         | Returns                                                               |
+| ----------------------------- | --------------------------------------------------------------------- |
+| `/domains`                    | Domains with topic counts                                             |
+| `/topics`                     | A page of topic summaries: `{items, total, limit, offset}`            |
+| `/topics/{id}`                | The full topic, with the assessment prompt rendered (`?name=`)        |
+| `/topics/{id}/prerequisites`  | What it requires first (`?depth=direct\|all`, `?strength=hard\|soft`) |
+| `/topics/{id}/unlocks`        | Topics that directly depend on it                                     |
+| `/topics/{id}/step-back`      | Where to step back to, best candidate first                           |
+| `/topics/{id}/error-patterns` | Typical mistakes, each with its reteach topic                         |
+| `/topics/{id}/research`       | Trimmed teaching research; 404 if the topic has none                  |
+| `/meta/source`                | Pinned commit, taxonomy version, import time and attribution          |
+
+`/topics` filters: `domain`, `in_scope` (default true), `age`, `type`, `q`, `has_research`, plus
+`limit` (default 50, max 200) and `offset`. `GET /health` also says whether the taxonomy is loaded
+and how many topics it has. An unknown topic gives a 404 with
+`{"detail": "Topic not found", "topic_id": "..."}`.
+
+### Layers
+
+| File                      | Role                                                                         |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| `app/taxonomy/service.py` | `TaxonomyService`: every query. No FastAPI. Python code calls this directly. |
+| `app/taxonomy/graph.py`   | The prerequisite graph in memory. Standard library only.                     |
+| `app/taxonomy/schemas.py` | Pydantic response models. Database tables are never returned.                |
+| `app/api/v1/taxonomy.py`  | Thin routes: parse the request, call the service.                            |
+
+```python
+from sqlmodel import Session
+from app.db import make_engine
+from app.taxonomy.service import TaxonomyService, reload_graph
+
+with Session(make_engine()) as session:
+    reload_graph(session)                      # once per process
+    service = TaxonomyService(session)
+    patterns = service.get_error_patterns("mt_SrrsLiJkr3")
+    step_back = service.get_step_back("mt_SrrsLiJkr3")
+```
+
+The graph is loaded once when the API starts. Each request then makes one small query to see
+whether the database has been re-imported since, and reloads the graph if so; that is how a
+re-import takes effect without a restart, even though the importer runs as a separate process.
+
+### OpenAPI
+
+`uv run python scripts/export_openapi.py` writes `openapi.json` at the repo root, for the
+frontend's typed client. A test fails if that file is out of date.
