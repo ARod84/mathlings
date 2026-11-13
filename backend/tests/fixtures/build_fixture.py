@@ -239,10 +239,77 @@ PUZZLE_TOPICS += [
     topic("mt_glPPG-kTQY", "Mathematics", "Addition & Subtraction", "Adding within 100", 6, 8),
 ]
 
+# Topics "Next in Line" is tagged with, and the topics their error patterns step back to.
+PUZZLE_TOPICS += [
+    topic(
+        "mt_W3VOAuFwVw",
+        "Mathematics",
+        "Algebra",
+        "Describing growing number patterns",
+        3,
+        13,
+        kind="CONCEPTUAL",
+    ),
+    topic(
+        "mt_IzQvs7k_sE",
+        "Mathematics",
+        "Counting & Cardinality",
+        "Skip Counting (4s, 8s, 50s, 100s)",
+        7,
+        9,
+    ),
+    topic("mt_hBZwbst0ow", "Mathematics", "Algebra", "Linear number sequences", 10, 13),
+    topic(
+        "mt_vXRzMbiPff",
+        "Mathematics",
+        "Number Representation & Place Value",
+        "Negative Numbers",
+        8,
+        12,
+        kind="CONCEPTUAL",
+    ),
+    topic(
+        "mt_fZTn0W_iZR",
+        "Mathematics",
+        "Mathematical Thinking",
+        "Generalising Patterns",
+        6,
+        13,
+        kind="META",
+    ),
+    topic(
+        "mt_RVK655t391",
+        "Mathematics",
+        "Number Representation & Place Value",
+        "Measuring temperature",
+        10,
+        12,
+    ),
+    topic("mt_M2v1A9OEuM", "Mathematics", "Counting & Cardinality", "Counting Within 1,000", 7, 9),
+    topic("mt_nvdpxAJTBG", "Mathematics", "Counting & Cardinality", "Counting in 2s", 3, 8),
+    topic("mt_A-FyLLLLzy", "Mathematics", "Multiplication & Division", "Shape patterns", 8, 12),
+    topic(
+        "mt_m1W6nTQJ2b",
+        "Mathematics",
+        "Addition & Subtraction",
+        "Addition and subtraction within 20",
+        6,
+        8,
+    ),
+]
+
 PUZZLE_DEPENDENCIES = [
     edge("mt_3JgrHY221M", "mt_oIzycTBeE4"),
     edge("mt_3JgrHY221M", "mt_ehGS_uVSJv", "soft"),
     edge("mt_XuHmIn2xje", "mt_yTWxkzzoOZ"),
+    edge("mt_W3VOAuFwVw", "mt_nvdpxAJTBG"),
+    edge("mt_IzQvs7k_sE", "mt_nvdpxAJTBG"),
+    edge("mt_hBZwbst0ow", "mt_W3VOAuFwVw"),
+    edge("mt_hBZwbst0ow", "mt_vXRzMbiPff"),
+    edge("mt_hBZwbst0ow", "mt_RVK655t391", "soft"),
+    edge("mt_hBZwbst0ow", "mt_A-FyLLLLzy", "soft"),
+    edge("mt_vXRzMbiPff", "mt_M2v1A9OEuM"),
+    edge("mt_fZTn0W_iZR", "mt_m1W6nTQJ2b", "soft"),
 ]
 
 
@@ -300,6 +367,105 @@ PUZZLE_RESEARCH = [
                     "Position confusion — treats □ − 120 = 250 as 250 − 120 (=130)",
                     "Represent with a part-whole bar: here the box is the WHOLE.",
                     "mt_yTWxkzzoOZ",
+                ),
+            ]
+        ),
+    ),
+    # The sequence topics. Every pattern of the real topic is here, in the real
+    # order, because a pattern's id is its topic and its position.
+    research(
+        "mt_IzQvs7k_sE",
+        puzzle_assess(
+            [
+                pattern(
+                    "sub-counts by smaller steps — builds the 8s by counting on in 4s (or ones) "
+                    "each time rather than stepping by 8; slow and breaks under load",
+                    "do NOT drill for speed — use number-line jumps of 8.",
+                    "mt_nvdpxAJTBG",
+                ),
+                pattern(
+                    "no link between 4s and 8s — treats them as two separate lists",
+                    "write out the 4s and ring every other one to reveal the 8s.",
+                ),
+                pattern(
+                    "50s/100s digit slip — loses place in the 50s (…, 450, 500, 550) or "
+                    "miscounts at boundaries",
+                    "do NOT reteach the whole sequence — rehearse the …950, 1000 bridge.",
+                ),
+            ]
+        ),
+    ),
+    research(
+        "mt_hBZwbst0ow",
+        puzzle_assess(
+            [
+                pattern(
+                    "Thinks the sequence 'stops' at zero — that you cannot go below zero or "
+                    "that negative numbers are not real, so 5, 3, 1 halts or ends at 0",
+                    "Confront with a temperature scale and keep the equal hop going.",
+                    "mt_RVK655t391",
+                ),
+                pattern(
+                    "Reads or writes the negative sign wrongly — records the term as 1 "
+                    "instead of −1, or reads −13 as 13",
+                    "Show the raised minus for a negative number versus the subtraction sign.",
+                ),
+                pattern(
+                    "States the rule vaguely — 'it goes down' — dropping the amount",
+                    "Require the form 'start at ___, add/subtract ___ each time'.",
+                ),
+                pattern(
+                    "Fixates on the last term and imposes a familiar pattern instead of the "
+                    "constant step",
+                    "Check the step between EVERY pair, not just the last two.",
+                    "mt_A-FyLLLLzy",
+                ),
+                pattern(
+                    "Treats a decreasing sequence as a different kind, continuing it upward "
+                    "or getting the direction confused because they expect sequences to increase",
+                    "Frame decreasing as 'adding a negative each time'.",
+                ),
+            ]
+        ),
+    ),
+    research(
+        "mt_vXRzMbiPff",
+        puzzle_assess(
+            [
+                pattern(
+                    "Orders negatives by magnitude — '−5 is bigger than −2'.",
+                    "Walk both on a horizontal number line.",
+                ),
+                pattern(
+                    "Numbers stop at (or bounce off) zero — after 0 the child says 1 again, "
+                    "treating zero as the floor.",
+                    "Extend the number line and a thermometer below zero.",
+                    "mt_M2v1A9OEuM",
+                ),
+                pattern(
+                    "Zero-as-smallest — believes 0 is the least possible number.",
+                    "Use a context that clearly goes below zero.",
+                ),
+            ]
+        ),
+    ),
+    research(
+        "mt_fZTn0W_iZR",
+        puzzle_assess(
+            [
+                pattern(
+                    "Recomputes 6+7 from one instead of seeing it as the known double 6+6 plus 1",
+                    "Put 6+6 and 6+7 side by side on ten-frames.",
+                    "mt_m1W6nTQJ2b",
+                ),
+                pattern(
+                    "Applies the near-double adjustment wrongly — adds two",
+                    "Scaffold with the two ten-frames.",
+                ),
+                pattern(
+                    "States a sequence rule from one or two cases and assumes it holds "
+                    "without testing further",
+                    "Ask 'how could we be sure? test the next one'.",
                 ),
             ]
         ),

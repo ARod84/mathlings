@@ -326,7 +326,10 @@ export interface components {
     schemas: {
         /** CheckRequest */
         CheckRequest: {
-            /** Answer */
+            /**
+             * Answer
+             * @description A whole number. Each game has its own bounds (PuzzleType.answer_min and answer_max): 0 to 10000 for missing-number, -1000 to 10000 for sequences. An answer outside the bounds of the puzzle's game is a 422.
+             */
             answer: number;
         };
         /** CheckResult */
@@ -642,10 +645,8 @@ export interface components {
          */
         PuzzlePublic: {
             /**
-             * Game
-             * @description Which game the puzzle belongs to. Always sent; tells the shapes apart.
-             * @default missing-number
-             * @constant
+             * @description Which game the puzzle belongs to. Always sent; tells the shapes apart. (enum property replaced by openapi-typescript)
+             * @enum {string}
              */
             game: "missing-number";
             /** Puzzle Id */
@@ -701,6 +702,62 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /**
+         * SequencePublic
+         * @description A row of numbers with one or two blanks, as the browser gets it.
+         */
+        SequencePublic: {
+            /**
+             * @description Which game the puzzle belongs to. Always sent; tells the shapes apart. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            game: "sequences";
+            /** Puzzle Id */
+            puzzle_id: string;
+            /** Level */
+            level: number;
+            /**
+             * Length
+             * @description Number of blanks, which is the number of steps.
+             */
+            length: number;
+            /**
+             * Topic Ids
+             * @description Taxonomy topics practised, primary first.
+             */
+            topic_ids: string[];
+            /**
+             * Terms
+             * @description The row, in order. Null where a term is blank. A blank stays null here after it is solved: the browser fills in what the child found.
+             */
+            terms: (number | null)[];
+            /** Steps */
+            steps: components["schemas"]["SequenceStepPublic"][];
+        };
+        /** SequenceStepPublic */
+        SequenceStepPublic: {
+            /**
+             * Index
+             * @description 0-based position among the blanks, in reading order.
+             */
+            index: number;
+            /**
+             * Position
+             * @description Which term of the row this blank is, from 0.
+             */
+            position: number;
+            /**
+             * Options
+             * @description The answer and three wrong answers, in an order that is fixed for the puzzle. May be negative.
+             */
+            options: number[];
+            /**
+             * Hint Tiers
+             * @description How many hint tiers can be asked for.
+             * @default 3
+             */
+            hint_tiers: number;
         };
         /** SourceInfo */
         SourceInfo: {
@@ -919,6 +976,20 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * NewSequenceRequest
+         * @description The body of POST /puzzles/sequences. The seed decides everything but the level.
+         */
+        NewSequenceRequest: {
+            /** Level */
+            level: number;
+            /**
+             * Seed
+             * @description Fixes the puzzle. Leave out for a random one.
+             * @default null
+             */
+            seed: number | null;
         };
     };
     responses: never;
@@ -1429,10 +1500,10 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description The body for the game named in the path. Each game has its own: `missing-number` takes NewPuzzleRequest. */
+        /** @description The body for the game named in the path. Each game has its own: `missing-number` takes NewPuzzleRequest, `sequences` takes NewSequenceRequest. */
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NewPuzzleRequest"];
+                "application/json": components["schemas"]["NewPuzzleRequest"] | components["schemas"]["NewSequenceRequest"];
             };
         };
         responses: {
@@ -1442,7 +1513,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PuzzlePublic"];
+                    "application/json": components["schemas"]["PuzzlePublic"] | components["schemas"]["SequencePublic"];
                 };
             };
             /** @description No such game */
@@ -1494,7 +1565,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PuzzlePublic"];
+                    "application/json": components["schemas"]["PuzzlePublic"] | components["schemas"]["SequencePublic"];
                 };
             };
             /** @description Unknown puzzle id, step or hint tier */
@@ -1718,7 +1789,7 @@ export interface operations {
         parameters: {
             query: {
                 /** @description The game to recommend for. Only Missing Number Chains adapts so far; any other game gets its default, with reason_code `no_policy`. */
-                game: "missing-number";
+                game: "missing-number" | "sequences";
             };
             header: {
                 /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. */

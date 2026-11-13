@@ -32,12 +32,19 @@ export interface GameShapes {
     request: components['schemas']['NewPuzzleRequest'];
     puzzle: PuzzlePublic;
   };
+  /** "Next in Line". The backend serves it; its screen is still to come. */
+  sequences: {
+    request: components['schemas']['NewSequenceRequest'];
+    puzzle: components['schemas']['SequencePublic'];
+  };
 }
 
 /** A game the backend has puzzles for. */
 export type GameId = keyof GameShapes;
 export type NewPuzzleRequest<G extends GameId> = GameShapes[G]['request'];
 export type PuzzleOf<G extends GameId> = GameShapes[G]['puzzle'];
+/** A puzzle of any game. Its `game` field says which. */
+export type AnyPuzzle = PuzzleOf<GameId>;
 
 export type ApiResult<T> =
   | { status: 'ok'; data: T }
@@ -87,10 +94,8 @@ export function newMissingNumber(
   return newPuzzle('missing-number', request, signal);
 }
 
-export function getPuzzle(
-  puzzleId: string,
-  signal?: AbortSignal,
-): Promise<ApiResult<PuzzlePublic>> {
+/** Rebuilds a puzzle from its id. The id says which game it is, so any game's can come back. */
+export function getPuzzle(puzzleId: string, signal?: AbortSignal): Promise<ApiResult<AnyPuzzle>> {
   return toResult(
     api.GET('/api/v1/puzzles/{puzzle_id}', { params: { path: { puzzle_id: puzzleId } }, signal }),
   );

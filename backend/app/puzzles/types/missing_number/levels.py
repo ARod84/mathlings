@@ -20,6 +20,10 @@ MAX_STEPS = 4
 DEFAULT_LENGTH = 3
 DISTRACTORS_PER_STEP = 3
 HINT_TIERS = 3
+# What a check accepts as an answer. MAX_ANSWER has to cover every value a
+# distractor can take (LevelSpec.distractor_max); a test keeps the two in step.
+MIN_ANSWER = 0
+MAX_ANSWER = 10_000
 
 ANSWER_LEFT_FORMS: frozenset[Form] = frozenset({"c=a+?", "c=?-b"})
 

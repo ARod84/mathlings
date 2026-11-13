@@ -1,7 +1,7 @@
 {
   "version": "fixture-v1",
   "note": "`topicId` depends on `prerequisiteId`.",
-  "edgeCount": 8,
+  "edgeCount": 16,
   "dependencies": [
     {
       "topicId": "mt_add2",
@@ -50,6 +50,54 @@
       "prerequisiteId": "mt_yTWxkzzoOZ",
       "strength": "hard",
       "reason": "mt_XuHmIn2xje builds on mt_yTWxkzzoOZ."
+    },
+    {
+      "topicId": "mt_W3VOAuFwVw",
+      "prerequisiteId": "mt_nvdpxAJTBG",
+      "strength": "hard",
+      "reason": "mt_W3VOAuFwVw builds on mt_nvdpxAJTBG."
+    },
+    {
+      "topicId": "mt_IzQvs7k_sE",
+      "prerequisiteId": "mt_nvdpxAJTBG",
+      "strength": "hard",
+      "reason": "mt_IzQvs7k_sE builds on mt_nvdpxAJTBG."
+    },
+    {
+      "topicId": "mt_hBZwbst0ow",
+      "prerequisiteId": "mt_W3VOAuFwVw",
+      "strength": "hard",
+      "reason": "mt_hBZwbst0ow builds on mt_W3VOAuFwVw."
+    },
+    {
+      "topicId": "mt_hBZwbst0ow",
+      "prerequisiteId": "mt_vXRzMbiPff",
+      "strength": "hard",
+      "reason": "mt_hBZwbst0ow builds on mt_vXRzMbiPff."
+    },
+    {
+      "topicId": "mt_hBZwbst0ow",
+      "prerequisiteId": "mt_RVK655t391",
+      "strength": "soft",
+      "reason": "mt_hBZwbst0ow builds on mt_RVK655t391."
+    },
+    {
+      "topicId": "mt_hBZwbst0ow",
+      "prerequisiteId": "mt_A-FyLLLLzy",
+      "strength": "soft",
+      "reason": "mt_hBZwbst0ow builds on mt_A-FyLLLLzy."
+    },
+    {
+      "topicId": "mt_vXRzMbiPff",
+      "prerequisiteId": "mt_M2v1A9OEuM",
+      "strength": "hard",
+      "reason": "mt_vXRzMbiPff builds on mt_M2v1A9OEuM."
+    },
+    {
+      "topicId": "mt_fZTn0W_iZR",
+      "prerequisiteId": "mt_m1W6nTQJ2b",
+      "strength": "soft",
+      "reason": "mt_fZTn0W_iZR builds on mt_m1W6nTQJ2b."
     }
   ]
 }

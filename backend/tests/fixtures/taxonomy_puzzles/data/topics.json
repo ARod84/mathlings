@@ -1,6 +1,6 @@
 {
   "version": "fixture-v1",
-  "topicCount": 14,
+  "topicCount": 24,
   "topics": [
     {
       "id": "mt_add2",
@@ -262,6 +262,196 @@
         "Explains adding within 100"
       ],
       "assessmentPrompt": "Can {{name}} show adding within 100 and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 6,
+      "ageRangeEnd": 8
+    },
+    {
+      "id": "mt_W3VOAuFwVw",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "Algebra",
+      "name": "Describing growing number patterns",
+      "description": "Fixture description of Describing growing number patterns.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows describing growing number patterns once",
+        "Explains describing growing number patterns"
+      ],
+      "assessmentPrompt": "Can {{name}} show describing growing number patterns and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 3,
+      "ageRangeEnd": 13
+    },
+    {
+      "id": "mt_IzQvs7k_sE",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Counting & Cardinality",
+      "name": "Skip Counting (4s, 8s, 50s, 100s)",
+      "description": "Fixture description of Skip Counting (4s, 8s, 50s, 100s).",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows skip counting (4s, 8s, 50s, 100s) once",
+        "Explains skip counting (4s, 8s, 50s, 100s)"
+      ],
+      "assessmentPrompt": "Can {{name}} show skip counting (4s, 8s, 50s, 100s) and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 7,
+      "ageRangeEnd": 9
+    },
+    {
+      "id": "mt_hBZwbst0ow",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Algebra",
+      "name": "Linear number sequences",
+      "description": "Fixture description of Linear number sequences.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows linear number sequences once",
+        "Explains linear number sequences"
+      ],
+      "assessmentPrompt": "Can {{name}} show linear number sequences and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 10,
+      "ageRangeEnd": 13
+    },
+    {
+      "id": "mt_vXRzMbiPff",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "Number Representation & Place Value",
+      "name": "Negative Numbers",
+      "description": "Fixture description of Negative Numbers.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows negative numbers once",
+        "Explains negative numbers"
+      ],
+      "assessmentPrompt": "Can {{name}} show negative numbers and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 8,
+      "ageRangeEnd": 12
+    },
+    {
+      "id": "mt_fZTn0W_iZR",
+      "type": "META",
+      "subject": "Mathematics",
+      "domain": "Mathematical Thinking",
+      "name": "Generalising Patterns",
+      "description": "Fixture description of Generalising Patterns.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows generalising patterns once",
+        "Explains generalising patterns"
+      ],
+      "assessmentPrompt": "Can {{name}} show generalising patterns and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 6,
+      "ageRangeEnd": 13
+    },
+    {
+      "id": "mt_RVK655t391",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Number Representation & Place Value",
+      "name": "Measuring temperature",
+      "description": "Fixture description of Measuring temperature.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows measuring temperature once",
+        "Explains measuring temperature"
+      ],
+      "assessmentPrompt": "Can {{name}} show measuring temperature and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 10,
+      "ageRangeEnd": 12
+    },
+    {
+      "id": "mt_M2v1A9OEuM",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Counting & Cardinality",
+      "name": "Counting Within 1,000",
+      "description": "Fixture description of Counting Within 1,000.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows counting within 1,000 once",
+        "Explains counting within 1,000"
+      ],
+      "assessmentPrompt": "Can {{name}} show counting within 1,000 and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 7,
+      "ageRangeEnd": 9
+    },
+    {
+      "id": "mt_nvdpxAJTBG",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Counting & Cardinality",
+      "name": "Counting in 2s",
+      "description": "Fixture description of Counting in 2s.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows counting in 2s once",
+        "Explains counting in 2s"
+      ],
+      "assessmentPrompt": "Can {{name}} show counting in 2s and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 3,
+      "ageRangeEnd": 8
+    },
+    {
+      "id": "mt_A-FyLLLLzy",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Multiplication & Division",
+      "name": "Shape patterns",
+      "description": "Fixture description of Shape patterns.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows shape patterns once",
+        "Explains shape patterns"
+      ],
+      "assessmentPrompt": "Can {{name}} show shape patterns and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 8,
+      "ageRangeEnd": 12
+    },
+    {
+      "id": "mt_m1W6nTQJ2b",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Addition & Subtraction",
+      "name": "Addition and subtraction within 20",
+      "description": "Fixture description of Addition and subtraction within 20.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows addition and subtraction within 20 once",
+        "Explains addition and subtraction within 20"
+      ],
+      "assessmentPrompt": "Can {{name}} show addition and subtraction within 20 and explain how they did it?",
       "standards": [
         "fixture-curriculum:FX-1"
       ],

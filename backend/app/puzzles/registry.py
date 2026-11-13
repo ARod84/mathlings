@@ -13,6 +13,7 @@ from collections.abc import Iterable, Iterator
 
 from app.puzzles.core import PuzzleType
 from app.puzzles.types.missing_number import MissingNumberChains
+from app.puzzles.types.sequences import NumberSequences
 
 
 class UnknownGame(Exception):
@@ -62,4 +63,4 @@ class PuzzleRegistry:
 
 def default_registry() -> PuzzleRegistry:
     """The puzzle types the real app serves. Add a new type here."""
-    return PuzzleRegistry([MissingNumberChains])
+    return PuzzleRegistry([MissingNumberChains, NumberSequences])

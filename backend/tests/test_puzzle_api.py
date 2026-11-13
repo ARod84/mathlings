@@ -9,12 +9,11 @@ from sqlmodel import Session
 
 import app.puzzles.service as puzzle_service_module
 from app.config import BACKEND_DIR
-from app.puzzles.core.schemas import MAX_ANSWER
 from app.puzzles.service import PuzzleNotFound, PuzzleRuntime, PuzzleService
 from app.puzzles.types.missing_number import MissingNumberParams
 from app.puzzles.types.missing_number.equations import visible_numbers
 from app.puzzles.types.missing_number.ids import MAX_SEED, make_puzzle_id
-from app.puzzles.types.missing_number.levels import GENERATOR_VERSION, LEVELS
+from app.puzzles.types.missing_number.levels import GENERATOR_VERSION, LEVELS, MAX_ANSWER
 from app.puzzles.types.missing_number.models import MistakeRule, Puzzle
 from app.puzzles.types.missing_number.public import linked_token, shuffled_options, to_public
 from app.puzzles.types.missing_number.rules import rule_output

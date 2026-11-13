@@ -93,6 +93,8 @@ class DummyType(PuzzleType[DummyPuzzle, DummyParams]):
     levels = MappingProxyType({1: LevelInfo(1, (DUMMY_TOPIC,))})
     request_model = DummyNewPuzzle
     public_model = DummyPublic
+    answer_min = 0
+    answer_max = 1000
     # The topic the type cannot work without. A subclass can name one that is not there.
     required_topic = DUMMY_TOPIC
 

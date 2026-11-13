@@ -137,6 +137,11 @@ class PuzzleType[PuzzleT: InternalPuzzle, ParamsT](ABC):
     # The body of POST /puzzles/{game}, and what to_public returns.
     request_model: ClassVar[type[NewPuzzleBody]]
     public_model: ClassVar[type[PublicPuzzle]]
+    # What a check accepts as an answer, both ends included. Anything outside
+    # is a 422 before the puzzle is rebuilt. Wide enough for every option the
+    # type can offer; a type with negative answers sets answer_min below zero.
+    answer_min: ClassVar[int]
+    answer_max: ClassVar[int]
 
     @classmethod
     @abstractmethod

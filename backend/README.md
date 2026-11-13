@@ -169,10 +169,16 @@ app/puzzles/
     ids.py          puzzle ids: type code, generator version, checksum; seed derivation
     verified.py     generate_verified, regenerate: generate, verify, retry with a derived seed
     schemas.py      the API shapes every game shares (check, hint, errors)
+    catalog.py      mistake rule -> taxonomy error pattern, resolved once; who to reteach
+    taxonomy_link.py  "is this a topic?" and "where to step back to?", from the graph
+    arithmetic.py   written sums done wrongly (no carrying, no exchanging), for mistake rules
+    options.py      the fixed shuffle of a step's answer options
   registry.py       type code and game name -> puzzle type; default_registry()
   service.py        PuzzleService and PuzzleRuntime: the pipeline, for any registered type
+  report.py         quality reports: --game picks the type's own report
   types/
     missing_number/ the first type: generator, verifier, rules, diagnoser, hints, ...
+    sequences/      "Next in Line": a row of numbers with one or two blanks
 ```
 
 | Piece                                 | Knows about chains? | Job                                                                                                   |
@@ -198,6 +204,10 @@ What a `PuzzleType` provides:
 | `check(puzzle, step, answer)`                                              | `CheckOutcome`: correct, matched rules, error patterns, reteach topic.                |
 | `hint_tiers(puzzle, step)`, `hint(puzzle, step, tier)`                     | Hints.                                                                                |
 | `step_topic_ids`, `attempt_details`                                        | What is stored with an attempt: the step's topics, and the type's own facts (JSON).   |
+
+`answer_min` and `answer_max` are also on the type: the bounds of what a check accepts. Chains
+take 0 to 10000 and sequences −1000 to 10000, so a negative answer is right for one game and a 422
+for the other, on the same route.
 
 The proof that this carries a second type is `tests/test_puzzle_contract.py`: a dummy type that
 exists only in the tests ("type the number shown", `tests/puzzles/dummy.py`) is registered next to
@@ -279,6 +289,7 @@ it against the database at startup; it fails loudly if a pattern is missing or a
 ### Quality report
 
 ```bash
+uv run python -m app.puzzles.report --game missing-number --all --count 5000  # the same, by game
 uv run python -m app.puzzles.types.missing_number.report --all --count 5000   # or --level 1
 uv run python -m app.puzzles.types.missing_number.report --samples 2          # example puzzles
 uv run python -m app.puzzles.types.missing_number.report --catalog            # rule -> error pattern
@@ -437,6 +448,134 @@ Average retries were 0 in every column. The coverage targets (70% at levels 1 an
 of steps and not more, because a form cannot repeat in a row and a chain keeps an untargeted
 step. Level 3 has no answer-left limit, with or without a focus.
 
+### Next in Line (sequences)
+
+`app/puzzles/types/sequences` is the second puzzle type (game `sequences`, id prefix `seq`): a row
+of five or six numbers that follows a pattern, with one or two of them blank. The child picks each
+missing number from four options. Each blank is one step.
+
+```
+4, 8, 12, □, 20        → 16
+50, □, 150, 200, 250   → 100
+9, 6, 3, 0, □          → −3
+1, 2, 4, 7, □          → 11    (the step grows by 1)
+```
+
+| Level | Label           | Sequences                                                                     | Values     | Blanks                           | Topics of a step                                                                                                                                         |
+| ----- | --------------- | ----------------------------------------------------------------------------- | ---------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Counting on     | Constant step, going up; step 1 to 5, or 10                                   | 0 to 100   | One, the last term               | `mt_W3VOAuFwVw` Describing growing number patterns                                                                                                       |
+| 2     | Skip counting   | Constant step, up or down; step 2, 3, 4, 5, 8, 10, 25, 50 or 100              | 0 to 1000  | One or two, never the first term | `mt_IzQvs7k_sE` Skip Counting, `mt_W3VOAuFwVw`                                                                                                           |
+| 3     | Tricky patterns | Constant step 2 to 10 going down through zero, or a step that grows by 1 or 2 | −50 to 200 | One or two, never the first term | Through zero: `mt_hBZwbst0ow` Linear number sequences, `mt_vXRzMbiPff` Negative Numbers. Growing: `mt_fZTn0W_iZR` Generalising Patterns, `mt_W3VOAuFwVw` |
+
+The topics of a step depend on the kind of sequence, so an attempt on a through-zero row counts
+toward negative numbers and one on a growing row does not. A through-zero puzzle always has at
+least one blank below zero. A wrong option that comes from a mistake rule may leave the term range
+a little (to 110, 1100, and −100 to 250 at the three levels); no option is ever outside −100 to 2000.
+
+**One answer, and what that means.** Any row of numbers can be continued in infinitely many ways,
+so "exactly one answer" only means something inside a declared set of rules. The set is in the
+verifier's docstring: a constant whole-number step, a step that changes by a constant whole number
+(a constant second difference), and doubling or tripling, which a child who sees `2, 4` may well
+think of. `verifier.fitting_rules` works out, from the visible terms alone and without the
+generator, every rule of that set that passes through them. A puzzle passes when a rule of the
+kind it claims fits, every fitting rule gives the same number for every blank, and that number is
+the stored answer. `2, 4, □` is rejected: `+2` gives 6 and `×2` gives 8.
+
+**Enough on show.** Separately, a puzzle must show three terms next to each other for a constant
+step and four for a growing step, so the step (or the growth) is seen twice. `1, 2, 4, □, □` is
+rejected on both counts: it reads as `+1, +2, +3` (7, 11) and as doubling (8, 16).
+
+**Mistake rules.** Each is a pure function of the row and the blank (`rules.py` has the full table
+per kind of sequence). The mapping to taxonomy error patterns is `misconceptions.py`, resolved
+through the shared catalog (`core/catalog.py`), and was checked against the real database:
+
+| Rule                                  | What the child does                                       | Error pattern                           | Reteach, from the pattern                    |
+| ------------------------------------- | --------------------------------------------------------- | --------------------------------------- | -------------------------------------------- |
+| `STOPS_AT_ZERO`                       | Gives 0 where the sequence goes below zero                | `mt_hBZwbst0ow#0` and `mt_vXRzMbiPff#1` | Measuring temperature; Counting Within 1,000 |
+| `SIGN_DROPPED`                        | Writes −3 as 3                                            | `mt_hBZwbst0ow#1`                       | none: the graph decides                      |
+| `WRONG_DIRECTION`                     | Continues a decreasing sequence upward                    | `mt_hBZwbst0ow#4`                       | none: the graph decides                      |
+| `BOUNDARY_SLIP`                       | Drops the carry at a hundreds boundary (450 + 50 → 400)   | `mt_IzQvs7k_sE#2`                       | none: the graph decides                      |
+| `CONSTANT_GAP`                        | On a growing step, repeats the last gap (1, 2, 4, 7 → 10) | `mt_fZTn0W_iZR#2`                       | none: the graph decides                      |
+| `COUNT_BY_ONE`                        | Steps by 1 instead of the real step                       | not linked                              |                                              |
+| `SKIPPED_TERM`                        | Gives the term after the right one                        | not linked                              |                                              |
+| `OFF_BY_ONE_OVER`, `OFF_BY_ONE_UNDER` | One more, one less                                        | not linked                              |                                              |
+
+`COUNT_BY_ONE` is deliberately not linked to "sub-counts by smaller steps" on Skip Counting. That
+pattern describes a slow way of reaching the right answer (building the 8s by counting on in 4s or
+ones); `COUNT_BY_ONE` is a wrong answer, one more instead of one step more. Linking them would
+send a tutor to the wrong remedy.
+
+**Hints.** Three tiers per blank: where to look ("Look at how much each number changes from one to
+the next."), the rule without the result ("Each time it goes up by 4. What is 16 + 4?", "The jumps
+get bigger by 1 each time: +1, +2, +3…", "Keep going down by 3, past zero. The numbers below zero
+have a minus sign."), and the worked step. A number in a hint is read with its sign only when the
+minus is attached (`−3`), so "down by 3" does not count as showing an answer of −3; a blank whose
+answer the second hint would have to quote is not used.
+
+#### Quality report
+
+```bash
+uv run python -m app.puzzles.report --game sequences --all --count 5000
+uv run python -m app.puzzles.report --game sequences --samples 2     # example puzzles
+uv run python -m app.puzzles.report --game sequences --catalog       # rule -> error pattern
+```
+
+**Generator version:** `1` (sequences). 5000 seeds per level, against the real taxonomy. No targets
+were set for this type; these are the numbers as they came out.
+
+|                                                              | Level 1        | Level 2     | Level 3     |
+| ------------------------------------------------------------ | -------------- | ----------- | ----------- |
+| Verified on the first try                                    | 100.0%         | 100.0%      | 100.0%      |
+| Retries, in total                                            | 0              | 0           | 0           |
+| Candidates rejected as ambiguous (two families disagree)     | 0              | 0           | 0           |
+| Candidates rejected for too few terms in a row               | 0              | 0           | 0           |
+| Blank placements the evidence rule forbids, with two answers | none forbidden | 0 of 27,494 | 7 of 38,861 |
+| Steps (blanks)                                               | 5,000          | 7,468       | 6,874       |
+| Puzzles with two blanks                                      | 0%             | 49.4%       | 37.5%       |
+| Steps with at least one taxonomy-linked distractor           | 0.0%           | 55.0%       | 97.3%       |
+| Slowest generation (best of 3)                               | 0.21 ms        | 0.38 ms     | 0.66 ms     |
+
+Linked coverage by sort of sequence: going up at level 2, 9.8%; going down at level 2, 100%; down
+through zero, 100%; growing step, 94.2%.
+
+Distractor share by rule:
+
+| Rule                 | Level 1 | Level 2 | Level 3 |
+| -------------------- | ------- | ------- | ------- |
+| `STOPS_AT_ZERO`      | 0.0%    | 0.0%    | 15.6%   |
+| `SIGN_DROPPED`       | 0.0%    | 0.0%    | 15.6%   |
+| `WRONG_DIRECTION`    | 0.0%    | 16.7%   | 10.8%   |
+| `BOUNDARY_SLIP`      | 0.0%    | 2.2%    | 0.0%    |
+| `CONSTANT_GAP`       | 0.0%    | 0.0%    | 14.5%   |
+| `COUNT_BY_ONE`       | 27.7%   | 33.3%   | 24.8%   |
+| `SKIPPED_TERM`       | 33.3%   | 32.6%   | 17.8%   |
+| `OFF_BY_ONE_OVER`    | 27.7%   | 15.2%   | 0.9%    |
+| `OFF_BY_ONE_UNDER`   | 5.6%    | 0.0%    | 0.1%    |
+| `NEAR_MISS` (filler) | 5.6%    | 0.0%    | 0.0%    |
+
+How to read it:
+
+- **Ambiguity rejections are zero, and that is a consequence of the evidence rule, not luck.**
+  The generator places blanks only where the level's rule about visible terms in a row allows.
+  Three terms in a row with a constant step cannot also be a doubling or a growing step, and four
+  in a row with a growing step cannot be a constant step or a doubling. So no candidate the
+  generator makes can be ambiguous inside the declared set, and the verifier, which does not
+  know how the generator works, finds none.
+- **What the evidence rule buys.** The report also tries every blank placement the rule forbids
+  on the same sequences. Only 7 of 38,861 at level 3 have two answers (all growing rows with three
+  visible terms that also read as doubling, like `1, 2, 4`), and none at level 2. So the rule
+  matters very little for uniqueness inside this rule set. Its real job is the other one: a
+  child must be able to see the step twice.
+- **Level 1 has no linked distractors at all.** Its only topic, Describing growing number
+  patterns, has no error patterns in the taxonomy, and the linked rules need a sequence that goes
+  down, goes below zero, grows, or crosses a hundreds boundary from a three-digit number. Level 1
+  does none of those. A wrong answer there is still named (`COUNT_BY_ONE`, `SKIPPED_TERM`), but
+  it has no taxonomy pattern behind it.
+- **Level 2 going up is thin for the same reason (9.8%).** Only `BOUNDARY_SLIP` can apply, and
+  only where a step crosses a hundred. Going down, `WRONG_DIRECTION` always applies.
+- **Level 3 growing is 94.2%, not 100%,** because `CONSTANT_GAP` needs two terms before the blank,
+  and a blank at the second term has one.
+
 ### Puzzle API
 
 `app/puzzles/service.py` (`PuzzleService`, no FastAPI) and the thin routes in
@@ -447,13 +586,19 @@ routes are the same for every game.
 | --------------------------------------------- | --------------------------------------------------------- | ----------------------- |
 | `POST /{game}`                                | The game's own body: `level`, `seed?`, and its parameters | The game's puzzle (201) |
 | `GET /{puzzle_id}`                            |                                                           | The game's puzzle       |
-| `POST /{puzzle_id}/steps/{index}/check`       | `{ answer: 0–10000 }`                                     | `CheckResult`           |
+| `POST /{puzzle_id}/steps/{index}/check`       | `{ answer }`, a whole number within the game's bounds     | `CheckResult`           |
 | `GET /{puzzle_id}/steps/{index}/hints/{tier}` | tier 1 up to the step's number of tiers                   | `{ tier, text }`        |
 | `POST /missing-number` (deprecated)           | The chain body, below                                     | `PuzzlePublic` (201)    |
 
 For `game` = `missing-number` the body is `{ level: 1–3, length: 1–4 (default 3), seed?, focus? }`
-and the puzzle is `PuzzlePublic`.
+and the puzzle is `PuzzlePublic`. For `game` = `sequences` the body is `{ level: 1–3, seed? }` and
+the puzzle is `SequencePublic`: `terms` (the row, with `null` at each blank) and one step per blank
+with its `position` and four `options`.
 
+- **Answer bounds.** What a check accepts is the puzzle type's own (`answer_min`, `answer_max`):
+  0 to 10000 for `missing-number`, −1000 to 10000 for `sequences`. The service checks them as soon
+  as the id says which type it is, before the puzzle is rebuilt. Outside them: 422, in the same
+  shape as any other body that fails validation, and nothing is stored or logged as a check.
 - **Which game.** `POST /{game}` takes the game from the path; an unknown one is a 404 that lists
   the known games. The other three routes take it from the id's prefix (`mnc-...`).
 - **Discriminated by game.** Every public puzzle has a `game` field. In `openapi.json` the response
@@ -535,6 +680,17 @@ worth fixing there instead of working around it.
     discriminated by `game`. Then follow the frontend checklist in `frontend/README.md`.
 13. **Adaptive policy (optional).** Until the game has one, `/players/me/next` answers
     `no_policy` with the type's defaults. To add one, see `app/adaptive/policies.py`.
+
+Shared pieces to use, not copy:
+
+- `core/catalog.py`: declare `RULE_PATTERNS` for the type's mistake rules and resolve it with
+  `resolve_rule_patterns`; `explain` orders the matching rules and picks the reteach topic.
+- `core/taxonomy_link.py`: `topic_exists` and `first_step_back`, for the verifier and the diagnoser.
+- `core/arithmetic.py`: `add_without_carry` and `subtract_without_exchange`.
+- `core/options.py`: `shuffled_options`, so a reload shows the options in the same order.
+- `answer_min` and `answer_max` on the type: the bounds of a checked answer. Set `answer_min`
+  below zero if an answer can be negative.
+- A `report.py` in the type's folder, added to `REPORTS` in `app/puzzles/report.py`.
 
 ## Players
 

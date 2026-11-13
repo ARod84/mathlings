@@ -853,7 +853,22 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PuzzlePublic"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/PuzzlePublic"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SequencePublic"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "game",
+                    "mapping": {
+                      "missing-number": "#/components/schemas/PuzzlePublic",
+                      "sequences": "#/components/schemas/SequencePublic"
+                    }
+                  },
+                  "title": "Response New Puzzle Api V1 Puzzles  Game  Post"
                 }
               }
             }
@@ -891,11 +906,18 @@
         },
         "requestBody": {
           "required": true,
-          "description": "The body for the game named in the path. Each game has its own: `missing-number` takes NewPuzzleRequest.",
+          "description": "The body for the game named in the path. Each game has its own: `missing-number` takes NewPuzzleRequest, `sequences` takes NewSequenceRequest.",
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NewPuzzleRequest"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/NewPuzzleRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NewSequenceRequest"
+                  }
+                ]
               }
             }
           }
@@ -945,7 +967,22 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PuzzlePublic"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/PuzzlePublic"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SequencePublic"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "game",
+                    "mapping": {
+                      "missing-number": "#/components/schemas/PuzzlePublic",
+                      "sequences": "#/components/schemas/SequencePublic"
+                    }
+                  },
+                  "title": "Response Get Puzzle Api V1 Puzzles  Puzzle Id  Get"
                 }
               }
             }
@@ -1291,7 +1328,10 @@
             "in": "query",
             "required": true,
             "schema": {
-              "const": "missing-number",
+              "enum": [
+                "missing-number",
+                "sequences"
+              ],
               "type": "string",
               "description": "The game to recommend for. Only Missing Number Chains adapts so far; any other game gets its default, with reason_code `no_policy`.",
               "title": "Game"
@@ -1400,9 +1440,8 @@
         "properties": {
           "answer": {
             "type": "integer",
-            "maximum": 10000.0,
-            "minimum": 0.0,
-            "title": "Answer"
+            "title": "Answer",
+            "description": "A whole number. Each game has its own bounds (PuzzleType.answer_min and answer_max): 0 to 10000 for missing-number, -1000 to 10000 for sequences. An answer outside the bounds of the puzzle's game is a 422."
           }
         },
         "additionalProperties": false,
@@ -2290,6 +2329,106 @@
         ],
         "title": "ReteachTopic"
       },
+      "SequencePublic": {
+        "properties": {
+          "game": {
+            "type": "string",
+            "const": "sequences",
+            "title": "Game",
+            "description": "Which game the puzzle belongs to. Always sent; tells the shapes apart.",
+            "default": "sequences"
+          },
+          "puzzle_id": {
+            "type": "string",
+            "title": "Puzzle Id"
+          },
+          "level": {
+            "type": "integer",
+            "title": "Level"
+          },
+          "length": {
+            "type": "integer",
+            "title": "Length",
+            "description": "Number of blanks, which is the number of steps."
+          },
+          "topic_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Topic Ids",
+            "description": "Taxonomy topics practised, primary first."
+          },
+          "terms": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Terms",
+            "description": "The row, in order. Null where a term is blank. A blank stays null here after it is solved: the browser fills in what the child found."
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/SequenceStepPublic"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "puzzle_id",
+          "level",
+          "length",
+          "topic_ids",
+          "terms",
+          "steps"
+        ],
+        "title": "SequencePublic",
+        "description": "A row of numbers with one or two blanks, as the browser gets it."
+      },
+      "SequenceStepPublic": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index",
+            "description": "0-based position among the blanks, in reading order."
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position",
+            "description": "Which term of the row this blank is, from 0."
+          },
+          "options": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Options",
+            "description": "The answer and three wrong answers, in an order that is fixed for the puzzle. May be negative."
+          },
+          "hint_tiers": {
+            "type": "integer",
+            "title": "Hint Tiers",
+            "description": "How many hint tiers can be asked for.",
+            "default": 3
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "position",
+          "options"
+        ],
+        "title": "SequenceStepPublic"
+      },
       "SourceInfo": {
         "properties": {
           "commit_sha": {
@@ -2776,6 +2915,38 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "NewSequenceRequest": {
+        "additionalProperties": false,
+        "description": "The body of POST /puzzles/sequences. The seed decides everything but the level.",
+        "properties": {
+          "level": {
+            "maximum": 3,
+            "minimum": 1,
+            "title": "Level",
+            "type": "integer"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Fixes the puzzle. Leave out for a random one.",
+            "title": "Seed"
+          }
+        },
+        "required": [
+          "level"
+        ],
+        "title": "NewSequenceRequest",
+        "type": "object"
       }
     }
   },

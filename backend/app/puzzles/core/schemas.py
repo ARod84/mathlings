@@ -8,13 +8,15 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-MAX_ANSWER = 10_000
-
 
 class CheckRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    answer: int = Field(ge=0, le=MAX_ANSWER)
+    answer: int = Field(
+        description="A whole number. Each game has its own bounds (PuzzleType.answer_min and "
+        "answer_max): 0 to 10000 for missing-number, -1000 to 10000 for sequences. An answer "
+        "outside the bounds of the puzzle's game is a 422."
+    )
 
 
 class ReteachTopic(BaseModel):

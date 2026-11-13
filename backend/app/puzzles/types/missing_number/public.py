@@ -1,18 +1,8 @@
 """The child-facing view of a chain: equations and options, no answers, rules or hint text."""
 
-import hashlib
-import random
-
+from app.puzzles.core.options import shuffled_options
 from app.puzzles.types.missing_number.models import Equation, NumberToken, Puzzle
 from app.puzzles.types.missing_number.schemas import LinkedToken, PuzzlePublic, PuzzleStepPublic
-
-
-def shuffled_options(puzzle_id: str, step_index: int, values: list[int]) -> list[int]:
-    """The answer options in an order fixed by the puzzle id and step, so a reload matches."""
-    digest = hashlib.sha256(f"{puzzle_id}:{step_index}".encode()).digest()
-    options = sorted(values)
-    random.Random(int.from_bytes(digest[:8], "big")).shuffle(options)
-    return options
 
 
 def linked_token(equation: Equation, link_position: int | None) -> LinkedToken | None:

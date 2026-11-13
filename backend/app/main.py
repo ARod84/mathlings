@@ -19,6 +19,7 @@ from app.players.service import PlayerNotFound
 from app.puzzles.core.verified import PuzzleGenerationFailed
 from app.puzzles.registry import PuzzleRegistry, UnknownGame, default_registry
 from app.puzzles.service import (
+    AnswerOutOfBounds,
     HintTierNotFound,
     PuzzleNotFound,
     PuzzleRuntime,
@@ -186,6 +187,25 @@ def create_app(
             content={
                 "detail": f"Hint tier not found: tiers are 1 to {error.tiers}",
                 "tier": error.tier,
+            },
+        )
+
+    @app.exception_handler(AnswerOutOfBounds)
+    def answer_out_of_bounds(_request: Request, error: AnswerOutOfBounds) -> JSONResponse:
+        # The same shape as a body that fails validation, which is what this is:
+        # the bounds just depend on the game, so they cannot be in the schema.
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": [
+                    {
+                        "type": "answer_out_of_bounds",
+                        "loc": ["body", "answer"],
+                        "msg": f"Input should be between {error.minimum} and {error.maximum}",
+                        "input": error.answer,
+                        "ctx": {"ge": error.minimum, "le": error.maximum},
+                    }
+                ]
             },
         )
 

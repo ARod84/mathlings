@@ -35,7 +35,13 @@ from app.puzzles.core import (
     PuzzleType,
     PuzzleTypeUnavailable,
 )
-from app.puzzles.core.ids import MAX_SEED, InvalidPuzzleId, OutdatedPuzzleId, split_id
+from app.puzzles.core.ids import (
+    MAX_SEED,
+    InvalidPuzzleId,
+    OutdatedPuzzleId,
+    RawPuzzleId,
+    split_id,
+)
 from app.puzzles.core.schemas import CheckResult, DiagnosisPublic, HintOut, ReteachTopic
 from app.puzzles.core.verified import PuzzleRejected, generate_verified, regenerate
 from app.puzzles.registry import PuzzleRegistry
@@ -78,6 +84,16 @@ class HintTierNotFound(PuzzleError):
         super().__init__(f"There is no hint tier {tier}")
         self.tier = tier
         self.tiers = tiers
+
+
+class AnswerOutOfBounds(PuzzleError):
+    """The answer is not a number this game ever accepts. Nothing was checked."""
+
+    def __init__(self, answer: int, minimum: int, maximum: int) -> None:
+        super().__init__(f"An answer must be between {minimum} and {maximum}")
+        self.answer = answer
+        self.minimum = minimum
+        self.maximum = maximum
 
 
 class PuzzlesUnavailable(PuzzleError):
@@ -172,7 +188,12 @@ class PuzzleService:
         With a player id the attempt is stored; the result is the same either way.
         """
         started = time.perf_counter()
-        puzzle_type, puzzle = self._rebuild(puzzle_id)
+        puzzle_type, raw = self._type_of(puzzle_id)
+        # The bounds are the type's own, so they are checked as soon as the id
+        # says which type it is, and before any work is done for the answer.
+        if not puzzle_type.answer_min <= answer <= puzzle_type.answer_max:
+            raise AnswerOutOfBounds(answer, puzzle_type.answer_min, puzzle_type.answer_max)
+        puzzle = self._regenerate(puzzle_type, raw, puzzle_id)
         self._require_step(puzzle, step_index)
         outcome = puzzle_type.check(puzzle, step_index, answer)
 
@@ -262,6 +283,11 @@ class PuzzleService:
 
     def _rebuild(self, puzzle_id: str) -> tuple[PuzzleType, InternalPuzzle]:
         """The type an id belongs to (from its prefix), and the puzzle it names."""
+        puzzle_type, raw = self._type_of(puzzle_id)
+        return puzzle_type, self._regenerate(puzzle_type, raw, puzzle_id)
+
+    def _type_of(self, puzzle_id: str) -> tuple[PuzzleType, RawPuzzleId]:
+        """The loaded type an id belongs to. The checksum is checked; nothing else yet."""
         try:
             raw = split_id(puzzle_id)
         except InvalidPuzzleId as error:
@@ -269,9 +295,12 @@ class PuzzleService:
         registered = self.runtime.registry.by_code(raw.type_code)
         if registered is None:
             raise PuzzleNotFound(puzzle_id)
-        puzzle_type = self.runtime.require(registered.game)
+        return self.runtime.require(registered.game), raw
+
+    @staticmethod
+    def _regenerate(puzzle_type: PuzzleType, raw: RawPuzzleId, puzzle_id: str) -> InternalPuzzle:
         try:
-            return puzzle_type, regenerate(puzzle_type, raw, puzzle_id)
+            return regenerate(puzzle_type, raw, puzzle_id)
         except OutdatedPuzzleId as error:
             raise PuzzleVersionGone(puzzle_id, puzzle_type.generator_version) from error
         except (InvalidPuzzleId, ValueError, PuzzleRejected) as error:

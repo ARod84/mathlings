@@ -124,7 +124,10 @@ Every function in `puzzles.ts` returns `{ status: 'ok', data }` or one of `notFo
 
 The puzzle routes are the same for every game (`POST /api/v1/puzzles/{game}`, then the puzzle id).
 `GameShapes` in `puzzles.ts` names, per game, the request body and the puzzle that comes back, and
-`newPuzzle` is typed from it. `newMissingNumber` is `newPuzzle('missing-number', ...)`.
+`newPuzzle` is typed from it. `newMissingNumber` is `newPuzzle('missing-number', ...)`. `sequences`
+("Next in Line") is in `GameShapes` already, because the backend serves it; it has no screen yet,
+which is why it is listed in `GAMES_WITHOUT_A_SCREEN` in `src/games/gameTopics.ts` and not in the
+games registry.
 
 When the backend's API changes: export `openapi.json` there, then run `npm run api:types` here. A
 test fails if `schema.d.ts` is out of date. `openapi-typescript` asks for TypeScript 5 as a peer;

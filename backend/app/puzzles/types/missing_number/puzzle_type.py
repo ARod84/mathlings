@@ -30,6 +30,8 @@ from app.puzzles.types.missing_number.levels import (
     GAME,
     GENERATOR_VERSION,
     LEVELS,
+    MAX_ANSWER,
+    MIN_ANSWER,
     step_topic_ids,
     supported_focus,
     topic_ids_for,
@@ -72,6 +74,8 @@ class MissingNumberChains(PuzzleType[Puzzle, MissingNumberParams]):
     )
     request_model = NewPuzzleRequest
     public_model = PuzzlePublic
+    answer_min = MIN_ANSWER
+    answer_max = MAX_ANSWER
 
     def __init__(
         self,

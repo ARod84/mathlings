@@ -3,16 +3,16 @@
   "taxonomyVersion": "fixture-v1",
   "files": {
     "topics.json": {
-      "bytes": 8462,
-      "sha256": "39a0e1c3f8d51decf7da8a5836f69976af7be593ad2e436b39e869f1efb9f2bc"
+      "bytes": 14597,
+      "sha256": "bbde67be87e43210e8a6e338c279024aa196e7dbe2a6f3c02e3661f4b964f80c"
     },
     "dependencies.json": {
-      "bytes": 1408,
-      "sha256": "ca7a8c2f4246ee8b89bc56e7d97331d408f94ea5b1b166940503c8b803145613"
+      "bytes": 2777,
+      "sha256": "8510e8e946271466e9d7d5aa3e3327713a87a6710dc114ad2b34a84921b24fdf"
     },
     "teaching-research.json": {
-      "bytes": 11731,
-      "sha256": "0a76f7ff6a0700ee510e848ab9567af3af55bab606bd489342d57d1a7d8b8d11"
+      "bytes": 24178,
+      "sha256": "d0e8c13b028265404a5593f88c116405203626cf6c789bcc0d067a9ac1b8f3d0"
     },
     "clusters.json": {
       "bytes": 531,

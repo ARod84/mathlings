@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import gameTopics from '../../../shared/game-topics.json';
-import { allTopicIds, GAME_IDS_WITH_TOPICS, TOPIC_NAMES, topicsByLevel } from './gameTopics';
+import {
+  allTopicIds,
+  GAME_IDS_WITH_TOPICS,
+  GAMES_WITHOUT_A_SCREEN,
+  TOPIC_NAMES,
+  topicsByLevel,
+} from './gameTopics';
 import { LEVELS, topicIdsForLevel } from './number-pyramid/pyramid';
 import { GAMES } from './registry';
 
@@ -15,7 +21,7 @@ describe('shared/game-topics.json', () => {
       expect(id).toMatch(TOPIC_ID);
       expect(name.trim()).not.toBe('');
     }
-    expect(Object.keys(games).sort()).toEqual(['missing-number', 'number-pyramid']);
+    expect(Object.keys(games).sort()).toEqual(['missing-number', 'number-pyramid', 'sequences']);
     for (const [gameId, entry] of Object.entries(games)) {
       expect(Object.keys(entry), gameId).toEqual(['byLevel']);
       const levels = Object.entries(entry.byLevel);
@@ -37,6 +43,7 @@ describe('shared/game-topics.json', () => {
   it('uses the level names each game expects', () => {
     expect(Object.keys(topicsByLevel('number-pyramid'))).toEqual(['addOnly', 'mixed', 'fourRows']);
     expect(Object.keys(topicsByLevel('missing-number'))).toEqual(['1', '2', '3']);
+    expect(Object.keys(topicsByLevel('sequences'))).toEqual(['1', '2', '3']);
   });
 
   it('refuses a game it does not know', () => {
@@ -51,8 +58,14 @@ describe('games registry', () => {
       expect(game.topicIds.length, game.id).toBeGreaterThan(0);
       expect(game.topicIds).toEqual(allTopicIds(game.id));
     }
-    // And the file has no game the registry lacks.
-    expect([...GAME_IDS_WITH_TOPICS].sort()).toEqual(GAMES.map((game) => game.id).sort());
+    // And the file has no game the registry lacks, except the ones that are
+    // served by the backend and still waiting for a screen.
+    expect([...GAME_IDS_WITH_TOPICS].sort()).toEqual(
+      [...GAMES.map((game) => game.id), ...GAMES_WITHOUT_A_SCREEN].sort(),
+    );
+    for (const id of GAMES_WITHOUT_A_SCREEN) {
+      expect(GAMES.map((game) => game.id)).not.toContain(id);
+    }
   });
 
   it('gives each game the topics of all its levels, each once', () => {

@@ -12,6 +12,7 @@ from collections.abc import Callable
 
 from pydantic import BaseModel, ConfigDict
 
+from app.puzzles.core.catalog import explain
 from app.puzzles.types.missing_number.levels import LEVELS
 from app.puzzles.types.missing_number.misconceptions import MisconceptionCatalog
 from app.puzzles.types.missing_number.models import MistakeRule, Puzzle
@@ -56,26 +57,14 @@ def diagnose(
     if not matched:
         return Diagnosis(correct=False, unrecognized=True)
 
-    # Stable sort: linked rules move to the front, each group keeps rule order.
-    matched.sort(key=lambda rule: not catalog.is_linked(rule))
-    pattern = next(
-        (
-            link
-            for rule in matched
-            if (link := catalog.link_for(rule, spec.primary_topic_id)) is not None
-        ),
-        None,
-    )
-    # A pattern written for another level's topic names a reteach topic for
-    # that level, so it is only followed when it belongs to this puzzle's topic.
-    reteach = (
-        pattern.reteach_topic_id
-        if pattern is not None and pattern.topic_id == spec.primary_topic_id
-        else None
+    # Linked rules first; reteach from the pattern on this puzzle's own topic,
+    # otherwise from the graph. The same for every puzzle type: core/catalog.py.
+    explained = explain(
+        matched, catalog=catalog, primary_topic_id=spec.primary_topic_id, step_back=step_back
     )
     return Diagnosis(
         correct=False,
-        matched_rules=matched,
-        error_pattern_id=pattern.error_pattern_id if pattern else None,
-        reteach_topic_id=reteach or step_back(spec.primary_topic_id),
+        matched_rules=explained.matched_rules,
+        error_pattern_id=explained.error_pattern_id,
+        reteach_topic_id=explained.reteach_topic_id,
     )

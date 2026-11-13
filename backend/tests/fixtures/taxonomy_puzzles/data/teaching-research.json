@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "version": "fixture-v1",
   "exportedAt": "2026-01-01T00:00:00.000Z",
-  "topicFileSha256": "39a0e1c3f8d51decf7da8a5836f69976af7be593ad2e436b39e869f1efb9f2bc",
-  "recordCount": 5,
+  "topicFileSha256": "bbde67be87e43210e8a6e338c279024aa196e7dbe2a6f3c02e3661f4b964f80c",
+  "recordCount": 9,
   "coverage": {},
   "notes": [],
   "records": [
@@ -364,6 +364,374 @@
             "distractor": null,
             "revealedBy": "Seen in the written answer",
             "reteachPrerequisiteId": "mt_yTWxkzzoOZ"
+          }
+        ],
+        "responseLevels": {
+          "secure": "Explains the trade"
+        },
+        "diagnosticPrompt": "What is 43 + 28?",
+        "whatMakesItDiscriminate": "Needs a trade in the ones column."
+      },
+      "sources": [
+        {
+          "title": "Fixture source",
+          "url": "https://example.org/fixture"
+        }
+      ],
+      "confidence": "high",
+      "provenance": {
+        "author": "fixture"
+      },
+      "publicationNotes": {}
+    },
+    {
+      "topicId": "mt_IzQvs7k_sE",
+      "pedagogy": {
+        "summary": "How to teach mt_IzQvs7k_sE.",
+        "bestPractices": [
+          "Use concrete materials first"
+        ],
+        "keyRepresentations": [
+          "Base-ten blocks"
+        ],
+        "commonMisconceptions": [
+          "Digits are added without regard to place"
+        ]
+      },
+      "learn": {
+        "summary": "A short activity sequence.",
+        "activities": [
+          {
+            "title": "Build it",
+            "feedback": [
+              "If the trade is skipped, count the ones together."
+            ],
+            "rationale": "Concrete before abstract.",
+            "sourceClaims": [
+              "A fixture claim"
+            ],
+            "learnerActions": [
+              "Make both numbers with blocks",
+              "Trade ten ones for a ten"
+            ],
+            "intendedInsight": "Ten ones are worth one ten."
+          }
+        ],
+        "constraints": [],
+        "reviewNotes": [],
+        "schemaVersion": 1
+      },
+      "assess": {
+        "method": "diagnostic question",
+        "poeTask": null,
+        "probeDeeper": [
+          "Ask how they know"
+        ],
+        "correctAnswer": "71",
+        "errorPatterns": [
+          {
+            "kind": "misconception",
+            "pattern": "sub-counts by smaller steps — builds the 8s by counting on in 4s (or ones) each time rather than stepping by 8; slow and breaks under load",
+            "nextMove": "do NOT drill for speed — use number-line jumps of 8.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": "mt_nvdpxAJTBG"
+          },
+          {
+            "kind": "misconception",
+            "pattern": "no link between 4s and 8s — treats them as two separate lists",
+            "nextMove": "write out the 4s and ring every other one to reveal the 8s.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": null
+          },
+          {
+            "kind": "misconception",
+            "pattern": "50s/100s digit slip — loses place in the 50s (…, 450, 500, 550) or miscounts at boundaries",
+            "nextMove": "do NOT reteach the whole sequence — rehearse the …950, 1000 bridge.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": null
+          }
+        ],
+        "responseLevels": {
+          "secure": "Explains the trade"
+        },
+        "diagnosticPrompt": "What is 43 + 28?",
+        "whatMakesItDiscriminate": "Needs a trade in the ones column."
+      },
+      "sources": [
+        {
+          "title": "Fixture source",
+          "url": "https://example.org/fixture"
+        }
+      ],
+      "confidence": "high",
+      "provenance": {
+        "author": "fixture"
+      },
+      "publicationNotes": {}
+    },
+    {
+      "topicId": "mt_hBZwbst0ow",
+      "pedagogy": {
+        "summary": "How to teach mt_hBZwbst0ow.",
+        "bestPractices": [
+          "Use concrete materials first"
+        ],
+        "keyRepresentations": [
+          "Base-ten blocks"
+        ],
+        "commonMisconceptions": [
+          "Digits are added without regard to place"
+        ]
+      },
+      "learn": {
+        "summary": "A short activity sequence.",
+        "activities": [
+          {
+            "title": "Build it",
+            "feedback": [
+              "If the trade is skipped, count the ones together."
+            ],
+            "rationale": "Concrete before abstract.",
+            "sourceClaims": [
+              "A fixture claim"
+            ],
+            "learnerActions": [
+              "Make both numbers with blocks",
+              "Trade ten ones for a ten"
+            ],
+            "intendedInsight": "Ten ones are worth one ten."
+          }
+        ],
+        "constraints": [],
+        "reviewNotes": [],
+        "schemaVersion": 1
+      },
+      "assess": {
+        "method": "diagnostic question",
+        "poeTask": null,
+        "probeDeeper": [
+          "Ask how they know"
+        ],
+        "correctAnswer": "71",
+        "errorPatterns": [
+          {
+            "kind": "misconception",
+            "pattern": "Thinks the sequence 'stops' at zero — that you cannot go below zero or that negative numbers are not real, so 5, 3, 1 halts or ends at 0",
+            "nextMove": "Confront with a temperature scale and keep the equal hop going.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": "mt_RVK655t391"
+          },
+          {
+            "kind": "misconception",
+            "pattern": "Reads or writes the negative sign wrongly — records the term as 1 instead of −1, or reads −13 as 13",
+            "nextMove": "Show the raised minus for a negative number versus the subtraction sign.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": null
+          },
+          {
+            "kind": "misconception",
+            "pattern": "States the rule vaguely — 'it goes down' — dropping the amount",
+            "nextMove": "Require the form 'start at ___, add/subtract ___ each time'.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": null
+          },
+          {
+            "kind": "misconception",
+            "pattern": "Fixates on the last term and imposes a familiar pattern instead of the constant step",
+            "nextMove": "Check the step between EVERY pair, not just the last two.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": "mt_A-FyLLLLzy"
+          },
+          {
+            "kind": "misconception",
+            "pattern": "Treats a decreasing sequence as a different kind, continuing it upward or getting the direction confused because they expect sequences to increase",
+            "nextMove": "Frame decreasing as 'adding a negative each time'.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": null
+          }
+        ],
+        "responseLevels": {
+          "secure": "Explains the trade"
+        },
+        "diagnosticPrompt": "What is 43 + 28?",
+        "whatMakesItDiscriminate": "Needs a trade in the ones column."
+      },
+      "sources": [
+        {
+          "title": "Fixture source",
+          "url": "https://example.org/fixture"
+        }
+      ],
+      "confidence": "high",
+      "provenance": {
+        "author": "fixture"
+      },
+      "publicationNotes": {}
+    },
+    {
+      "topicId": "mt_vXRzMbiPff",
+      "pedagogy": {
+        "summary": "How to teach mt_vXRzMbiPff.",
+        "bestPractices": [
+          "Use concrete materials first"
+        ],
+        "keyRepresentations": [
+          "Base-ten blocks"
+        ],
+        "commonMisconceptions": [
+          "Digits are added without regard to place"
+        ]
+      },
+      "learn": {
+        "summary": "A short activity sequence.",
+        "activities": [
+          {
+            "title": "Build it",
+            "feedback": [
+              "If the trade is skipped, count the ones together."
+            ],
+            "rationale": "Concrete before abstract.",
+            "sourceClaims": [
+              "A fixture claim"
+            ],
+            "learnerActions": [
+              "Make both numbers with blocks",
+              "Trade ten ones for a ten"
+            ],
+            "intendedInsight": "Ten ones are worth one ten."
+          }
+        ],
+        "constraints": [],
+        "reviewNotes": [],
+        "schemaVersion": 1
+      },
+      "assess": {
+        "method": "diagnostic question",
+        "poeTask": null,
+        "probeDeeper": [
+          "Ask how they know"
+        ],
+        "correctAnswer": "71",
+        "errorPatterns": [
+          {
+            "kind": "misconception",
+            "pattern": "Orders negatives by magnitude — '−5 is bigger than −2'.",
+            "nextMove": "Walk both on a horizontal number line.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": null
+          },
+          {
+            "kind": "misconception",
+            "pattern": "Numbers stop at (or bounce off) zero — after 0 the child says 1 again, treating zero as the floor.",
+            "nextMove": "Extend the number line and a thermometer below zero.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": "mt_M2v1A9OEuM"
+          },
+          {
+            "kind": "misconception",
+            "pattern": "Zero-as-smallest — believes 0 is the least possible number.",
+            "nextMove": "Use a context that clearly goes below zero.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": null
+          }
+        ],
+        "responseLevels": {
+          "secure": "Explains the trade"
+        },
+        "diagnosticPrompt": "What is 43 + 28?",
+        "whatMakesItDiscriminate": "Needs a trade in the ones column."
+      },
+      "sources": [
+        {
+          "title": "Fixture source",
+          "url": "https://example.org/fixture"
+        }
+      ],
+      "confidence": "high",
+      "provenance": {
+        "author": "fixture"
+      },
+      "publicationNotes": {}
+    },
+    {
+      "topicId": "mt_fZTn0W_iZR",
+      "pedagogy": {
+        "summary": "How to teach mt_fZTn0W_iZR.",
+        "bestPractices": [
+          "Use concrete materials first"
+        ],
+        "keyRepresentations": [
+          "Base-ten blocks"
+        ],
+        "commonMisconceptions": [
+          "Digits are added without regard to place"
+        ]
+      },
+      "learn": {
+        "summary": "A short activity sequence.",
+        "activities": [
+          {
+            "title": "Build it",
+            "feedback": [
+              "If the trade is skipped, count the ones together."
+            ],
+            "rationale": "Concrete before abstract.",
+            "sourceClaims": [
+              "A fixture claim"
+            ],
+            "learnerActions": [
+              "Make both numbers with blocks",
+              "Trade ten ones for a ten"
+            ],
+            "intendedInsight": "Ten ones are worth one ten."
+          }
+        ],
+        "constraints": [],
+        "reviewNotes": [],
+        "schemaVersion": 1
+      },
+      "assess": {
+        "method": "diagnostic question",
+        "poeTask": null,
+        "probeDeeper": [
+          "Ask how they know"
+        ],
+        "correctAnswer": "71",
+        "errorPatterns": [
+          {
+            "kind": "misconception",
+            "pattern": "Recomputes 6+7 from one instead of seeing it as the known double 6+6 plus 1",
+            "nextMove": "Put 6+6 and 6+7 side by side on ten-frames.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": "mt_m1W6nTQJ2b"
+          },
+          {
+            "kind": "misconception",
+            "pattern": "Applies the near-double adjustment wrongly — adds two",
+            "nextMove": "Scaffold with the two ten-frames.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": null
+          },
+          {
+            "kind": "misconception",
+            "pattern": "States a sequence rule from one or two cases and assumes it holds without testing further",
+            "nextMove": "Ask 'how could we be sure? test the next one'.",
+            "distractor": null,
+            "revealedBy": "Seen in the written answer",
+            "reteachPrerequisiteId": null
           }
         ],
         "responseLevels": {
