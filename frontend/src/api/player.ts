@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { components } from './schema';
+import type { components, paths } from './schema';
 
 /*
  * The anonymous player id.
@@ -50,23 +50,32 @@ export function getPlayerId(): string | null {
   }
 }
 
-/** What to play next, and why. Only `level` and `length` are for the game itself. */
+/**
+ * What to play next, and why. For the game itself: `level`, and either the
+ * game's own fields (`length` and `focus` for Missing Number Chains) or
+ * `params`, which says the same for any game.
+ */
 export type NextPuzzle = components['schemas']['NextPuzzle'];
+/** A game the backend can be asked about. The same names as the puzzle routes use. */
+type NextGame = paths['/api/v1/players/me/next']['get']['parameters']['query']['game'];
 
 /**
- * Asks the backend what this player should play next in Missing Number
- * Chains. Null when there is no player id or the call does not succeed: the
- * caller falls back to a fixed puzzle and says nothing about it.
+ * Asks the backend what this player should play next in a game. Null when
+ * there is no player id or the call does not succeed: the caller falls back
+ * to a fixed puzzle and says nothing about it.
  *
  * `reason`, `focus_rule` and `mastery` are for adults and for development.
  * They must never be shown to the child.
  */
-export async function getNextPuzzle(signal?: AbortSignal): Promise<NextPuzzle | null> {
+export async function getNextPuzzle(
+  game: NextGame,
+  signal?: AbortSignal,
+): Promise<NextPuzzle | null> {
   const id = getPlayerId();
   if (id === null) return null;
   try {
     const { data, response } = await api.GET('/api/v1/players/me/next', {
-      params: { query: { game: 'missing-number' }, header: { [PLAYER_ID_HEADER]: id } },
+      params: { query: { game }, header: { [PLAYER_ID_HEADER]: id } },
       signal,
     });
     return response.ok && data !== undefined ? data : null;

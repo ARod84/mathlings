@@ -18,9 +18,10 @@ from app.config import BACKEND_DIR, sqlite_url
 from app.db import make_engine
 from app.models import Attempt, HintRequest, Player
 from app.players.service import AttemptRecord, PlayerNotFound, PlayerService
-from app.puzzles.levels import step_topic_ids
-from app.puzzles.models import MistakeRule
 from app.puzzles.service import PuzzleService
+from app.puzzles.types.missing_number import MissingNumberParams
+from app.puzzles.types.missing_number.levels import step_topic_ids
+from app.puzzles.types.missing_number.models import MistakeRule
 from app.taxonomy.importer import run_import
 from app.taxonomy.service import TaxonomyService
 from tests.conftest import FIXTURE_COMMIT, PUZZLE_FIXTURE_TAXONOMY, migrate
@@ -297,7 +298,9 @@ def test_a_known_mistake_is_stored_with_its_rules_pattern_and_reteach_topic(clie
     assert (mistake.puzzle_id, mistake.step_index) == (puzzle.puzzle_id, index)
     assert (mistake.game, mistake.level) == ("missing-number", 1)
     assert mistake.generator_version == puzzle.generator_version
-    assert mistake.form == puzzle.steps[index].form
+    # The form is the chain's own detail; the old column is no longer written.
+    assert mistake.details == {"form": puzzle.steps[index].form}
+    assert mistake.form is None
     assert mistake.topic_ids == step_topic_ids(1, puzzle.steps[index].form)
     assert isinstance(mistake.created_at, datetime)
 
@@ -385,6 +388,7 @@ def test_the_tables_hold_no_personal_data(client: TestClient):
         "level",
         "step_index",
         "form",
+        "details",
         "answer",
         "correct",
         "matched_rules",
@@ -737,7 +741,7 @@ def test_the_player_service_works_without_http(client: TestClient):
         game="missing-number",
         level=1,
         step_index=0,
-        form="a+?=c",
+        details={"form": "a+?=c"},
         answer=3,
         correct=False,
         matched_rules=["ADD_VISIBLE"],
@@ -768,13 +772,15 @@ def test_the_puzzle_service_stores_nothing_without_a_player(client: TestClient):
     before = row_counts(client)
     with Session(client.app.state.engine) as session:
         taxonomy = TaxonomyService(session, client.app.state.graph)
-        catalog = client.app.state.puzzles.require_catalog()
-        puzzle = PuzzleService(taxonomy, catalog).new_puzzle(level=1, length=2, seed=4)
+        runtime = client.app.state.puzzles
+        puzzle = PuzzleService(taxonomy, runtime).new_puzzle(
+            "missing-number", level=1, params=MissingNumberParams(length=2), seed=4
+        )
 
         # No PlayerService: a player id has nowhere to go.
-        PuzzleService(taxonomy, catalog).check(puzzle.puzzle_id, 0, 1, player_id=uuid.uuid4())
+        PuzzleService(taxonomy, runtime).check(puzzle.puzzle_id, 0, 1, player_id=uuid.uuid4())
         # A PlayerService but no player id.
-        with_players = PuzzleService(taxonomy, catalog, players=PlayerService(session))
+        with_players = PuzzleService(taxonomy, runtime, players=PlayerService(session))
         with_players.check(puzzle.puzzle_id, 0, 1)
         with_players.hint(puzzle.puzzle_id, 0, 1)
 

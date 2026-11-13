@@ -1,7 +1,8 @@
-"""What the puzzle API sends and receives. The internal Puzzle model never leaves the server.
+"""What the puzzle API sends and receives for a chain. The internal Puzzle never leaves the server.
 
 Puzzle (models.py) carries answers, mistake-rule names, error-pattern ids and
-tutor notes. PuzzlePublic is the cut-down shape a child's browser gets.
+tutor notes. PuzzlePublic is the cut-down shape a child's browser gets. The
+shapes every game shares (check, hint, errors) are in app/puzzles/core/schemas.py.
 
 Known and accepted: in a chain, step n+1 shows step n's answer as one of its
 visible numbers. That is how the puzzle works, and the frontend reveals steps
@@ -13,25 +14,24 @@ by hiding later steps or encrypting anything.
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
-from app.puzzles.ids import MAX_SEED
-from app.puzzles.levels import HINT_TIERS, MAX_STEPS, MIN_STEPS
-from app.puzzles.models import Equation, MistakeRule
+from app.puzzles.core import NewPuzzleBody, PublicPuzzle
+from app.puzzles.types.missing_number.levels import (
+    DEFAULT_LENGTH,
+    HINT_TIERS,
+    MAX_STEPS,
+    MIN_STEPS,
+)
+from app.puzzles.types.missing_number.models import Equation, MistakeRule
 
-MAX_ANSWER = 10_000
 
-
-class NewPuzzleRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class NewPuzzleRequest(NewPuzzleBody):
+    """The body of POST /puzzles/missing-number."""
 
     level: int = Field(ge=1, le=3)
-    length: int = Field(default=3, ge=MIN_STEPS, le=MAX_STEPS, description="Number of steps.")
-    seed: int | None = Field(
-        default=None,
-        ge=0,
-        le=MAX_SEED,
-        description="Fixes the puzzle. Leave out for a random one.",
+    length: int = Field(
+        default=DEFAULT_LENGTH, ge=MIN_STEPS, le=MAX_STEPS, description="Number of steps."
     )
     focus: MistakeRule | None = Field(
         default=None,
@@ -62,54 +62,13 @@ class PuzzleStepPublic(BaseModel):
     )
 
 
-class PuzzlePublic(BaseModel):
-    puzzle_id: str
-    level: int
+class PuzzlePublic(PublicPuzzle):
+    """A missing-number chain, as the browser gets it."""
+
+    game: Literal["missing-number"] = Field(
+        default="missing-number",
+        description="Which game the puzzle belongs to. Always sent; tells the shapes apart.",
+    )
     length: int
     topic_ids: list[str] = Field(description="Taxonomy topics practised, primary first.")
     steps: list[PuzzleStepPublic]
-
-
-class CheckRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    answer: int = Field(ge=0, le=MAX_ANSWER)
-
-
-class ReteachTopic(BaseModel):
-    id: str
-    name: str
-
-
-class DiagnosisPublic(BaseModel):
-    matched_rules: list[str] = Field(
-        description="Names of the known mistakes that give this answer. For analytics and "
-        "development; not for showing to a child."
-    )
-    unrecognized: bool = Field(description="Wrong, and no known mistake explains it.")
-    reteach_topic: ReteachTopic | None = Field(description="Where to step back to, if anywhere.")
-
-
-class CheckResult(BaseModel):
-    correct: bool
-    feedback: Literal["correct", "try_again"]
-    diagnosis: DiagnosisPublic
-    next_step: int | None = Field(
-        description="Index of the next step after a correct answer; null on the last step "
-        "and after a wrong answer."
-    )
-
-
-class HintOut(BaseModel):
-    tier: int
-    text: str
-
-
-class PuzzleNotFoundBody(BaseModel):
-    detail: str
-    puzzle_id: str
-
-
-class PuzzleGoneBody(BaseModel):
-    detail: str
-    current_version: str

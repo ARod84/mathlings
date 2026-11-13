@@ -170,11 +170,16 @@ class Attempt(SQLModel, table=True):
     player_id: uuid.UUID = Field(sa_column=_player_fk())
     puzzle_id: str
     generator_version: str
-    # "missing-number" for now; the key the game has in shared/game-topics.json.
+    # The puzzle type's game name; the key the game has in shared/game-topics.json.
     game: str
     level: int
     step_index: int
-    form: str
+    # No longer written: the form of a missing-number step is now in `details`.
+    # Rows from before migration 0004 have it in both. To be dropped in a later cleanup.
+    form: str | None = None
+    # What the puzzle type wants kept about the step (PuzzleType.attempt_details).
+    # For a missing-number chain: {"form": "a+?=c"}.
+    details: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     answer: int
     correct: bool
     # Mistake-rule names that give this answer; empty when right or unrecognized.
@@ -184,7 +189,7 @@ class Attempt(SQLModel, table=True):
     # A topic id, kept as plain text: a later taxonomy import may drop the topic,
     # and that must not break or erase history.
     reteach_topic_id: str | None = None
-    # The topics this step practises, primary first (levels.step_topic_ids).
+    # The topics this step practises, primary first (PuzzleType.step_topic_ids).
     # Narrower than the puzzle's list. Rows from before migration 0003 held the
     # puzzle's list; that migration rewrote them.
     topic_ids: list[str] = Field(sa_column=Column(JSON, nullable=False))

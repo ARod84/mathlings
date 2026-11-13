@@ -33,6 +33,7 @@ from app.adaptive.constants import (
     STEP_DOWN_P_KNOWN,
     BktParams,
 )
+from app.adaptive.policies import is_focused
 from app.adaptive.policy import (
     consolidate_length,
     find_focus_rule,
@@ -41,13 +42,14 @@ from app.adaptive.policy import (
     primary_topic_id,
     recommend_from,
 )
-from app.adaptive.service import AdaptiveService, is_focused
+from app.adaptive.service import AdaptiveService
 from app.adaptive.simulate import KINDS, run_simulation
 from app.config import BACKEND_DIR
 from app.models import Attempt, Player
-from app.puzzles.equations import ALL_FORMS
-from app.puzzles.ids import make_puzzle_id
-from app.puzzles.levels import (
+from app.puzzles.types.missing_number import MissingNumberChains
+from app.puzzles.types.missing_number.equations import ALL_FORMS
+from app.puzzles.types.missing_number.ids import make_puzzle_id
+from app.puzzles.types.missing_number.levels import (
     ANSWER_LEFT_FORMS,
     LEVELS,
     TOPIC_EQUALS_SIGN,
@@ -167,7 +169,7 @@ def test_a_check_stores_the_steps_topics_not_the_puzzles(client: TestClient):
     index = forms.index("?-b=c")
     check(client, puzzle.puzzle_id, index, puzzle.steps[index].answer, player)
     stored = attempts_of(client, player)[-1]
-    assert stored.form == "?-b=c"
+    assert stored.details == {"form": "?-b=c"}
     assert stored.topic_ids == [TOPIC_UNKNOWN_ADD_SUB]
     assert stored.topic_ids != puzzle.topic_ids
 
@@ -893,7 +895,7 @@ def test_mastery_and_recommend_use_one_statement_whatever_the_history(client: Te
                 adaptive.mastery(player)
             assert len(seen) == 1, seen
             with count_statements(client) as seen:
-                adaptive.recommend(player)
+                adaptive.recommend(player, MissingNumberChains)
             assert len(seen) == 1, seen
 
 
@@ -904,9 +906,9 @@ def test_recommend_for_stored_players(client: TestClient):
 
     with Session(client.app.state.engine) as session:
         adaptive = AdaptiveService(session)
-        up = adaptive.recommend(promoted)
-        down = adaptive.recommend(stepped_down)
-        cold = adaptive.recommend(unknown)
+        up = adaptive.recommend(promoted, MissingNumberChains)
+        down = adaptive.recommend(stepped_down, MissingNumberChains)
+        cold = adaptive.recommend(unknown, MissingNumberChains)
 
     assert (up.reason_code, up.level, up.length) == ("promote", 2, 2)
     assert (down.reason_code, down.level, down.length) == ("step_down", 1, 2)

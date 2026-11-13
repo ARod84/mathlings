@@ -1,9 +1,9 @@
 """Quality report for the missing-number chain generator.
 
-    uv run python -m app.puzzles.report --level 1 --count 5000
-    uv run python -m app.puzzles.report --all --count 5000
-    uv run python -m app.puzzles.report --samples 2          # print example puzzles
-    uv run python -m app.puzzles.report --catalog            # rule -> error pattern table
+    uv run python -m app.puzzles.types.missing_number.report --level 1 --count 5000
+    uv run python -m app.puzzles.types.missing_number.report --all --count 5000
+    uv run python -m app.puzzles.types.missing_number.report --samples 2    # example puzzles
+    uv run python -m app.puzzles.types.missing_number.report --catalog      # rule -> error pattern
 
 Uses the real database for the error-pattern links and topic ids, so run the
 migration and the importer first. Seeds 0..count-1 are used, with chain
@@ -20,19 +20,22 @@ from dataclasses import dataclass, field
 from sqlmodel import Session
 
 from app.db import make_engine
-from app.puzzles.equations import ALL_FORMS, render
-from app.puzzles.levels import (
+from app.puzzles.types.missing_number.equations import ALL_FORMS, render
+from app.puzzles.types.missing_number.levels import (
     ANSWER_LEFT_FORMS,
     FOCUS_TARGET_FORMS,
     LEVELS,
     MAX_STEPS,
     MIN_STEPS,
 )
-from app.puzzles.misconceptions import MisconceptionCatalog
-from app.puzzles.models import MistakeRule, Puzzle
-from app.puzzles.rules import distractor_value, rule_output
-from app.puzzles.taxonomy_link import load_catalog, topic_exists
-from app.puzzles.verified import PuzzleGenerationFailed, generate_verified_outcome
+from app.puzzles.types.missing_number.misconceptions import MisconceptionCatalog
+from app.puzzles.types.missing_number.models import MistakeRule, Puzzle
+from app.puzzles.types.missing_number.rules import distractor_value, rule_output
+from app.puzzles.types.missing_number.taxonomy_link import load_catalog, topic_exists
+from app.puzzles.types.missing_number.verified import (
+    PuzzleGenerationFailed,
+    generate_verified_outcome,
+)
 from app.taxonomy.service import TaxonomyService, reload_graph
 
 # Generation is timed once per seed. The slowest few seeds are then timed again

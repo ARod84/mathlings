@@ -3,7 +3,7 @@
 import re
 
 from app.config import BACKEND_DIR
-from app.puzzles.levels import FORM_WEIGHTS, GENERATOR_VERSION, LEVELS
+from app.puzzles.types.missing_number.levels import FORM_WEIGHTS, GENERATOR_VERSION, LEVELS
 from app.taxonomy.constants import TAXONOMY_COMMIT
 
 
@@ -17,7 +17,8 @@ def test_readme_report_names_the_current_generator_version_and_taxonomy_commit()
     section = report_section()
 
     # If either of these changes, the numbers are from other code: rerun
-    # `uv run python -m app.puzzles.report --all --count 5000` and update the table.
+    # `uv run python -m app.puzzles.types.missing_number.report --all --count 5000`
+    # and update the table.
     assert f"**Generator version:** `{GENERATOR_VERSION}`" in section
     assert f"**Taxonomy commit:** `{TAXONOMY_COMMIT}`" in section
     assert re.search(r"\*\*Run on:\*\* \d{4}-\d{2}-\d{2}", section)

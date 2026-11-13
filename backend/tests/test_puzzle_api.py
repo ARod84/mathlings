@@ -9,23 +9,19 @@ from sqlmodel import Session
 
 import app.puzzles.service as puzzle_service_module
 from app.config import BACKEND_DIR
-from app.puzzles.equations import visible_numbers
-from app.puzzles.ids import MAX_SEED, make_puzzle_id
-from app.puzzles.levels import GENERATOR_VERSION, LEVELS
-from app.puzzles.models import MistakeRule, Puzzle
-from app.puzzles.rules import rule_output
-from app.puzzles.schemas import MAX_ANSWER, LinkedToken
-from app.puzzles.service import (
-    PuzzleNotFound,
-    PuzzleRuntime,
-    PuzzleService,
-    linked_token,
-    shuffled_options,
-    to_public,
-)
-from app.puzzles.taxonomy_link import topic_exists
-from app.puzzles.verified import PuzzleGenerationFailed, regenerate
-from app.puzzles.verifier import verify
+from app.puzzles.core.schemas import MAX_ANSWER
+from app.puzzles.service import PuzzleNotFound, PuzzleRuntime, PuzzleService
+from app.puzzles.types.missing_number import MissingNumberParams
+from app.puzzles.types.missing_number.equations import visible_numbers
+from app.puzzles.types.missing_number.ids import MAX_SEED, make_puzzle_id
+from app.puzzles.types.missing_number.levels import GENERATOR_VERSION, LEVELS
+from app.puzzles.types.missing_number.models import MistakeRule, Puzzle
+from app.puzzles.types.missing_number.public import linked_token, shuffled_options, to_public
+from app.puzzles.types.missing_number.rules import rule_output
+from app.puzzles.types.missing_number.schemas import LinkedToken
+from app.puzzles.types.missing_number.taxonomy_link import topic_exists
+from app.puzzles.types.missing_number.verified import PuzzleGenerationFailed, regenerate
+from app.puzzles.types.missing_number.verifier import verify
 from app.taxonomy.importer import run_import
 from app.taxonomy.service import TaxonomyService
 from tests.conftest import FIXTURE_COMMIT, FIXTURE_TAXONOMY, PUZZLE_FIXTURE_TAXONOMY, migrate
@@ -33,6 +29,7 @@ from tests.puzzles.support import make_catalog, make_puzzle, make_step
 from tests.test_api import api_client, count_statements
 
 PUZZLES = "/api/v1/puzzles"
+GAME = "missing-number"
 EQUALS_SIGN = {"id": "mt_oIzycTBeE4", "name": "What the equals sign means"}
 
 
@@ -59,7 +56,7 @@ def internal(client: TestClient, puzzle_id: str) -> Puzzle:
         taxonomy = TaxonomyService(session, client.app.state.graph)
         return regenerate(
             puzzle_id,
-            catalog=client.app.state.puzzles.require_catalog(),
+            catalog=client.app.state.puzzles.require(GAME).catalog,
             topic_exists=topic_exists(taxonomy),
         )
 
@@ -99,7 +96,7 @@ def test_post_creates_a_puzzle_that_passes_verification(client: TestClient):
         taxonomy = TaxonomyService(session, client.app.state.graph)
         result = verify(
             puzzle,
-            catalog=client.app.state.puzzles.require_catalog(),
+            catalog=client.app.state.puzzles.require(GAME).catalog,
             topic_exists=topic_exists(taxonomy),
         )
     assert result.ok, result.failures
@@ -251,7 +248,15 @@ def test_public_puzzle_has_no_internal_fields(client: TestClient):
                 for source in step.hint_source:
                     assert source.next_move not in text
                     assert source.error_pattern_id not in text
-            assert set(response.json()) == {"puzzle_id", "level", "length", "topic_ids", "steps"}
+            assert set(response.json()) == {
+                "game",
+                "puzzle_id",
+                "level",
+                "length",
+                "topic_ids",
+                "steps",
+            }
+            assert response.json()["game"] == GAME
             assert set(response.json()["steps"][0]) == {
                 "index",
                 "equation",
@@ -556,8 +561,8 @@ def test_non_numeric_step_or_tier_is_422(client: TestClient):
 
 
 def test_generation_running_out_of_retries_is_503_and_logged(client, monkeypatch, caplog):
-    def exhausted(seed, level, length, **_kwargs):
-        raise PuzzleGenerationFailed(f"seed {seed}, level {level}, length {length}: no luck")
+    def exhausted(puzzle_type, seed, level, params):
+        raise PuzzleGenerationFailed(f"{puzzle_type.game}, seed {seed}, level {level}: no luck")
 
     monkeypatch.setattr(puzzle_service_module, "generate_verified", exhausted)
     with caplog.at_level(logging.ERROR, logger="app.main"):
@@ -595,7 +600,7 @@ def test_puzzles_are_503_before_any_import(tmp_path: Path):
 
 def test_the_catalog_is_resolved_once_across_many_requests(client: TestClient):
     runtime: PuzzleRuntime = client.app.state.puzzles
-    catalog = runtime.require_catalog()
+    chains = runtime.require(GAME)
     before = runtime.load_count
     assert before >= 1  # resolved at startup, in the lifespan
 
@@ -607,7 +612,8 @@ def test_the_catalog_is_resolved_once_across_many_requests(client: TestClient):
         client.post(f"{PUZZLES}/missing-number", json={"level": 2})
 
     assert runtime.load_count == before
-    assert runtime.require_catalog() is catalog
+    assert runtime.require(GAME) is chains
+    assert runtime.require(GAME).catalog is chains.catalog
 
 
 def test_the_catalog_is_resolved_at_startup_not_on_the_first_request(tmp_path: Path):
@@ -617,7 +623,7 @@ def test_the_catalog_is_resolved_at_startup_not_on_the_first_request(tmp_path: P
 
     with api_client(tmp_path / "startup.db") as fresh:
         assert fresh.app.state.puzzles.load_count == 1
-        assert fresh.app.state.puzzles.catalog is not None
+        assert fresh.app.state.puzzles.require(GAME).catalog is not None
         new_puzzle(fresh, level=1)
         assert fresh.app.state.puzzles.load_count == 1
 
@@ -679,24 +685,29 @@ def test_statement_budgets(client: TestClient):
 def test_the_service_works_without_http(client: TestClient):
     with Session(client.app.state.engine) as session:
         taxonomy = TaxonomyService(session, client.app.state.graph)
-        service = PuzzleService(taxonomy, client.app.state.puzzles.require_catalog())
+        service = PuzzleService(taxonomy, client.app.state.puzzles)
 
-        puzzle = service.new_puzzle(level=1, length=2, seed=4)
+        puzzle = service.new_puzzle(GAME, level=1, params=MissingNumberParams(length=2), seed=4)
         assert service.get_puzzle(puzzle.puzzle_id) == puzzle
         assert service.hint(puzzle.puzzle_id, 0, 1).text.startswith("The = sign means")
         assert service.check(puzzle.puzzle_id, 0, 9_999).correct is False
         with pytest.raises(PuzzleNotFound) as error:
             service.get_puzzle("nonsense")
         assert error.value.puzzle_id == "nonsense"
-        random_puzzle = service.new_puzzle(level=1)
+        random_puzzle = service.new_puzzle(GAME, level=1)
         assert random_puzzle.length == 3
 
 
 def test_service_modules_do_not_import_fastapi():
-    for name in ("service.py", "schemas.py"):
-        source = (BACKEND_DIR / "app" / "puzzles" / name).read_text(encoding="utf-8")
-        assert "fastapi" not in source, name
-        assert "starlette" not in source, name
+    puzzles = BACKEND_DIR / "app" / "puzzles"
+    sources = [puzzles / "service.py", puzzles / "registry.py"]
+    sources += sorted((puzzles / "core").glob("*.py"))
+    sources += sorted((puzzles / "types" / "missing_number").glob("*.py"))
+    assert len(sources) > 20
+    for path in sources:
+        source = path.read_text(encoding="utf-8")
+        assert "fastapi" not in source, path.name
+        assert "starlette" not in source, path.name
 
 
 def test_post_is_allowed_by_cors(client: TestClient):
@@ -725,6 +736,7 @@ def test_puzzle_routes_are_tagged_with_response_models(client: TestClient):
 
     assert {(path, method) for path, ops in puzzle_paths.items() for method in ops} == {
         ("/api/v1/puzzles/missing-number", "post"),
+        ("/api/v1/puzzles/{game}", "post"),
         ("/api/v1/puzzles/{puzzle_id}", "get"),
         ("/api/v1/puzzles/{puzzle_id}/steps/{index}/check", "post"),
         ("/api/v1/puzzles/{puzzle_id}/steps/{index}/hints/{tier}", "get"),

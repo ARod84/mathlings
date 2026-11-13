@@ -1,8 +1,8 @@
 import pytest
 
-from app.puzzles.levels import LEVELS
-from app.puzzles.models import MistakeRule
-from app.puzzles.rules import (
+from app.puzzles.types.missing_number.levels import LEVELS
+from app.puzzles.types.missing_number.models import MistakeRule
+from app.puzzles.types.missing_number.rules import (
     RULES,
     add_without_carry,
     distractor_value,

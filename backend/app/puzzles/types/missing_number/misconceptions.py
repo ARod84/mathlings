@@ -17,8 +17,8 @@ pattern that says the same thing, and a near match would mislead the tutor.
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
-from app.puzzles.levels import TOPIC_MISSING_NUMBER, TOPIC_UNKNOWN_ADD_SUB
-from app.puzzles.models import MistakeRule
+from app.puzzles.types.missing_number.levels import TOPIC_MISSING_NUMBER, TOPIC_UNKNOWN_ADD_SUB
+from app.puzzles.types.missing_number.models import MistakeRule
 from app.taxonomy.schemas import ErrorPatternOut
 
 

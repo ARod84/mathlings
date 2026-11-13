@@ -183,8 +183,29 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Start a new missing-number chain */
+        /**
+         * Start a new missing-number chain
+         * @deprecated
+         * @description Deprecated spelling of `POST /api/v1/puzzles/{game}` with `game` = `missing-number`. Same URL, same body, same answer: a client written against either one keeps working when this entry is removed.
+         */
         post: operations["new_missing_number_puzzle_api_v1_puzzles_missing_number_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/puzzles/{game}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a new puzzle of a game */
+        post: operations["new_puzzle_api_v1_puzzles__game__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -454,21 +475,24 @@ export interface components {
             /** Observations */
             observations: number;
         };
-        /** NewPuzzleRequest */
+        /**
+         * NewPuzzleRequest
+         * @description The body of POST /puzzles/missing-number.
+         */
         NewPuzzleRequest: {
             /** Level */
             level: number;
+            /**
+             * Seed
+             * @description Fixes the puzzle. Leave out for a random one.
+             */
+            seed?: number | null;
             /**
              * Length
              * @description Number of steps.
              * @default 3
              */
             length: number;
-            /**
-             * Seed
-             * @description Fixes the puzzle. Leave out for a random one.
-             */
-            seed?: number | null;
             /** @description A mistake rule to target, as `focus` from /players/me/next gives it. ADD_VISIBLE, ANSWER_LEFT_BACKWARDS and POSITION_CONFUSION change the puzzle; any other rule name is accepted and has no effect. Never tell the child about it. */
             focus?: components["schemas"]["MistakeRule"] | null;
         };
@@ -478,14 +502,15 @@ export interface components {
             level: number;
             /**
              * Length
-             * @description Number of steps in the chain.
+             * @description Number of steps in the chain. Missing Number Chains only; null for a game without chains.
              */
-            length: number;
+            length: number | null;
             /**
              * Reason Code
+             * @description Which rule decided. `no_policy` means the game has no recommendation policy yet and this is its default, the same for every player.
              * @enum {string}
              */
-            reason_code: "cold_start" | "promote" | "step_down" | "consolidate";
+            reason_code: "cold_start" | "promote" | "step_down" | "consolidate" | "no_policy";
             /**
              * Reason
              * @description Why, in a sentence for an adult. Never show it to a child.
@@ -498,6 +523,13 @@ export interface components {
             focus_rule: string | null;
             /** @description The rule to generate this puzzle with: pass it as `focus` to POST /puzzles/missing-number. Null when there is nothing to target, or when the previous puzzle was focused (at most every other puzzle is). */
             focus: components["schemas"]["MistakeRule"] | null;
+            /**
+             * Params
+             * @description The same recommendation, for any game: the fields to send with `level` in the body of POST /puzzles/{game}. For Missing Number Chains, `length` and, when there is one, `focus`.
+             */
+            params?: {
+                [key: string]: unknown;
+            };
             /**
              * Mastery
              * @description The mastery values the decision used: the recommended level's topics first, then everything else the player has practised.
@@ -604,8 +636,18 @@ export interface components {
             /** Puzzle Id */
             puzzle_id: string;
         };
-        /** PuzzlePublic */
+        /**
+         * PuzzlePublic
+         * @description A missing-number chain, as the browser gets it.
+         */
         PuzzlePublic: {
+            /**
+             * Game
+             * @description Which game the puzzle belongs to. Always sent; tells the shapes apart.
+             * @default missing-number
+             * @constant
+             */
+            game: "missing-number";
             /** Puzzle Id */
             puzzle_id: string;
             /** Level */
@@ -830,6 +872,18 @@ export interface components {
             in_scope: boolean;
             /** Has Research */
             has_research: boolean;
+        };
+        /** UnknownGameBody */
+        UnknownGameBody: {
+            /** Detail */
+            detail: string;
+            /** Game */
+            game: string;
+            /**
+             * Games
+             * @description The games this server has puzzles for.
+             */
+            games: string[];
         };
         /**
          * UnknownToken
@@ -1363,6 +1417,63 @@ export interface operations {
             };
         };
     };
+    new_puzzle_api_v1_puzzles__game__post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored. */
+                "X-Player-Id"?: string | null;
+            };
+            path: {
+                game: string;
+            };
+            cookie?: never;
+        };
+        /** @description The body for the game named in the path. Each game has its own: `missing-number` takes NewPuzzleRequest. */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewPuzzleRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PuzzlePublic"];
+                };
+            };
+            /** @description No such game */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnknownGameBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Puzzles cannot be served right now */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     get_puzzle_api_v1_puzzles__puzzle_id__get: {
         parameters: {
             query?: never;
@@ -1606,7 +1717,7 @@ export interface operations {
     get_next_api_v1_players_me_next_get: {
         parameters: {
             query: {
-                /** @description The game to recommend for. Only Missing Number Chains adapts so far. */
+                /** @description The game to recommend for. Only Missing Number Chains adapts so far; any other game gets its default, with reason_code `no_policy`. */
                 game: "missing-number";
             };
             header: {

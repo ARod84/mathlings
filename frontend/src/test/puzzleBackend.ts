@@ -184,6 +184,7 @@ export function createPuzzleBackend(chain: FixtureStep[] = CHAIN): PuzzleBackend
       : Promise.resolve();
 
   const toPublic = (puzzleId: string, level: number, steps: FixtureStep[]): PuzzlePublic => ({
+    game: 'missing-number',
     puzzle_id: puzzleId,
     level,
     length: steps.length,

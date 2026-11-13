@@ -73,7 +73,7 @@ at any other commit. To upgrade, change the constant, review the new data, updat
 | `error_pattern`     | One row per typical mistake, taken out of `assess.errorPatterns`                       |
 | `cluster`           | Parent-friendly summaries per subject, domain and age band                             |
 | `player`            | An anonymous player: a UUID the browser made, first seen, last seen                    |
-| `attempt`           | One checked answer by a player (migration `0002`; see [Players](#players))             |
+| `attempt`           | One checked answer by a player (migrations `0002`, `0004`; see [Players](#players))    |
 | `hint_request`      | One hint tier a player fetched                                                         |
 
 In `error_pattern`, `distractor` feeds wrong answer options, `next_move` feeds hints, and
@@ -158,7 +158,55 @@ frontend's typed client. A test fails if that file is out of date.
 
 ## Puzzles
 
-`app/puzzles` is a pure Python library for the first puzzle type, the **missing-number chain**:
+Every game the server makes puzzles for goes through one pipeline: generate, verify, serve a public
+shape, check answers, give hints, store attempts. `app/puzzles` holds that pipeline once, and each
+game plugs into it as a **puzzle type**.
+
+```
+app/puzzles/
+  core/
+    contract.py     PuzzleType: what every puzzle type implements
+    ids.py          puzzle ids: type code, generator version, checksum; seed derivation
+    verified.py     generate_verified, regenerate: generate, verify, retry with a derived seed
+    schemas.py      the API shapes every game shares (check, hint, errors)
+  registry.py       type code and game name -> puzzle type; default_registry()
+  service.py        PuzzleService and PuzzleRuntime: the pipeline, for any registered type
+  types/
+    missing_number/ the first type: generator, verifier, rules, diagnoser, hints, ...
+```
+
+| Piece                                 | Knows about chains? | Job                                                                                                   |
+| ------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------- |
+| `core/contract.py`                    | No                  | `PuzzleType`, an abstract base class: identity, levels, and the methods in the table below.           |
+| `registry.py`                         | Only to list it     | `PuzzleRegistry`. `create_app(registry=...)` takes one, so a test can run the app with one more type. |
+| `core/ids.py`, `core/verified.py`     | No                  | Id parsing, the retry loop, the version check behind the 410, re-verifying a rebuilt puzzle.          |
+| `service.py`                          | No                  | Finds the type (from the game name, or from the id's prefix) and calls it through the contract.       |
+| `app/api/v1/puzzles.py`               | Only for the alias  | The four generic routes; see [Puzzle API](#puzzle-api).                                               |
+| `types/missing_number/puzzle_type.py` | Yes                 | `MissingNumberChains`: the contract, handed over method by method to the modules next to it.          |
+
+What a `PuzzleType` provides:
+
+| Member                                                                     | For                                                                                   |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `type_code`, `game`, `generator_version`                                   | The id prefix (`mnc`), the name in URLs and in `attempt.game`, the version in the id. |
+| `levels`                                                                   | Each level's topics, primary first. Must match `shared/game-topics.json`.             |
+| `request_model`, `public_model`                                            | The body of `POST /puzzles/{game}` and the puzzle a browser gets.                     |
+| `load(taxonomy)`                                                           | Binds the type to the taxonomy (a chain resolves its mistake-rule catalog here).      |
+| `default_params`, `params_from_request`, `params_to_request`, `decode_key` | The type's own parameters: defaults, from a request, to a request, from an id.        |
+| `generate(seed, level, params)`, `verify(puzzle)`                          | Build a puzzle, and check it without trusting how it was built.                       |
+| `to_public(puzzle)`                                                        | The child-facing view.                                                                |
+| `check(puzzle, step, answer)`                                              | `CheckOutcome`: correct, matched rules, error patterns, reteach topic.                |
+| `hint_tiers(puzzle, step)`, `hint(puzzle, step, tier)`                     | Hints.                                                                                |
+| `step_topic_ids`, `attempt_details`                                        | What is stored with an attempt: the step's topics, and the type's own facts (JSON).   |
+
+The proof that this carries a second type is `tests/test_puzzle_contract.py`: a dummy type that
+exists only in the tests ("type the number shown", `tests/puzzles/dummy.py`) is registered next to
+the real one and played through the same routes. To add a real one, see
+[How to add a puzzle type](#how-to-add-a-puzzle-type).
+
+### The missing-number chain
+
+`app/puzzles/types/missing_number` is the first puzzle type, and a pure Python library:
 one to four linked equations with one box each, where each answer becomes a visible number in the
 next step.
 
@@ -176,16 +224,22 @@ It has three parts that are kept separate on purpose.
 | Verifier  | `verifier.py`  | Checks a puzzle without trusting the generator: it solves each step by trying every number. |
 | Diagnoser | `diagnoser.py` | Says which known mistake produced a wrong answer, and where to step back to.                |
 
-`verified.generate_verified(...)` is the only way to get a puzzle meant for a child: it generates,
-verifies, and retries with a derived seed if either fails. `verified.regenerate(puzzle_id)` rebuilds
-a puzzle from its id alone, so nothing needs storing.
+`generate_verified(...)` is the only way to get a puzzle meant for a child: it generates,
+verifies, and retries with a derived seed if either fails. `regenerate(puzzle_id)` rebuilds
+a puzzle from its id alone, so nothing needs storing. Both are the shared ones in
+`app/puzzles/core/verified.py`; `types/missing_number/verified.py` wraps them for Python callers
+that have a catalog and no running app (the report, the simulator, the tests).
 
 ```python
 from sqlmodel import Session
 from app.db import make_engine
-from app.puzzles.diagnoser import diagnose
-from app.puzzles.taxonomy_link import first_step_back, load_catalog, topic_exists
-from app.puzzles.verified import generate_verified
+from app.puzzles.types.missing_number.diagnoser import diagnose
+from app.puzzles.types.missing_number.taxonomy_link import (
+    first_step_back,
+    load_catalog,
+    topic_exists,
+)
+from app.puzzles.types.missing_number.verified import generate_verified
 from app.taxonomy.service import TaxonomyService, reload_graph
 
 with Session(make_engine()) as session:
@@ -225,9 +279,9 @@ it against the database at startup; it fails loudly if a pattern is missing or a
 ### Quality report
 
 ```bash
-uv run python -m app.puzzles.report --all --count 5000   # or --level 1
-uv run python -m app.puzzles.report --samples 2          # example puzzles
-uv run python -m app.puzzles.report --catalog            # rule -> error pattern table
+uv run python -m app.puzzles.types.missing_number.report --all --count 5000   # or --level 1
+uv run python -m app.puzzles.types.missing_number.report --samples 2          # example puzzles
+uv run python -m app.puzzles.types.missing_number.report --catalog            # rule -> error pattern
 ```
 
 The report was run on generator version 1, then again after the changes that make version 2.
@@ -350,7 +404,7 @@ compares 2,000 seeds against fingerprints written by version 2 before focus exis
 A focus in the puzzle that disagrees with the id is `puzzle_id_mismatch`. Without the focus that
 raises it, the answer-left limit is still 1 and still `too_many_answer_left`.
 
-**Quality report, version 3.** `uv run python -m app.puzzles.report --all --count 5000`, with
+**Quality report, version 3.** `uv run python -m app.puzzles.types.missing_number.report --all --count 5000`, with
 `--focus RULE` for the other columns, against the real imported database on 2026-11-13. The
 "no focus" column equals the Version 2 column above, as it must.
 
@@ -386,36 +440,101 @@ step. Level 3 has no answer-left limit, with or without a focus.
 ### Puzzle API
 
 `app/puzzles/service.py` (`PuzzleService`, no FastAPI) and the thin routes in
-`app/api/v1/puzzles.py` put the library on HTTP, under `/api/v1/puzzles`.
+`app/api/v1/puzzles.py` put every registered puzzle type on HTTP, under `/api/v1/puzzles`. The
+routes are the same for every game.
 
-| Route                                         | Body or params                                           | Returns              |
-| --------------------------------------------- | -------------------------------------------------------- | -------------------- |
-| `POST /missing-number`                        | `{ level: 1–3, length: 1–4 (default 3), seed?, focus? }` | `PuzzlePublic` (201) |
-| `GET /{puzzle_id}`                            |                                                          | `PuzzlePublic`       |
-| `POST /{puzzle_id}/steps/{index}/check`       | `{ answer: 0–10000 }`                                    | `CheckResult`        |
-| `GET /{puzzle_id}/steps/{index}/hints/{tier}` | tier 1–3                                                 | `{ tier, text }`     |
+| Route                                         | Body or params                                            | Returns                 |
+| --------------------------------------------- | --------------------------------------------------------- | ----------------------- |
+| `POST /{game}`                                | The game's own body: `level`, `seed?`, and its parameters | The game's puzzle (201) |
+| `GET /{puzzle_id}`                            |                                                           | The game's puzzle       |
+| `POST /{puzzle_id}/steps/{index}/check`       | `{ answer: 0–10000 }`                                     | `CheckResult`           |
+| `GET /{puzzle_id}/steps/{index}/hints/{tier}` | tier 1 up to the step's number of tiers                   | `{ tier, text }`        |
+| `POST /missing-number` (deprecated)           | The chain body, below                                     | `PuzzlePublic` (201)    |
 
+For `game` = `missing-number` the body is `{ level: 1–3, length: 1–4 (default 3), seed?, focus? }`
+and the puzzle is `PuzzlePublic`.
+
+- **Which game.** `POST /{game}` takes the game from the path; an unknown one is a 404 that lists
+  the known games. The other three routes take it from the id's prefix (`mnc-...`).
+- **Discriminated by game.** Every public puzzle has a `game` field. In `openapi.json` the response
+  of `POST /{game}` and `GET /{puzzle_id}` is a `oneOf` over the games' public shapes with `game`
+  as the discriminator, and the request body of `POST /{game}` is a `oneOf` over their request
+  models. With one game registered, each is that game's schema on its own, because a union needs
+  two members. The body has no `game` field: the path already says it, and the body is validated
+  as that game's model.
+- **The deprecated route.** `POST /missing-number` is where this API started. It is the same URL
+  as `POST /{game}` with `game` = `missing-number`, takes the same body and gives the same answer,
+  so it is kept in the document only as a deprecated entry. While it is declared it is the one
+  that answers that URL; when it is removed, `POST /{game}` answers it and no client changes.
 - **Focus.** `focus` is a mistake-rule name, as `/players/me/next` gives it; see [Focus](#focus).
   Left out or null: an ordinary puzzle. A rule that cannot be targeted is accepted and changes
   nothing. Anything that is not a rule name: 422.
-- **Stateless.** Every request rebuilds the puzzle from its id (`verified.regenerate`) and verifies
+- **Stateless.** Every request rebuilds the puzzle from its id (`core.verified.regenerate`) and verifies
   it again. No puzzle is stored. Practice history is stored only when the request carries
   `X-Player-Id`; see [Players](#players).
 - **Public shape.** `PuzzlePublic` has the equations, four shuffled `options` per step and
   `hint_tiers`. The order of the options is fixed by the puzzle id and step, so a reload looks the
   same. Answers, rule names, error-pattern ids and hint text stay on the server.
 - **Answers are not secrets.** A later step shows the previous answer as a visible number; that is
-  the puzzle. See the note in `app/puzzles/schemas.py` and the root README before changing it.
+  the puzzle. See the note in `app/puzzles/types/missing_number/schemas.py` and the root README before changing it.
 - **Checking.** A wrong check never gives the answer. It names the matched mistake rules (for
   analytics, not for the child) and the topic to step back to. Only hint tier 3 shows a worked step.
 - **Errors.** Tampered or malformed id: 404. Id from an older generator version: 410 with
   `current_version`. Step or tier out of range: 404. Bad body or seed: 422. Generation out of
   retries, or a taxonomy without the puzzle topics: 503.
-- **Catalog.** The mistake-rule catalog is resolved once at startup, next to the prerequisite
-  graph, and again only when the graph reloads after a re-import.
+- **Loading.** Each registered type is loaded once at startup, next to the prerequisite graph,
+  and again only when the graph reloads after a re-import (`PuzzleRuntime`). For a chain, loading
+  resolves the mistake-rule catalog. A type that cannot load (the taxonomy lacks a topic it needs)
+  answers 503; the other types keep working.
 - **Check log.** Each check writes one line to the `app.puzzles.checks` logger: puzzle id, step,
   correct, matched rules and latency. The same fields are on the record as `puzzle_check`. No
   personal data, and not the answer itself.
+
+## How to add a puzzle type
+
+A checklist. `tests/puzzles/dummy.py` is the smallest complete example, and
+`app/puzzles/types/missing_number/` the real one. Nothing in `app/puzzles/core`, `service.py` or
+the routes should need to change; if it does, the contract is missing something, and that is
+worth fixing there instead of working around it.
+
+1. **Folder.** Create `app/puzzles/types/<game_name>/`. Keep the generator, the verifier and the
+   answer checking in separate modules, as chains do.
+2. **Levels and topics.** Decide the levels and, for each, the taxonomy topics a puzzle can
+   practise, primary first. Add the game to `shared/game-topics.json` (`"<game>": {"byLevel":
+{"1": [...]}}`, and each topic's name under `_names`). `tests/test_game_topics.py` fails until
+   the type's `levels` and the file agree, and until every id is a real topic.
+3. **Models.** An internal puzzle with `puzzle_id`, `generator_version`, `seed`, `level` and
+   `steps` (the `InternalPuzzle` protocol). A request model that extends `NewPuzzleBody` with the
+   type's parameters. A public model that extends `PublicPuzzle` with `game: Literal["<game>"]`
+   and no answers, rule names or hint text.
+4. **Ids.** Pick a `type_code` (lower-case letters and digits, not taken). Build ids with
+   `core.ids.make_id(type_code, version, fields)` and read the fields back in `decode_key`.
+   Everything needed to rebuild the puzzle must be in the fields.
+5. **Generator.** `generate(seed, level, params)`: all randomness from one `random.Random(seed)`,
+   `GenerationError` for a seed that cannot work, `ValueError` for inputs never accepted. Bump
+   `generator_version` whenever the same seed can give a different puzzle; old ids then answer 410.
+6. **Verifier.** `verify(puzzle)`: check the puzzle without importing the generator or reusing
+   its arithmetic, and return every failure by name. Nothing reaches a child unless it passes.
+7. **Checking and mistake rules.** `check(puzzle, step, answer)` returns a `CheckOutcome`. Each
+   known mistake is a named rule; link a rule to a taxonomy error pattern only where the taxonomy
+   really says the same thing.
+8. **Hints.** `hint_tiers` and `hint`. Decide what each tier may give away; only the last tier
+   should show the answer, because the frontend opens earlier tiers by itself after two wrong
+   tries.
+9. **Attempts.** `step_topic_ids` (the topics of that one step, not of the whole puzzle) and
+   `attempt_details` (JSON facts worth keeping about the step).
+10. **The type and its registration.** Subclass `PuzzleType` in `puzzle_type.py`, with `load`
+    reading from the taxonomy whatever the type needs and raising `PuzzleTypeUnavailable` if it
+    is not there. Add the class to `default_registry()` in `app/puzzles/registry.py`.
+11. **Contract test.** Copy `tests/test_puzzle_contract.py` for the new game: generate, verify
+    and serve through `POST /puzzles/<game>`, check, hint, stored `details`, `/players/me/next`,
+    a tampered id (404) and an old-version id (410). Add the type's own tests for its generator,
+    verifier and rules, and a fingerprint snapshot if its output must stay stable.
+12. **OpenAPI.** Run `uv run python scripts/export_openapi.py` and commit `openapi.json`. The
+    game's request and public models appear in it, and the puzzle responses become a `oneOf`
+    discriminated by `game`. Then follow the frontend checklist in `frontend/README.md`.
+13. **Adaptive policy (optional).** Until the game has one, `/players/me/next` answers
+    `no_policy` with the type's defaults. To add one, see `app/adaptive/policies.py`.
 
 ## Players
 
@@ -438,12 +557,16 @@ which mistakes they repeat and how often they need a hint. The privacy rules are
 | Malformed, or not version 4 | 422                                             | 422                       |
 | Valid, never seen           | The player row is made on the first write       | Summary: 404. Delete: 204 |
 
-Only `check` and `hint` write. `POST /missing-number` and `GET /{puzzle_id}` validate the header
+Only `check` and `hint` write. `POST /{game}` and `GET /{puzzle_id}` validate the header
 and store nothing. A request that fails (404, 410, 422) stores nothing.
 
 **What a check stores.** One `attempt` row: the puzzle id and generator version, `game`
-(`missing-number`), level, step, form, the answer, `correct`, `matched_rules`,
-`error_pattern_ids`, `reteach_topic_id`, the puzzle's `topic_ids`, plus two derived numbers:
+(for example `missing-number`), level, step, the answer, `correct`, `matched_rules`,
+`error_pattern_ids`, `reteach_topic_id`, the step's `topic_ids`, `details`, plus two derived
+numbers. `details` is JSON and belongs to the puzzle type (`PuzzleType.attempt_details`): for a
+chain it is `{"form": "a+?=c"}`. Migration `0004` added it, filled it for the existing rows from
+their `form`, and made the old `form` column nullable. New rows leave `form` empty; the column
+itself is still there, to be dropped in a later migration.
 
 - `attempt_on_step`: 1 for this player's first try at this step, 2 for the second, and so on.
 - `hint_tier_before`: the highest hint tier this player fetched for this step before this check;
@@ -491,13 +614,14 @@ recommends the next level and chain length for Missing Number Chains. Every reco
 which rule produced it and why. Nothing new is stored: mastery is replayed from the attempt
 history on every call.
 
-| File                        | Role                                                                     |
-| --------------------------- | ------------------------------------------------------------------------ |
-| `app/adaptive/constants.py` | Every number: the BKT parameters and the policy thresholds.              |
-| `app/adaptive/bkt.py`       | Bayesian Knowledge Tracing and the evidence rules. Plain Python.         |
-| `app/adaptive/policy.py`    | `recommend_from(observations)`: the rules below. Plain Python.           |
-| `app/adaptive/service.py`   | `AdaptiveService`: reads a player's first tries (one query). No FastAPI. |
-| `app/adaptive/simulate.py`  | The offline simulator.                                                   |
+| File                        | Role                                                                        |
+| --------------------------- | --------------------------------------------------------------------------- |
+| `app/adaptive/constants.py` | Every number: the BKT parameters and the policy thresholds.                 |
+| `app/adaptive/bkt.py`       | Bayesian Knowledge Tracing and the evidence rules. Plain Python.            |
+| `app/adaptive/policy.py`    | `recommend_from(observations)`: the rules below. Plain Python.              |
+| `app/adaptive/policies.py`  | Which game has a policy, and the `no_policy` default for one that has none. |
+| `app/adaptive/service.py`   | `AdaptiveService`: reads a player's first tries (one query). No FastAPI.    |
+| `app/adaptive/simulate.py`  | The offline simulator.                                                      |
 
 ### Per-step topics
 
@@ -536,8 +660,14 @@ What counts as one observation:
 
 ### Recommendation policy
 
-`recommend(player_id)` returns `level`, `length`, `reason_code`, `reason` (a sentence for an
-adult, never shown to a child), `focus_rule` and the mastery values used. The current level is
+Policies are registered per game in `app/adaptive/policies.py`. Only Missing Number Chains has
+one, the one described here. A game that is registered as a puzzle type but has no policy gets a
+fixed answer instead: its lowest level, the type's default parameters in `params`, and
+`reason_code` `no_policy`, without reading the player's history.
+
+`recommend(player_id, puzzle_type)` returns `level`, `length`, `reason_code`, `reason` (a sentence
+for an adult, never shown to a child), `focus_rule`, the mastery values used, and `params` (the
+same recommendation as the fields to send with `level` to `POST /puzzles/{game}`). The current level is
 the level of the player's latest first try. The rules are tried in this order:
 
 | `reason_code` | When                                                                                                                                                                    | Result                                                         |
@@ -564,10 +694,10 @@ the level of the player's latest first try. The rules are tried in this order:
 
 ### API
 
-| Route                                             | Returns                                                                                                                                                                                                                                                                                                    |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/v1/players/me/next?game=missing-number` | `{level, length, reason_code, reason, focus_rule, focus, mastery: [{topic_id, name, level, p_known, observations}]}`. Header required. A player with no attempts, known or not, gets `cold_start`. Three statements, whatever the history: the taxonomy freshness check, the first tries, the topic names. |
-| `GET /api/v1/players/me/summary`                  | Now also `mastery: [{topic_id, level, p_known, observations, last_practised}]`.                                                                                                                                                                                                                            |
+| Route                                             | Returns                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/players/me/next?game=missing-number` | `{level, length, reason_code, reason, focus_rule, focus, params, mastery: [{topic_id, name, level, p_known, observations}]}`. Header required. `game` is any registered game; one that is not registered is a 422. For a game without a policy: `reason_code` `no_policy`, `length` and `focus` null, empty `mastery`, and one statement. A player with no attempts, known or not, gets `cold_start`. Three statements, whatever the history: the taxonomy freshness check, the first tries, the topic names. |
+| `GET /api/v1/players/me/summary`                  | Now also `mastery: [{topic_id, level, p_known, observations, last_practised}]`.                                                                                                                                                                                                                                                                                                                                                                                                                               |
 
 ### Offline simulator
 

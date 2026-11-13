@@ -12,8 +12,8 @@ import hashlib
 import json
 from pathlib import Path
 
-from app.puzzles.models import Puzzle
-from app.puzzles.verified import generate_verified
+from app.puzzles.types.missing_number.models import Puzzle
+from app.puzzles.types.missing_number.verified import generate_verified
 from tests.puzzles.support import KNOWN_TOPICS, make_catalog
 
 BASELINE_FILE = Path(__file__).parent.parent / "snapshots" / "generator_v2_focus_none.json"
@@ -48,7 +48,7 @@ def current_fingerprints() -> list[str]:
 
 
 if __name__ == "__main__":
-    from app.puzzles.levels import GENERATOR_VERSION
+    from app.puzzles.types.missing_number.levels import GENERATOR_VERSION
 
     payload = {
         "written_by_generator_version": GENERATOR_VERSION,

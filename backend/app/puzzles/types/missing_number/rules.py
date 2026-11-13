@@ -46,9 +46,9 @@ a fixed distance from the answer (LevelSpec.near_miss_offsets).
 
 from collections.abc import Callable
 
-from app.puzzles.equations import operands
-from app.puzzles.levels import LevelSpec
-from app.puzzles.models import MistakeRule, PuzzleStep
+from app.puzzles.types.missing_number.equations import operands
+from app.puzzles.types.missing_number.levels import LevelSpec
+from app.puzzles.types.missing_number.models import MistakeRule, PuzzleStep
 
 RuleFunction = Callable[[PuzzleStep], int | None]
 

@@ -1,9 +1,9 @@
 """Helpers for the puzzle tests: a catalog that needs no database, and hand-built puzzles."""
 
-from app.puzzles.equations import build_equation
-from app.puzzles.hints import build_hints
-from app.puzzles.ids import make_puzzle_id
-from app.puzzles.levels import (
+from app.puzzles.types.missing_number.equations import build_equation
+from app.puzzles.types.missing_number.hints import build_hints
+from app.puzzles.types.missing_number.ids import make_puzzle_id
+from app.puzzles.types.missing_number.levels import (
     FOCUS_CODES,
     GENERATOR_VERSION,
     LEVELS,
@@ -13,9 +13,15 @@ from app.puzzles.levels import (
     TOPIC_UNKNOWN_ADD_SUB,
     topic_ids_for,
 )
-from app.puzzles.misconceptions import MisconceptionCatalog, resolve_catalog
-from app.puzzles.models import Distractor, Form, MistakeRule, Puzzle, PuzzleStep
-from app.puzzles.rules import distractor_value
+from app.puzzles.types.missing_number.misconceptions import MisconceptionCatalog, resolve_catalog
+from app.puzzles.types.missing_number.models import (
+    Distractor,
+    Form,
+    MistakeRule,
+    Puzzle,
+    PuzzleStep,
+)
+from app.puzzles.types.missing_number.rules import distractor_value
 from app.taxonomy.schemas import ErrorPatternOut, TopicSummary
 
 TOPIC_WITHIN_1000 = "mt_yTWxkzzoOZ"

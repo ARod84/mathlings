@@ -13,8 +13,9 @@ from sqlmodel import Session, select
 from app.config import BACKEND_DIR, get_settings
 from app.db import make_engine
 from app.models import Topic
-from app.puzzles.equations import ALL_FORMS
-from app.puzzles.levels import LEVELS, topic_ids_for
+from app.puzzles.registry import default_registry
+from app.puzzles.types.missing_number.equations import ALL_FORMS
+from app.puzzles.types.missing_number.levels import LEVELS, topic_ids_for
 from app.taxonomy.importer import run_import
 from tests.conftest import FIXTURE_COMMIT, PUZZLE_FIXTURE_TAXONOMY, migrate
 
@@ -71,6 +72,19 @@ def test_missing_number_topics_agree_with_levels_py():
         # A chain with no answer-left step carries a prefix of that list.
         without_answer_left = topic_ids_for(spec, ["a+?=c", "?+b=c"])
         assert by_level[str(level)][: len(without_answer_left)] == without_answer_left
+
+
+def test_every_registered_puzzle_type_agrees_with_the_shared_file():
+    """Whatever the registry serves has an entry in the shared file, level for level."""
+    data = load()
+
+    for puzzle_type in default_registry():
+        assert puzzle_type.game in games(data), puzzle_type.game
+        by_level = data[puzzle_type.game]["byLevel"]
+        assert set(by_level) == {str(level) for level in puzzle_type.levels}
+        for level, info in puzzle_type.levels.items():
+            assert info.level == level
+            assert by_level[str(level)] == list(info.topic_ids), (puzzle_type.game, level)
 
 
 def test_every_topic_id_exists_in_the_fixture_taxonomy(tmp_path: Path):

@@ -16,7 +16,7 @@ left to right across the equals sign:
 from dataclasses import dataclass
 from typing import Literal
 
-from app.puzzles.models import (
+from app.puzzles.types.missing_number.models import (
     Equation,
     Form,
     NumberToken,

@@ -5,20 +5,24 @@ from sqlmodel import Session
 
 from app.config import get_settings
 from app.db import make_engine
-from app.puzzles.diagnoser import diagnose
-from app.puzzles.equations import ALL_FORMS, render
-from app.puzzles.hints import build_hints
-from app.puzzles.levels import LEVELS
-from app.puzzles.misconceptions import (
+from app.puzzles.types.missing_number.diagnoser import diagnose
+from app.puzzles.types.missing_number.equations import ALL_FORMS, render
+from app.puzzles.types.missing_number.hints import build_hints
+from app.puzzles.types.missing_number.levels import LEVELS
+from app.puzzles.types.missing_number.misconceptions import (
     RULE_PATTERNS,
     MisconceptionResolutionError,
     resolve_catalog,
 )
-from app.puzzles.models import MistakeRule
-from app.puzzles.report import build_report, format_catalog, format_puzzle
-from app.puzzles.taxonomy_link import first_step_back, load_catalog, topic_exists
-from app.puzzles.verified import generate_verified
-from app.puzzles.verifier import verify
+from app.puzzles.types.missing_number.models import MistakeRule
+from app.puzzles.types.missing_number.report import build_report, format_catalog, format_puzzle
+from app.puzzles.types.missing_number.taxonomy_link import (
+    first_step_back,
+    load_catalog,
+    topic_exists,
+)
+from app.puzzles.types.missing_number.verified import generate_verified
+from app.puzzles.types.missing_number.verifier import verify
 from app.taxonomy.service import TaxonomyService, reload_graph
 from tests.puzzles.support import (
     ERROR_PATTERN_ROWS,

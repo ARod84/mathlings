@@ -4,6 +4,10 @@ import type { components } from './schema';
 /*
  * Typed calls to the puzzle API. Each returns an ApiResult, so components
  * branch on a named outcome and never look at an HTTP status code.
+ *
+ * The four routes are the same for every game. What differs per game is the
+ * body of a new-puzzle request and the puzzle that comes back: GameShapes
+ * names both for each game.
  */
 
 export type PuzzlePublic = components['schemas']['PuzzlePublic'];
@@ -18,6 +22,22 @@ export type Hint = components['schemas']['HintOut'];
 export type MistakeRule = components['schemas']['MistakeRule'];
 
 export type Level = 1 | 2 | 3;
+
+/**
+ * What each game sends to start a puzzle, and what it gets back. The key is
+ * the game's name in the URL. A new backend puzzle type gets an entry here.
+ */
+export interface GameShapes {
+  'missing-number': {
+    request: components['schemas']['NewPuzzleRequest'];
+    puzzle: PuzzlePublic;
+  };
+}
+
+/** A game the backend has puzzles for. */
+export type GameId = keyof GameShapes;
+export type NewPuzzleRequest<G extends GameId> = GameShapes[G]['request'];
+export type PuzzleOf<G extends GameId> = GameShapes[G]['puzzle'];
 
 export type ApiResult<T> =
   | { status: 'ok'; data: T }
@@ -46,11 +66,25 @@ async function toResult<T>(request: Promise<Outcome<T>>): Promise<ApiResult<T>> 
   return { status: 'unavailable' };
 }
 
+/** Starts a new puzzle of any game. `request` is that game's own body. */
+export function newPuzzle<G extends GameId>(
+  game: G,
+  request: NewPuzzleRequest<G>,
+  signal?: AbortSignal,
+): Promise<ApiResult<PuzzleOf<G>>> {
+  // The server picks the response shape from the game in the path. The API
+  // document can only say "one of the games' puzzles", so the narrowing to
+  // this game's puzzle is stated here, once, for every caller.
+  return toResult(
+    api.POST('/api/v1/puzzles/{game}', { params: { path: { game } }, body: request, signal }),
+  ) as Promise<ApiResult<PuzzleOf<G>>>;
+}
+
 export function newMissingNumber(
   request: { level: Level; length: number; seed?: number; focus?: MistakeRule },
   signal?: AbortSignal,
 ): Promise<ApiResult<PuzzlePublic>> {
-  return toResult(api.POST('/api/v1/puzzles/missing-number', { body: request, signal }));
+  return newPuzzle('missing-number', request, signal);
 }
 
 export function getPuzzle(

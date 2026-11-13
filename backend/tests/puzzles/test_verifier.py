@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from app.puzzles.equations import build_equation
-from app.puzzles.ids import make_puzzle_id
-from app.puzzles.models import (
+from app.puzzles.types.missing_number.equations import build_equation
+from app.puzzles.types.missing_number.ids import make_puzzle_id
+from app.puzzles.types.missing_number.models import (
     Distractor,
     Equation,
     MistakeRule,
@@ -13,7 +13,7 @@ from app.puzzles.models import (
     Puzzle,
     UnknownToken,
 )
-from app.puzzles.verifier import FailureName, VerificationResult, verify
+from app.puzzles.types.missing_number.verifier import FailureName, VerificationResult, verify
 from tests.puzzles.support import (
     example_chain,
     make_catalog,
@@ -521,12 +521,17 @@ def test_a_longer_focused_chain_needs_a_step_the_focus_does_not_target():
 
 
 def test_the_verifier_does_not_import_the_generator():
-    source = (Path(__file__).parents[2] / "app" / "puzzles" / "verifier.py").read_text("utf-8")
+    package = Path(__file__).parents[2] / "app" / "puzzles" / "types" / "missing_number"
+    source = (package / "verifier.py").read_text("utf-8")
 
-    assert "app.puzzles.generator" not in source
-    assert "app.puzzles.verified" not in source
+    assert "missing_number.generator" not in source
+    assert "missing_number.verified" not in source and "core.verified" not in source
+    assert "missing_number.puzzle_type" not in source
     # It solves by trying numbers, not with the generator's closed-form arithmetic.
-    assert "app.puzzles.equations" not in source
+    assert "missing_number.equations" not in source
+    # The check above would pass by accident if the imports were written another way.
+    assert "from app.puzzles.types.missing_number.rules import" in source
+    assert "import_module" not in source and "from . import" not in source
 
 
 @pytest.mark.parametrize("name", list(FailureName))

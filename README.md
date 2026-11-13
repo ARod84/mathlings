@@ -52,12 +52,12 @@ needs it, and shows a "Try again" message when it cannot reach it.
 `backend/` serves a JSON API under `/api/v1`, with interactive docs at
 `http://localhost:8000/docs`. `openapi.json` at the repo root is the exported contract.
 
-| Area     | Routes                                                                                                                                                             |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Taxonomy | `GET /domains`, `/topics`, `/topics/{id}` and its `/prerequisites`, `/unlocks`, `/step-back`, `/error-patterns`, `/research`; `GET /meta/source`                   |
-| Puzzles  | `POST /puzzles/missing-number`, `GET /puzzles/{puzzle_id}`, `POST /puzzles/{puzzle_id}/steps/{index}/check`, `GET /puzzles/{puzzle_id}/steps/{index}/hints/{tier}` |
-| Players  | `GET /players/me/summary`, `GET /players/me/next`, `DELETE /players/me`; all need the `X-Player-Id` header (see [Privacy](#privacy))                               |
-| Health   | `GET /health`                                                                                                                                                      |
+| Area     | Routes                                                                                                                                                                                    |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Taxonomy | `GET /domains`, `/topics`, `/topics/{id}` and its `/prerequisites`, `/unlocks`, `/step-back`, `/error-patterns`, `/research`; `GET /meta/source`                                          |
+| Puzzles  | `POST /puzzles/{game}` (for example `missing-number`), `GET /puzzles/{puzzle_id}`, `POST /puzzles/{puzzle_id}/steps/{index}/check`, `GET /puzzles/{puzzle_id}/steps/{index}/hints/{tier}` |
+| Players  | `GET /players/me/summary`, `GET /players/me/next`, `DELETE /players/me`; all need the `X-Player-Id` header (see [Privacy](#privacy))                                                      |
+| Health   | `GET /health`                                                                                                                                                                             |
 
 ### Puzzles are stateless
 

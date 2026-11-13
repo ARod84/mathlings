@@ -8,8 +8,8 @@ levels.py whenever a change here (or in rules, hints or levels) can alter the
 output for an existing seed.
 
 This module does not check its own work. verifier.py does that, separately,
-and generate_verified (verified.py) is the entry point that puts the two
-together. A seed that cannot be completed raises GenerationError.
+and generate_verified (app/puzzles/core/verified.py) is the entry point that puts
+the two together. A seed that cannot be completed raises GenerationError.
 
 How a step is built: every equation is part + part = whole with one number
 hidden. From the second step on, the previous answer must be one of the two
@@ -27,10 +27,11 @@ generator, so the puzzle for a seed is exactly what it was before focus existed.
 import random
 from dataclasses import dataclass
 
-from app.puzzles.equations import ALL_FORMS, FORMS, build_equation
-from app.puzzles.hints import build_hints
-from app.puzzles.ids import MAX_SEED, make_puzzle_id
-from app.puzzles.levels import (
+from app.puzzles.core import GenerationError
+from app.puzzles.types.missing_number.equations import ALL_FORMS, FORMS, build_equation
+from app.puzzles.types.missing_number.hints import build_hints
+from app.puzzles.types.missing_number.ids import MAX_SEED, make_puzzle_id
+from app.puzzles.types.missing_number.levels import (
     ANSWER_LEFT_FORMS,
     DISTRACTORS_PER_STEP,
     FOCUS_CODES,
@@ -48,9 +49,16 @@ from app.puzzles.levels import (
     supported_focus,
     topic_ids_for,
 )
-from app.puzzles.misconceptions import MisconceptionCatalog
-from app.puzzles.models import Distractor, Form, HintSource, MistakeRule, Puzzle, PuzzleStep
-from app.puzzles.rules import distractor_value
+from app.puzzles.types.missing_number.misconceptions import MisconceptionCatalog
+from app.puzzles.types.missing_number.models import (
+    Distractor,
+    Form,
+    HintSource,
+    MistakeRule,
+    Puzzle,
+    PuzzleStep,
+)
+from app.puzzles.types.missing_number.rules import distractor_value
 
 # The order mistake rules are tried in within a tier. _distractors puts the
 # rules that have a taxonomy error pattern ahead of the ones that do not.
@@ -62,10 +70,6 @@ DISTRACTOR_RULE_ORDER: tuple[MistakeRule, ...] = (
     MistakeRule.OFF_BY_ONE_OVER,
     MistakeRule.OFF_BY_ONE_UNDER,
 )
-
-
-class GenerationError(Exception):
-    """This seed cannot be turned into a valid puzzle. Try another seed."""
 
 
 @dataclass(frozen=True)

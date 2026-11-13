@@ -742,7 +742,9 @@
           "Puzzles"
         ],
         "summary": "Start a new missing-number chain",
+        "description": "Deprecated spelling of `POST /api/v1/puzzles/{game}` with `game` = `missing-number`. Same URL, same body, same answer: a client written against either one keeps working when this entry is removed.",
         "operationId": "new_missing_number_puzzle_api_v1_puzzles_missing_number_post",
+        "deprecated": true,
         "parameters": [
           {
             "name": "X-Player-Id",
@@ -802,6 +804,98 @@
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/puzzles/{game}": {
+      "post": {
+        "tags": [
+          "Puzzles"
+        ],
+        "summary": "Start a new puzzle of a game",
+        "operationId": "new_puzzle_api_v1_puzzles__game__post",
+        "parameters": [
+          {
+            "name": "game",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Game"
+            }
+          },
+          {
+            "name": "X-Player-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid4"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored.",
+              "title": "X-Player-Id"
+            },
+            "description": "A random UUID version 4 that the browser made and keeps. A pseudonymous id, not a login. Leave out to play without anything being stored."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzlePublic"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Puzzles cannot be served right now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such game",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnknownGameBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "The body for the game named in the path. Each game has its own: `missing-number` takes NewPuzzleRequest.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewPuzzleRequest"
               }
             }
           }
@@ -1199,10 +1293,10 @@
             "schema": {
               "const": "missing-number",
               "type": "string",
-              "description": "The game to recommend for. Only Missing Number Chains adapts so far.",
+              "description": "The game to recommend for. Only Missing Number Chains adapts so far; any other game gets its default, with reason_code `no_policy`.",
               "title": "Game"
             },
-            "description": "The game to recommend for. Only Missing Number Chains adapts so far."
+            "description": "The game to recommend for. Only Missing Number Chains adapts so far; any other game gets its default, with reason_code `no_policy`."
           },
           {
             "name": "X-Player-Id",
@@ -1705,14 +1799,6 @@
             "minimum": 1.0,
             "title": "Level"
           },
-          "length": {
-            "type": "integer",
-            "maximum": 4.0,
-            "minimum": 1.0,
-            "title": "Length",
-            "description": "Number of steps.",
-            "default": 3
-          },
           "seed": {
             "anyOf": [
               {
@@ -1726,6 +1812,14 @@
             ],
             "title": "Seed",
             "description": "Fixes the puzzle. Leave out for a random one."
+          },
+          "length": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Length",
+            "description": "Number of steps.",
+            "default": 3
           },
           "focus": {
             "anyOf": [
@@ -1744,20 +1838,27 @@
         "required": [
           "level"
         ],
-        "title": "NewPuzzleRequest"
+        "title": "NewPuzzleRequest",
+        "description": "The body of POST /puzzles/missing-number."
       },
       "NextPuzzle": {
         "properties": {
           "level": {
             "type": "integer",
-            "maximum": 3.0,
             "minimum": 1.0,
             "title": "Level"
           },
           "length": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Length",
-            "description": "Number of steps in the chain."
+            "description": "Number of steps in the chain. Missing Number Chains only; null for a game without chains."
           },
           "reason_code": {
             "type": "string",
@@ -1765,9 +1866,11 @@
               "cold_start",
               "promote",
               "step_down",
-              "consolidate"
+              "consolidate",
+              "no_policy"
             ],
-            "title": "Reason Code"
+            "title": "Reason Code",
+            "description": "Which rule decided. `no_policy` means the game has no recommendation policy yet and this is its default, the same for every player."
           },
           "reason": {
             "type": "string",
@@ -1796,6 +1899,12 @@
               }
             ],
             "description": "The rule to generate this puzzle with: pass it as `focus` to POST /puzzles/missing-number. Null when there is nothing to target, or when the previous puzzle was focused (at most every other puzzle is)."
+          },
+          "params": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Params",
+            "description": "The same recommendation, for any game: the fields to send with `level` in the body of POST /puzzles/{game}. For Missing Number Chains, `length` and, when there is one, `focus`."
           },
           "mastery": {
             "items": {
@@ -2039,6 +2148,13 @@
       },
       "PuzzlePublic": {
         "properties": {
+          "game": {
+            "type": "string",
+            "const": "missing-number",
+            "title": "Game",
+            "description": "Which game the puzzle belongs to. Always sent; tells the shapes apart.",
+            "default": "missing-number"
+          },
           "puzzle_id": {
             "type": "string",
             "title": "Puzzle Id"
@@ -2075,7 +2191,8 @@
           "topic_ids",
           "steps"
         ],
-        "title": "PuzzlePublic"
+        "title": "PuzzlePublic",
+        "description": "A missing-number chain, as the browser gets it."
       },
       "PuzzleStepPublic": {
         "properties": {
@@ -2553,6 +2670,33 @@
         ],
         "title": "TopicSummary"
       },
+      "UnknownGameBody": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "game": {
+            "type": "string",
+            "title": "Game"
+          },
+          "games": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Games",
+            "description": "The games this server has puzzles for."
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail",
+          "game",
+          "games"
+        ],
+        "title": "UnknownGameBody"
+      },
       "UnknownToken": {
         "properties": {
           "kind": {
@@ -2650,7 +2794,7 @@
     },
     {
       "name": "Puzzles",
-      "description": "Missing-number chains. Stateless: a puzzle is rebuilt from its id."
+      "description": "The same routes for every game; a puzzle's `game` field says which shape it has. Stateless: a puzzle is rebuilt from its id."
     },
     {
       "name": "Players",

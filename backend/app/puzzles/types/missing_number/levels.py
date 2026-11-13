@@ -7,13 +7,17 @@ separately against these.
 
 from dataclasses import dataclass
 
-from app.puzzles.models import Form, MistakeRule
+from app.puzzles.types.missing_number.models import Form, MistakeRule
 
 GENERATOR_VERSION = "3"
 PUZZLE_TYPE = "missing_number_chain"
+# The game's name in URLs, in attempt.game and in shared/game-topics.json.
+GAME = "missing-number"
 
 MIN_STEPS = 1
 MAX_STEPS = 4
+# The chain length when nobody asks for one.
+DEFAULT_LENGTH = 3
 DISTRACTORS_PER_STEP = 3
 HINT_TIERS = 3
 

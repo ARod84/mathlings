@@ -18,8 +18,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from app.puzzles.ids import InvalidPuzzleId, parse_puzzle_id
-from app.puzzles.levels import (
+from app.puzzles.types.missing_number.ids import InvalidPuzzleId, parse_puzzle_id
+from app.puzzles.types.missing_number.levels import (
     ANSWER_LEFT_FORMS,
     DISTRACTORS_PER_STEP,
     FOCUS_BY_CODE,
@@ -36,8 +36,8 @@ from app.puzzles.levels import (
     answer_left_limit,
     topic_ids_for,
 )
-from app.puzzles.misconceptions import MisconceptionCatalog
-from app.puzzles.models import (
+from app.puzzles.types.missing_number.misconceptions import MisconceptionCatalog
+from app.puzzles.types.missing_number.models import (
     Form,
     MistakeRule,
     NumberToken,
@@ -47,7 +47,7 @@ from app.puzzles.models import (
     Token,
     UnknownToken,
 )
-from app.puzzles.rules import distractor_value, is_near_miss
+from app.puzzles.types.missing_number.rules import distractor_value, is_near_miss
 
 
 class FailureName(StrEnum):

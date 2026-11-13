@@ -1,8 +1,8 @@
 """Mastery and recommendations for a stored player. No FastAPI in here.
 
     adaptive = AdaptiveService(session)
-    adaptive.mastery(player_id)     # {(topic_id, level): TopicMastery}
-    adaptive.recommend(player_id)   # Recommendation: level, length and why
+    adaptive.mastery(player_id)                  # {(topic_id, level): TopicMastery}
+    adaptive.recommend(player_id, puzzle_type)   # Recommendation: level, parameters and why
 
 Nothing is stored: mastery is replayed from the attempt history on every
 call. That costs one query per call, whatever the size of the history,
@@ -22,34 +22,29 @@ from app.adaptive.bkt import (
     to_observation,
 )
 from app.adaptive.constants import EVIDENCE_ATTEMPT_ON_STEP, MAX_OBSERVATIONS_PER_TOPIC
-from app.adaptive.policy import Recommendation, recommend_from
+from app.adaptive.policies import POLICIES, no_policy
+from app.adaptive.policy import Recommendation
 from app.models import Attempt
-from app.players.service import GAME_MISSING_NUMBER
-from app.puzzles.ids import InvalidPuzzleId, parse_puzzle_id
-
-
-def is_focused(puzzle_id: str) -> bool:
-    """True if the id says the puzzle was generated with a focus."""
-    try:
-        return parse_puzzle_id(puzzle_id).focus is not None
-    except InvalidPuzzleId:
-        return False
+from app.puzzles.core import PuzzleType
+from app.puzzles.types.missing_number.levels import GAME as MISSING_NUMBER
 
 
 class AdaptiveService:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def observations(self, player_id: uuid.UUID) -> list[Observation]:
-        """The player's observations, oldest first. One statement.
+    def observations(self, player_id: uuid.UUID, game: str = MISSING_NUMBER) -> list[Observation]:
+        """The player's observations in one game, oldest first. One statement.
 
         Only first tries are read, and per topic and level only the latest
         MAX_OBSERVATIONS_PER_TOPIC of them (row_number over the topics that
-        json_each unpacks), so the result has a fixed upper size.
+        json_each unpacks), so the result has a fixed upper size. The game's
+        policy says which puzzles were focused; without a policy, none are.
         """
+        policy = POLICIES.get(game)
         first_tries = (
             col(Attempt.player_id) == player_id,
-            col(Attempt.game) == GAME_MISSING_NUMBER,
+            col(Attempt.game) == game,
             col(Attempt.attempt_on_step) == EVIDENCE_ATTEMPT_ON_STEP,
         )
         topic = func.json_each(col(Attempt.topic_ids)).table_valued("value").alias("topic")
@@ -100,16 +95,29 @@ class AdaptiveService:
                 topic_ids=topic_ids,
                 matched_rules=rules,
                 at=created_at,
-                focused=is_focused(row.puzzle_id),
+                focused=policy.is_focused(row.puzzle_id) if policy else False,
             )
             if observation is not None:
                 observations.append(observation)
         return observations
 
     def mastery(self, player_id: uuid.UUID) -> dict[MasteryKey, TopicMastery]:
-        """P(known) per (topic id, level) the player has practised."""
+        """P(known) per (topic id, level) the player has practised.
+
+        From Missing Number Chains only, as before. No other game stores
+        attempts yet, and two games that share a topic would need a decision
+        about how their levels compare before their evidence could be mixed.
+        """
         return mastery_from(self.observations(player_id))
 
-    def recommend(self, player_id: uuid.UUID) -> Recommendation:
-        """What to play next. A player with no attempts (or unknown) gets the cold start."""
-        return recommend_from(self.observations(player_id))
+    def recommend(self, player_id: uuid.UUID, puzzle_type: type[PuzzleType]) -> Recommendation:
+        """What to play next in a game.
+
+        With a policy for the game: its answer for this player's observations
+        (a player with no attempts, or unknown, gets its cold start). Without
+        one: the game's default, and the history is not read at all.
+        """
+        policy = POLICIES.get(puzzle_type.game)
+        if policy is None:
+            return no_policy(puzzle_type)
+        return policy.recommend(self.observations(player_id, puzzle_type.game))

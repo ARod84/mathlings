@@ -13,7 +13,7 @@ child that they are being given extra practice.
 Templates for now; a tutor model can replace them later using PuzzleStep.hint_source.
 """
 
-from app.puzzles.models import Form, MistakeRule
+from app.puzzles.types.missing_number.models import Form, MistakeRule
 
 MINUS = "−"
 

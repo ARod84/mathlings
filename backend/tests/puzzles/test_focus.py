@@ -8,10 +8,15 @@ from collections import Counter
 
 import pytest
 
-from app.puzzles.equations import ALL_FORMS, visible_numbers
-from app.puzzles.hints import FOCUS_ADD_VISIBLE, MEANING, MEANING_ANSWER_LEFT, build_hints
-from app.puzzles.ids import InvalidPuzzleId, make_puzzle_id, parse_puzzle_id
-from app.puzzles.levels import (
+from app.puzzles.types.missing_number.equations import ALL_FORMS, visible_numbers
+from app.puzzles.types.missing_number.hints import (
+    FOCUS_ADD_VISIBLE,
+    MEANING,
+    MEANING_ANSWER_LEFT,
+    build_hints,
+)
+from app.puzzles.types.missing_number.ids import InvalidPuzzleId, make_puzzle_id, parse_puzzle_id
+from app.puzzles.types.missing_number.levels import (
     ANSWER_LEFT_FORMS,
     FOCUS_BY_CODE,
     FOCUS_CODES,
@@ -22,10 +27,10 @@ from app.puzzles.levels import (
     answer_left_limit,
     supported_focus,
 )
-from app.puzzles.models import MistakeRule, Puzzle
-from app.puzzles.rules import RULES, distractor_value
-from app.puzzles.verified import generate_verified, regenerate
-from app.puzzles.verifier import verify
+from app.puzzles.types.missing_number.models import MistakeRule, Puzzle
+from app.puzzles.types.missing_number.rules import RULES, distractor_value
+from app.puzzles.types.missing_number.verified import generate_verified, regenerate
+from app.puzzles.types.missing_number.verifier import verify
 from tests.puzzles.baseline import BASELINE_FILE, SEEDS, current_fingerprints
 from tests.puzzles.support import make_catalog, make_step, topic_exists
 
@@ -87,7 +92,7 @@ def test_a_rule_that_cannot_be_targeted_is_logged_and_treated_as_no_focus(caplog
         if rule in FOCUS_TARGET_FORMS:
             continue
         assert supported_focus(rule) is None
-        with caplog.at_level(logging.INFO, logger="app.puzzles.verified"):
+        with caplog.at_level(logging.INFO, logger="app.puzzles.types.missing_number.puzzle_type"):
             assert make(9, 2, 3, rule) == plain
         assert f"Focus {rule.value} has no effect" in caplog.text
         caplog.clear()

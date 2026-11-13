@@ -18,8 +18,9 @@ transaction with whatever that session did before.
 """
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import and_, case, delete, func, insert, true
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -28,7 +29,6 @@ from sqlmodel import Session, col, select
 from app.models import Attempt, HintRequest, Player
 from app.players.schemas import MistakeCount, PlayerSummary, PracticeTotals, TopicPractice
 
-GAME_MISSING_NUMBER = "missing-number"
 TOP_MISTAKES = 3
 
 
@@ -45,13 +45,14 @@ class AttemptRecord:
     game: str
     level: int
     step_index: int
-    form: str
     answer: int
     correct: bool
     matched_rules: list[str]
     error_pattern_ids: list[str]
     reteach_topic_id: str | None
     topic_ids: list[str]
+    # Whatever the puzzle type keeps about the step; stored as it is, never read here.
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 def _rate(part: int, whole: int) -> float | None:
@@ -103,7 +104,7 @@ class PlayerService:
                 game=record.game,
                 level=record.level,
                 step_index=record.step_index,
-                form=record.form,
+                details=record.details,
                 answer=record.answer,
                 correct=record.correct,
                 matched_rules=record.matched_rules,

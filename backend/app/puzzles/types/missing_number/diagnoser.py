@@ -12,10 +12,10 @@ from collections.abc import Callable
 
 from pydantic import BaseModel, ConfigDict
 
-from app.puzzles.levels import LEVELS
-from app.puzzles.misconceptions import MisconceptionCatalog
-from app.puzzles.models import MistakeRule, Puzzle
-from app.puzzles.rules import RULES, rule_output
+from app.puzzles.types.missing_number.levels import LEVELS
+from app.puzzles.types.missing_number.misconceptions import MisconceptionCatalog
+from app.puzzles.types.missing_number.models import MistakeRule, Puzzle
+from app.puzzles.types.missing_number.rules import RULES, rule_output
 
 
 class Diagnosis(BaseModel):

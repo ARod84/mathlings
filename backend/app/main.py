@@ -1,6 +1,7 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +16,8 @@ from app.config import Settings, get_settings
 from app.db import make_engine
 from app.models import Player, Topic
 from app.players.service import PlayerNotFound
+from app.puzzles.core.verified import PuzzleGenerationFailed
+from app.puzzles.registry import PuzzleRegistry, UnknownGame, default_registry
 from app.puzzles.service import (
     HintTierNotFound,
     PuzzleNotFound,
@@ -23,7 +26,6 @@ from app.puzzles.service import (
     PuzzleVersionGone,
     StepNotFound,
 )
-from app.puzzles.verified import PuzzleGenerationFailed
 from app.taxonomy.graph import PrerequisiteGraph, taxonomy_graph
 from app.taxonomy.schemas import Health
 from app.taxonomy.service import (
@@ -48,7 +50,8 @@ OPENAPI_TAGS = [
     },
     {
         "name": "Puzzles",
-        "description": "Missing-number chains. Stateless: a puzzle is rebuilt from its id.",
+        "description": "The same routes for every game; a puzzle's `game` field says which "
+        "shape it has. Stateless: a puzzle is rebuilt from its id.",
     },
     {
         "name": "Players",
@@ -59,16 +62,22 @@ OPENAPI_TAGS = [
 ]
 
 
-def create_app(settings: Settings | None = None, graph: PrerequisiteGraph | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    graph: PrerequisiteGraph | None = None,
+    registry: PuzzleRegistry | None = None,
+) -> FastAPI:
+    """The app. `registry` is the puzzle types it serves: the real ones, unless a test adds one."""
     settings = settings or get_settings()
     graph = graph if graph is not None else taxonomy_graph
+    registry = registry if registry is not None else default_registry()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = make_engine(settings.database_url)
         app.state.engine = engine
         app.state.graph = graph
-        app.state.puzzles = PuzzleRuntime()
+        app.state.puzzles = PuzzleRuntime(registry)
 
         def taxonomy_ready() -> bool:
             # Checked once it is true, never again: tables do not disappear.
@@ -92,7 +101,7 @@ def create_app(settings: Settings | None = None, graph: PrerequisiteGraph | None
         if taxonomy_ready():
             with Session(engine) as session:
                 reload_graph(session, graph)
-                # The mistake-rule catalog is resolved here, once, next to the graph.
+                # The puzzle types are loaded here, once, next to the graph.
                 if graph.topic_count:
                     app.state.puzzles.refresh(TaxonomyService(session, graph))
         yield
@@ -136,6 +145,17 @@ def create_app(settings: Settings | None = None, graph: PrerequisiteGraph | None
     def puzzle_not_found(_request: Request, error: PuzzleNotFound) -> JSONResponse:
         return JSONResponse(
             status_code=404, content={"detail": "Puzzle not found", "puzzle_id": error.puzzle_id}
+        )
+
+    @app.exception_handler(UnknownGame)
+    def unknown_game(_request: Request, error: UnknownGame) -> JSONResponse:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "detail": f"Unknown game: {error.game}. Known games: {', '.join(error.games)}.",
+                "game": error.game,
+                "games": error.games,
+            },
         )
 
     @app.exception_handler(PuzzleVersionGone)
@@ -197,8 +217,18 @@ def create_app(settings: Settings | None = None, graph: PrerequisiteGraph | None
         return Health(taxonomy_loaded=loaded, topic_count=graph.topic_count if loaded else 0)
 
     app.include_router(taxonomy_api.router)
-    app.include_router(puzzles_api.router)
-    app.include_router(players_api.router)
+    app.include_router(puzzles_api.build_router(registry))
+    app.include_router(players_api.build_router(registry))
+
+    build_openapi = app.openapi
+
+    def openapi() -> dict[str, Any]:
+        document = build_openapi()
+        puzzles_api.add_request_schemas(document, registry)
+        return document
+
+    # Instance attribute on purpose: FastAPI's documented way to adjust the document.
+    app.openapi = openapi  # type: ignore[method-assign]
     return app
 
 

@@ -1,11 +1,11 @@
 """What the adaptive endpoints return. None of it is meant for a child's eyes."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from app.puzzles.models import MistakeRule
+from app.puzzles.types.missing_number.models import MistakeRule
 
 
 class TopicMasteryOut(BaseModel):
@@ -28,9 +28,15 @@ class NamedMastery(BaseModel):
 
 
 class NextPuzzle(BaseModel):
-    level: int = Field(ge=1, le=3)
-    length: int = Field(description="Number of steps in the chain.")
-    reason_code: Literal["cold_start", "promote", "step_down", "consolidate"]
+    level: int = Field(ge=1)
+    length: int | None = Field(
+        description="Number of steps in the chain. Missing Number Chains only; null for a "
+        "game without chains."
+    )
+    reason_code: Literal["cold_start", "promote", "step_down", "consolidate", "no_policy"] = Field(
+        description="Which rule decided. `no_policy` means the game has no recommendation "
+        "policy yet and this is its default, the same for every player."
+    )
     reason: str = Field(description="Why, in a sentence for an adult. Never show it to a child.")
     focus_rule: str | None = Field(
         description="A mistake rule that keeps coming up, for example ADD_VISIBLE. "
@@ -40,6 +46,12 @@ class NextPuzzle(BaseModel):
         description="The rule to generate this puzzle with: pass it as `focus` to "
         "POST /puzzles/missing-number. Null when there is nothing to target, or when the "
         "previous puzzle was focused (at most every other puzzle is)."
+    )
+    params: dict[str, Any] = Field(
+        default_factory=dict,
+        description="The same recommendation, for any game: the fields to send with `level` "
+        "in the body of POST /puzzles/{game}. For Missing Number Chains, `length` and, when "
+        "there is one, `focus`.",
     )
     mastery: list[NamedMastery] = Field(
         description="The mastery values the decision used: the recommended level's topics "

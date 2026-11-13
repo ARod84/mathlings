@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.adaptive.constants import DEFAULT_BKT
-from app.puzzles.levels import (
+from app.puzzles.types.missing_number.levels import (
     TOPIC_EQUALS_SIGN,
     TOPIC_INVERSE,
     TOPIC_MISSING_NUMBER,
@@ -51,6 +51,8 @@ def test_cold_start_for_a_player_the_server_has_never_seen(client: TestClient):
         "reason": "No practice recorded yet, so start at level 1 with chains of 2 steps.",
         "focus_rule": None,
         "focus": None,
+        # The same thing again, as the body fields to send with `level`.
+        "params": {"length": 2},
         "mastery": [
             {
                 "topic_id": TOPIC_UNKNOWN_ADD_SUB,
@@ -296,8 +298,8 @@ def test_a_new_puzzle_can_be_focused_and_does_not_say_so(client: TestClient, foc
     assert response.status_code == 201, response.text
     body = response.json()
     assert f"-{code}-" in body["puzzle_id"]
-    # The public puzzle has the same keys as ever, and no rule name anywhere.
-    assert set(body) == {"puzzle_id", "level", "length", "topic_ids", "steps"}
+    # The public puzzle has the same keys as any other, and no rule name anywhere.
+    assert set(body) == {"game", "puzzle_id", "level", "length", "topic_ids", "steps"}
     assert "focus" not in response.text
     assert focus not in response.text
     puzzle = internal(client, body["puzzle_id"])

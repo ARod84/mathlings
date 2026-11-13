@@ -50,13 +50,17 @@ from app.adaptive.bkt import Observation, to_observation
 from app.adaptive.constants import DEFAULT_BKT, MAX_LEVEL
 from app.adaptive.policy import recommend_from
 from app.db import make_engine
-from app.puzzles.diagnoser import diagnose
-from app.puzzles.ids import MAX_SEED
-from app.puzzles.levels import FOCUS_TARGET_FORMS, GENERATOR_VERSION, step_topic_ids
-from app.puzzles.misconceptions import MisconceptionCatalog
-from app.puzzles.models import MistakeRule, Puzzle
-from app.puzzles.taxonomy_link import load_catalog, topic_exists
-from app.puzzles.verified import generate_verified
+from app.puzzles.types.missing_number.diagnoser import diagnose
+from app.puzzles.types.missing_number.ids import MAX_SEED
+from app.puzzles.types.missing_number.levels import (
+    FOCUS_TARGET_FORMS,
+    GENERATOR_VERSION,
+    step_topic_ids,
+)
+from app.puzzles.types.missing_number.misconceptions import MisconceptionCatalog
+from app.puzzles.types.missing_number.models import MistakeRule, Puzzle
+from app.puzzles.types.missing_number.taxonomy_link import load_catalog, topic_exists
+from app.puzzles.types.missing_number.verified import generate_verified
 from app.taxonomy.service import TaxonomyService, reload_graph
 
 # Practising a level also helps the levels above it, at this share of the rate.

@@ -1,8 +1,8 @@
-"""Data model for puzzles. Plain data only: no generation, checking or database code.
+"""Data model for a chain. Plain data only: no generation, checking or database code.
 
-A puzzle is a list of steps. The generic parts (Puzzle, PuzzleStep, Distractor,
-tokens) are meant to carry other puzzle types later; only the `form` and
-`puzzle_type` literals are specific to the missing-number chain.
+A puzzle is a list of steps. What shared code reads from it (puzzle_id,
+generator_version, seed, level, steps) is the InternalPuzzle protocol in
+app/puzzles/core/contract.py; everything else here is the chain's own.
 """
 
 from enum import StrEnum

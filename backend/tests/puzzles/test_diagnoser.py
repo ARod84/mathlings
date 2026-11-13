@@ -1,7 +1,7 @@
 import pytest
 
-from app.puzzles.diagnoser import Diagnosis, diagnose
-from app.puzzles.models import MistakeRule, Puzzle
+from app.puzzles.types.missing_number.diagnoser import Diagnosis, diagnose
+from app.puzzles.types.missing_number.models import MistakeRule, Puzzle
 from tests.puzzles.support import (
     TOPIC_WITHIN_1000,
     example_chain,

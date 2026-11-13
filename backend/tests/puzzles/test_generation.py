@@ -8,21 +8,32 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-import app.puzzles.verified as verified_module
-from app.puzzles.equations import ALL_FORMS, visible_numbers
-from app.puzzles.generator import GenerationError, generate
-from app.puzzles.ids import MAX_SEED, InvalidPuzzleId, derive_seed, make_puzzle_id, parse_puzzle_id
-from app.puzzles.levels import ANSWER_LEFT_FORMS, FORM_WEIGHTS, GENERATOR_VERSION, LEVELS
-from app.puzzles.models import MistakeRule, Puzzle
-from app.puzzles.rules import distractor_value
-from app.puzzles.verified import (
+import app.puzzles.types.missing_number.generator as generator_module
+from app.puzzles.types.missing_number.equations import ALL_FORMS, visible_numbers
+from app.puzzles.types.missing_number.generator import GenerationError, generate
+from app.puzzles.types.missing_number.ids import (
+    MAX_SEED,
+    InvalidPuzzleId,
+    derive_seed,
+    make_puzzle_id,
+    parse_puzzle_id,
+)
+from app.puzzles.types.missing_number.levels import (
+    ANSWER_LEFT_FORMS,
+    FORM_WEIGHTS,
+    GENERATOR_VERSION,
+    LEVELS,
+)
+from app.puzzles.types.missing_number.models import MistakeRule, Puzzle
+from app.puzzles.types.missing_number.rules import distractor_value
+from app.puzzles.types.missing_number.verified import (
     PuzzleGenerationFailed,
     PuzzleRejected,
     generate_verified,
     generate_verified_outcome,
     regenerate,
 )
-from app.puzzles.verifier import verify
+from app.puzzles.types.missing_number.verifier import verify
 from tests.puzzles.support import make_catalog, topic_exists
 
 CATALOG = make_catalog()
@@ -294,7 +305,7 @@ def test_no_form_repeats_and_the_answer_left_limit_holds_with_weights():
 
 
 def test_retries_use_derived_seeds_and_are_logged(monkeypatch, caplog):
-    real_generate = verified_module.generate
+    real_generate = generator_module.generate
     calls: list[int] = []
 
     def flaky(seed, level, length, catalog):
@@ -303,8 +314,8 @@ def test_retries_use_derived_seeds_and_are_logged(monkeypatch, caplog):
             raise GenerationError("no valid step")
         return real_generate(seed, level, length, catalog)
 
-    monkeypatch.setattr(verified_module, "generate", flaky)
-    with caplog.at_level(logging.INFO, logger="app.puzzles.verified"):
+    monkeypatch.setattr(generator_module, "generate", flaky)
+    with caplog.at_level(logging.INFO, logger="app.puzzles.core.verified"):
         outcome = generate_verified_outcome(11, 1, 3, catalog=CATALOG, topic_exists=topic_exists)
 
     assert outcome.retries == 2
@@ -315,7 +326,7 @@ def test_retries_use_derived_seeds_and_are_logged(monkeypatch, caplog):
 
 
 def test_a_puzzle_that_fails_verification_is_retried_not_returned(monkeypatch):
-    real_generate = verified_module.generate
+    real_generate = generator_module.generate
     attempts = []
 
     def sometimes_broken(seed, level, length, catalog):
@@ -326,7 +337,7 @@ def test_a_puzzle_that_fails_verification_is_retried_not_returned(monkeypatch):
             return puzzle.model_copy(update={"steps": steps + puzzle.steps[1:]})
         return puzzle
 
-    monkeypatch.setattr(verified_module, "generate", sometimes_broken)
+    monkeypatch.setattr(generator_module, "generate", sometimes_broken)
     outcome = generate_verified_outcome(3, 2, 2, catalog=CATALOG, topic_exists=topic_exists)
 
     assert outcome.retries == 1
@@ -337,7 +348,7 @@ def test_gives_up_after_the_attempt_limit(monkeypatch):
     def never(seed, level, length, catalog):
         raise GenerationError("no valid step")
 
-    monkeypatch.setattr(verified_module, "generate", never)
+    monkeypatch.setattr(generator_module, "generate", never)
 
     with pytest.raises(PuzzleGenerationFailed, match="5 attempts"):
         generate_verified(1, 1, 3, catalog=CATALOG, topic_exists=topic_exists, max_attempts=5)

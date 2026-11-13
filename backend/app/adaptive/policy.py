@@ -39,7 +39,7 @@ recognised by the focus code in its id.
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 from app.adaptive.bkt import MasteryKey, Observation, TopicMastery, mastery_from, prior_mastery
 from app.adaptive.constants import (
@@ -59,16 +59,18 @@ from app.adaptive.constants import (
     PROMOTE_RECENT_WINDOW,
     STEP_DOWN_P_KNOWN,
 )
-from app.puzzles.equations import ALL_FORMS
-from app.puzzles.levels import FOCUS_TARGET_FORMS, LEVELS, topic_ids_for
+from app.puzzles.types.missing_number.equations import ALL_FORMS
+from app.puzzles.types.missing_number.levels import FOCUS_TARGET_FORMS, LEVELS, topic_ids_for
 
-ReasonCode = Literal["cold_start", "promote", "step_down", "consolidate"]
+# "no_policy" is never given by this policy: it is what a game without one gets (policies.py).
+ReasonCode = Literal["cold_start", "promote", "step_down", "consolidate", "no_policy"]
 
 
 @dataclass(frozen=True)
 class Recommendation:
     level: int
-    length: int
+    # Chain length. None only for a game that has no chains (policies.no_policy).
+    length: int | None
     reason_code: ReasonCode
     # For an adult reading logs or a future dashboard. Never shown to the child.
     reason: str
@@ -80,6 +82,13 @@ class Recommendation:
     # pairs, plus the topics of the recommended level (at their prior if the
     # player has never practised them there).
     mastery: dict[MasteryKey, TopicMastery] = field(default_factory=dict)
+    # The fields to send with `level` to POST /puzzles/{game} to get this puzzle.
+    params: dict[str, Any] = field(default_factory=dict)
+
+
+def request_params(length: int, focus: str | None) -> dict[str, Any]:
+    """The new-puzzle request fields for a chain. The focus is sent only when there is one."""
+    return {"length": length} if focus is None else {"length": length, "focus": focus}
 
 
 def primary_topic_id(level: int) -> str:
@@ -154,6 +163,7 @@ def recommend_from(observations: Sequence[Observation]) -> Recommendation:
                 f"with chains of {COLD_START_LENGTH} steps."
             ),
             mastery=_with_level_topics({}, COLD_START_LEVEL),
+            params=request_params(COLD_START_LENGTH, None),
         )
 
     mastery = mastery_from(observations)
@@ -225,4 +235,5 @@ def recommend_from(observations: Sequence[Observation]) -> Recommendation:
         focus_rule=focus[0] if focus else None,
         focus=next_focus,
         mastery=_with_level_topics(mastery, new_level),
+        params=request_params(length, next_focus),
     )

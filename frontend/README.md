@@ -78,17 +78,53 @@ To add a game:
    component that renders inside `GameShell` and accepts `house` and `onExit`, and tests.
 4. Render it for its route in `src/App.tsx`.
 
+## How to add a puzzle type
+
+For a game whose puzzles the backend makes and checks. Do the backend checklist first
+(`../backend/README.md`, "How to add a puzzle type"); it ends with a new `openapi.json`. A game
+that needs no server, like Number Pyramid, only needs the four steps above.
+
+1. **Types.** Run `npm run api:types`. The game's request and public shapes are now in
+   `src/api/schema.d.ts`.
+2. **API shapes.** Add the game to `GameShapes` in `src/api/puzzles.ts`:
+   `'<game>': { request: components['schemas'][...]; puzzle: components['schemas'][...] }`.
+   `newPuzzle('<game>', ...)` and `usePuzzleSession` are typed from that entry. The check and hint
+   calls need nothing.
+3. **Topics.** The game's entry in `../shared/game-topics.json` was added on the backend side; the
+   registry reads it.
+4. **Registry and route.** Add the route to `src/router.ts` and an entry to `GAMES` in
+   `src/games/registry.ts` (id, title, route, house, description, `topicIds`). Use the same id as
+   the backend's game name.
+5. **Session config.** In `src/games/<name>/`, write the game's hook on `usePuzzleSession`, the
+   way `missing-number/useMissingNumberGame.ts` does: a `PuzzleSessionConfig` (defined once,
+   outside the component) with the game id, the round size, `asksBackend`, `fixedLevel`, `choose`
+   (the level and request body for each puzzle, with a fallback for when `/next` has no answer)
+   and `hintTiers`. Do not reimplement loading, checking, hints or error handling.
+6. **Component.** Draw the puzzle from the session's state inside `GameShell`, passing
+   `feedback`, `hint`, `onHint`, `onCheck`, `onReset` and `onNext` from the session. The component
+   decides how an answer is picked and calls `select(value)`; an answer is a number. Nothing the
+   server sends for adults (`reason`, `focus`, the diagnosis) may reach the page.
+7. **Render it** for its route in `src/App.tsx`.
+8. **Tests.** A fixture backend for the game in `src/test/` (see `puzzleBackend.ts`, typed from
+   the schema so a change to the API breaks it at compile time), and tests for the component:
+   a full round, a wrong answer, hints, the automatic hint, a 410, an error and retry. The
+   session's own behaviour is already covered by `src/games/usePuzzleSession.test.tsx`.
+
 ## API client
 
-| File                  | Role                                                                             |
-| --------------------- | -------------------------------------------------------------------------------- |
-| `src/api/schema.d.ts` | Types generated from `../openapi.json`. Never edited by hand.                    |
-| `src/api/client.ts`   | The one configured `openapi-fetch` client.                                       |
-| `src/api/puzzles.ts`  | `newMissingNumber`, `getPuzzle`, `checkStep`, `getHint`, each returning a result |
-| `src/api/player.ts`   | The anonymous player id (`getPlayerId`, `forgetPlayer`) and `getNextPuzzle`      |
+| File                  | Role                                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------------------------ |
+| `src/api/schema.d.ts` | Types generated from `../openapi.json`. Never edited by hand.                                          |
+| `src/api/client.ts`   | The one configured `openapi-fetch` client.                                                             |
+| `src/api/puzzles.ts`  | `newPuzzle(game, request)`, `getPuzzle`, `checkStep`, `getHint`, each returning a result; `GameShapes` |
+| `src/api/player.ts`   | The anonymous player id (`getPlayerId`, `forgetPlayer`) and `getNextPuzzle(game)`                      |
 
 Every function in `puzzles.ts` returns `{ status: 'ok', data }` or one of `notFound`, `gone`,
 `unavailable`, `network`. Components branch on that name and never read an HTTP status code.
+
+The puzzle routes are the same for every game (`POST /api/v1/puzzles/{game}`, then the puzzle id).
+`GameShapes` in `puzzles.ts` names, per game, the request body and the puzzle that comes back, and
+`newPuzzle` is typed from it. `newMissingNumber` is `newPuzzle('missing-number', ...)`.
 
 When the backend's API changes: export `openapi.json` there, then run `npm run api:types` here. A
 test fails if `schema.d.ts` is out of date. `openapi-typescript` asks for TypeScript 5 as a peer;
@@ -161,8 +197,11 @@ puzzles.
   message. Anything else shows a friendly note with a Try again button, which repeats whatever
   failed. Leaving the game cancels requests in flight.
 
-`useMissingNumberGame.ts` holds the state (a reducer) and the API calls; `MissingNumber.tsx` only
-draws. `equation.ts` turns the API's tokens into the screen-reader label ("8 plus box equals 11").
+The state (a reducer) and the API calls are in `src/games/usePuzzleSession.ts`, which any
+server-checked game can use: loading, `/next` before each puzzle, check, hint tiers, the automatic
+hint, the 410 restart, errors and cancelling. `useMissingNumberGame.ts` is a thin layer on top: it
+gives the session a config (the game id, how a round picks level and chain length, how many hint
+tiers a step has) and names the two ways to start a round. `MissingNumber.tsx` only draws. `equation.ts` turns the API's tokens into the screen-reader label ("8 plus box equals 11").
 Equations are always drawn from tokens, never parsed from text.
 
 ## Number Pyramid
