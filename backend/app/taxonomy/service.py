@@ -325,6 +325,10 @@ class TaxonomyService:
             attribution=source.attribution,
         )
 
+    def get_summaries(self, topic_ids: Iterable[str]) -> dict[str, TopicSummary]:
+        """Summaries for any number of topics, by id, in one query. Unknown ids are left out."""
+        return self._summaries(topic_ids)
+
     # ---- helpers ----
 
     def _require(self, topic_id: str) -> None:

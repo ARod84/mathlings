@@ -14,6 +14,8 @@ from app.config import BACKEND_DIR, sqlite_url
 from app.db import make_engine
 
 FIXTURE_TAXONOMY = Path(__file__).parent / "fixtures" / "taxonomy"
+# The same, plus the topics and error patterns the puzzle library needs.
+PUZZLE_FIXTURE_TAXONOMY = Path(__file__).parent / "fixtures" / "taxonomy_puzzles"
 FIXTURE_COMMIT = "f" * 40
 
 
@@ -47,9 +49,8 @@ def taxonomy(tmp_path: Path) -> Path:
 Edit = Callable[[Any], None]
 
 
-@pytest.fixture
-def edit_taxonomy(taxonomy: Path) -> Callable[..., None]:
-    """Edit one data file in place, keeping every checksum consistent unless told not to."""
+def _editor(taxonomy: Path) -> Callable[..., None]:
+    """Edits one data file of a taxonomy copy, keeping the checksums consistent by default."""
 
     def edit(name: str, change: Edit, *, fix_checksums: bool = True) -> None:
         data_dir = taxonomy / "data"
@@ -72,3 +73,23 @@ def edit_taxonomy(taxonomy: Path) -> Callable[..., None]:
         (data_dir / "manifest.json").write_bytes(json.dumps(manifest).encode("utf-8"))
 
     return edit
+
+
+@pytest.fixture
+def edit_taxonomy(taxonomy: Path) -> Callable[..., None]:
+    """Edit one data file of the `taxonomy` copy in place."""
+    return _editor(taxonomy)
+
+
+@pytest.fixture
+def taxonomy_puzzles(tmp_path: Path) -> Path:
+    """A private copy of the puzzle fixture taxonomy, safe to edit."""
+    target = tmp_path / "taxonomy_puzzles"
+    shutil.copytree(PUZZLE_FIXTURE_TAXONOMY, target)
+    return target
+
+
+@pytest.fixture
+def edit_puzzle_taxonomy(taxonomy_puzzles: Path) -> Callable[..., None]:
+    """Edit one data file of the `taxonomy_puzzles` copy in place."""
+    return _editor(taxonomy_puzzles)

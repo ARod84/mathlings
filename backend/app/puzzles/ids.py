@@ -25,6 +25,10 @@ class InvalidPuzzleId(ValueError):
     pass
 
 
+class OutdatedPuzzleId(InvalidPuzzleId):
+    """A genuine id, made by an older generator version than the current one."""
+
+
 @dataclass(frozen=True)
 class PuzzleKey:
     generator_version: str

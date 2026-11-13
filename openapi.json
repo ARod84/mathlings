@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Mathlings API",
-    "description": "Read-only access to the learning topics behind the Mathlings games: what each topic requires first, and the mistakes children typically make.",
+    "description": "The learning topics behind the Mathlings games (what each topic requires first, and the mistakes children typically make) and the puzzles built on them.",
     "version": "0.1.0"
   },
   "paths": {
@@ -735,10 +735,404 @@
           }
         }
       }
+    },
+    "/api/v1/puzzles/missing-number": {
+      "post": {
+        "tags": [
+          "Puzzles"
+        ],
+        "summary": "Start a new missing-number chain",
+        "operationId": "new_missing_number_puzzle_api_v1_puzzles_missing_number_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewPuzzleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzlePublic"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Puzzles cannot be served right now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/puzzles/{puzzle_id}": {
+      "get": {
+        "tags": [
+          "Puzzles"
+        ],
+        "summary": "Rebuild a puzzle from its id",
+        "operationId": "get_puzzle_api_v1_puzzles__puzzle_id__get",
+        "parameters": [
+          {
+            "name": "puzzle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Puzzle Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzlePublic"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Puzzles cannot be served right now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown puzzle id, step or hint tier",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzleNotFoundBody"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The puzzle is from an older generator version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzleGoneBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/puzzles/{puzzle_id}/steps/{index}/check": {
+      "post": {
+        "tags": [
+          "Puzzles"
+        ],
+        "summary": "Check an answer to one step",
+        "operationId": "check_step_api_v1_puzzles__puzzle_id__steps__index__check_post",
+        "parameters": [
+          {
+            "name": "puzzle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Puzzle Id"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Index"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckResult"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Puzzles cannot be served right now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown puzzle id, step or hint tier",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzleNotFoundBody"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The puzzle is from an older generator version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzleGoneBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/puzzles/{puzzle_id}/steps/{index}/hints/{tier}": {
+      "get": {
+        "tags": [
+          "Puzzles"
+        ],
+        "summary": "One hint tier for a step",
+        "operationId": "get_hint_api_v1_puzzles__puzzle_id__steps__index__hints__tier__get",
+        "parameters": [
+          {
+            "name": "puzzle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Puzzle Id"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Index"
+            }
+          },
+          {
+            "name": "tier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HintOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Puzzles cannot be served right now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown puzzle id, step or hint tier",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzleNotFoundBody"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The puzzle is from an older generator version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzleGoneBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "CheckRequest": {
+        "properties": {
+          "answer": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Answer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "answer"
+        ],
+        "title": "CheckRequest"
+      },
+      "CheckResult": {
+        "properties": {
+          "correct": {
+            "type": "boolean",
+            "title": "Correct"
+          },
+          "feedback": {
+            "type": "string",
+            "enum": [
+              "correct",
+              "try_again"
+            ],
+            "title": "Feedback"
+          },
+          "diagnosis": {
+            "$ref": "#/components/schemas/DiagnosisPublic"
+          },
+          "next_step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Step",
+            "description": "Index of the next step after a correct answer; null on the last step and after a wrong answer."
+          }
+        },
+        "type": "object",
+        "required": [
+          "correct",
+          "feedback",
+          "diagnosis",
+          "next_step"
+        ],
+        "title": "CheckResult"
+      },
+      "DiagnosisPublic": {
+        "properties": {
+          "matched_rules": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Matched Rules",
+            "description": "Names of the known mistakes that give this answer. For analytics and development; not for showing to a child."
+          },
+          "unrecognized": {
+            "type": "boolean",
+            "title": "Unrecognized",
+            "description": "Wrong, and no known mistake explains it."
+          },
+          "reteach_topic": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReteachTopic"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where to step back to, if anywhere."
+          }
+        },
+        "type": "object",
+        "required": [
+          "matched_rules",
+          "unrecognized",
+          "reteach_topic"
+        ],
+        "title": "DiagnosisPublic"
+      },
       "DomainCount": {
         "properties": {
           "subject": {
@@ -761,6 +1155,68 @@
           "topic_count"
         ],
         "title": "DomainCount"
+      },
+      "Equation": {
+        "properties": {
+          "left": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/NumberToken"
+                },
+                {
+                  "$ref": "#/components/schemas/OperatorToken"
+                },
+                {
+                  "$ref": "#/components/schemas/UnknownToken"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "kind",
+                "mapping": {
+                  "number": "#/components/schemas/NumberToken",
+                  "operator": "#/components/schemas/OperatorToken",
+                  "unknown": "#/components/schemas/UnknownToken"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Left"
+          },
+          "right": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/NumberToken"
+                },
+                {
+                  "$ref": "#/components/schemas/OperatorToken"
+                },
+                {
+                  "$ref": "#/components/schemas/UnknownToken"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "kind",
+                "mapping": {
+                  "number": "#/components/schemas/NumberToken",
+                  "operator": "#/components/schemas/OperatorToken",
+                  "unknown": "#/components/schemas/UnknownToken"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Right"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "left",
+          "right"
+        ],
+        "title": "Equation",
+        "description": "`left = right`, as tokens, so a frontend can draw the box as a real box."
       },
       "ErrorBody": {
         "properties": {
@@ -874,6 +1330,106 @@
         ],
         "title": "Health"
       },
+      "HintOut": {
+        "properties": {
+          "tier": {
+            "type": "integer",
+            "title": "Tier"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tier",
+          "text"
+        ],
+        "title": "HintOut"
+      },
+      "NewPuzzleRequest": {
+        "properties": {
+          "level": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Level"
+          },
+          "length": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Length",
+            "description": "Number of steps.",
+            "default": 3
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 9.223372036854776e+18,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "description": "Fixes the puzzle. Leave out for a random one."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "level"
+        ],
+        "title": "NewPuzzleRequest"
+      },
+      "NumberToken": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "number",
+            "title": "Kind",
+            "default": "number"
+          },
+          "value": {
+            "type": "integer",
+            "title": "Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "title": "NumberToken"
+      },
+      "OperatorToken": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "operator",
+            "title": "Kind",
+            "default": "operator"
+          },
+          "symbol": {
+            "type": "string",
+            "enum": [
+              "+",
+              "-"
+            ],
+            "title": "Symbol"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol"
+        ],
+        "title": "OperatorToken"
+      },
       "PrerequisiteItem": {
         "properties": {
           "topic": {
@@ -912,6 +1468,115 @@
         ],
         "title": "PrerequisiteItem"
       },
+      "PuzzleGoneBody": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "current_version": {
+            "type": "string",
+            "title": "Current Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail",
+          "current_version"
+        ],
+        "title": "PuzzleGoneBody"
+      },
+      "PuzzleNotFoundBody": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "puzzle_id": {
+            "type": "string",
+            "title": "Puzzle Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail",
+          "puzzle_id"
+        ],
+        "title": "PuzzleNotFoundBody"
+      },
+      "PuzzlePublic": {
+        "properties": {
+          "puzzle_id": {
+            "type": "string",
+            "title": "Puzzle Id"
+          },
+          "level": {
+            "type": "integer",
+            "title": "Level"
+          },
+          "length": {
+            "type": "integer",
+            "title": "Length"
+          },
+          "topic_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Topic Ids",
+            "description": "Taxonomy topics practised, primary first."
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/PuzzleStepPublic"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "puzzle_id",
+          "level",
+          "length",
+          "topic_ids",
+          "steps"
+        ],
+        "title": "PuzzlePublic"
+      },
+      "PuzzleStepPublic": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index",
+            "description": "0-based position in the chain."
+          },
+          "equation": {
+            "$ref": "#/components/schemas/Equation"
+          },
+          "options": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Options",
+            "description": "The answer and three wrong answers, in an order that is fixed for the puzzle."
+          },
+          "hint_tiers": {
+            "type": "integer",
+            "title": "Hint Tiers",
+            "description": "How many hint tiers can be asked for.",
+            "default": 3
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "equation",
+          "options"
+        ],
+        "title": "PuzzleStepPublic"
+      },
       "ResearchActivity": {
         "properties": {
           "title": {
@@ -945,6 +1610,24 @@
           "feedback"
         ],
         "title": "ResearchActivity"
+      },
+      "ReteachTopic": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ReteachTopic"
       },
       "SourceInfo": {
         "properties": {
@@ -1216,6 +1899,20 @@
         ],
         "title": "TopicSummary"
       },
+      "UnknownToken": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "unknown",
+            "title": "Kind",
+            "default": "unknown"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "UnknownToken",
+        "description": "The box the child fills in."
+      },
       "UnlockItem": {
         "properties": {
           "topic": {
@@ -1296,6 +1993,10 @@
     {
       "name": "Teaching",
       "description": "Typical mistakes and teaching research for a topic."
+    },
+    {
+      "name": "Puzzles",
+      "description": "Missing-number chains. Stateless: a puzzle is rebuilt from its id."
     },
     {
       "name": "Meta",

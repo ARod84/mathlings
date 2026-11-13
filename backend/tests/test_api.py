@@ -117,17 +117,19 @@ def test_cors_origin_comes_from_settings(tmp_path: Path):
         assert "access-control-allow-origin" not in default.headers
 
 
-def test_every_route_is_get_with_a_tag_and_a_response_model(client: TestClient):
+def test_every_route_has_a_tag_a_summary_and_a_response_model(client: TestClient):
     document = client.get("/openapi.json").json()
 
-    assert len(document["paths"]) == 10
+    assert len(document["paths"]) == 14
     for path, operations in document["paths"].items():
-        assert list(operations) == ["get"], path
-        operation = operations["get"]
-        assert operation["tags"], path
-        assert operation["summary"], path
-        schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
-        assert schema != {}, path
+        if "/puzzles" not in path:
+            assert list(operations) == ["get"], path
+        for method, operation in operations.items():
+            assert operation["tags"], (method, path)
+            assert operation["summary"], (method, path)
+            success = "201" if "201" in operation["responses"] else "200"
+            schema = operation["responses"][success]["content"]["application/json"]["schema"]
+            assert schema != {}, (method, path)
 
 
 def test_exported_openapi_file_is_up_to_date(client: TestClient):

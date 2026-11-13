@@ -13,7 +13,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from app.puzzles.generator import GenerationError, generate
-from app.puzzles.ids import InvalidPuzzleId, derive_seed, parse_puzzle_id
+from app.puzzles.ids import InvalidPuzzleId, OutdatedPuzzleId, derive_seed, parse_puzzle_id
 from app.puzzles.levels import GENERATOR_VERSION
 from app.puzzles.misconceptions import MisconceptionCatalog
 from app.puzzles.models import Puzzle
@@ -101,20 +101,31 @@ def generate_verified(
     ).puzzle
 
 
+def _is_older(version: str) -> bool:
+    """Versions are whole numbers written as text; anything else is simply unknown."""
+    return (
+        version.isdigit() and GENERATOR_VERSION.isdigit() and int(version) < int(GENERATOR_VERSION)
+    )
+
+
 def regenerate(
     puzzle_id: str, *, catalog: MisconceptionCatalog, topic_exists: Callable[[str], bool]
 ) -> Puzzle:
     """Rebuild the puzzle an id names, and verify it again before handing it out.
 
-    Raises InvalidPuzzleId for an id that is malformed or from another
-    generator version, and PuzzleRejected if the rebuilt puzzle fails.
+    Raises InvalidPuzzleId for an id that is malformed or names a version this
+    generator does not know, OutdatedPuzzleId (a kind of InvalidPuzzleId) for an
+    id from an older version, and PuzzleRejected if the rebuilt puzzle fails.
     """
     key = parse_puzzle_id(puzzle_id)
     if key.generator_version != GENERATOR_VERSION:
-        raise InvalidPuzzleId(
+        message = (
             f"{puzzle_id!r} is from generator version {key.generator_version}, "
             f"this is version {GENERATOR_VERSION}"
         )
+        if _is_older(key.generator_version):
+            raise OutdatedPuzzleId(message)
+        raise InvalidPuzzleId(message)
     puzzle = generate(key.seed, key.level, key.length, catalog)
     result = verify(puzzle, catalog=catalog, topic_exists=topic_exists)
     if not result.ok:

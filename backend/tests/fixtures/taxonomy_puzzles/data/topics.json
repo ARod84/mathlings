@@ -1,0 +1,234 @@
+{
+  "version": "fixture-v1",
+  "topicCount": 12,
+  "topics": [
+    {
+      "id": "mt_add2",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Number",
+      "name": "Two-digit addition",
+      "description": "Fixture description of Two-digit addition.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows two-digit addition once",
+        "Explains two-digit addition"
+      ],
+      "assessmentPrompt": "Can {{name}} show two-digit addition and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 7,
+      "ageRangeEnd": 9
+    },
+    {
+      "id": "mt_placevalue",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "Number",
+      "name": "Place value",
+      "description": "Fixture description of Place value.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows place value once",
+        "Explains place value"
+      ],
+      "assessmentPrompt": "Can {{name}} show place value and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 6,
+      "ageRangeEnd": 8
+    },
+    {
+      "id": "mt_frac",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Fractions",
+      "name": "Unit fractions",
+      "description": "Fixture description of Unit fractions.",
+      "centrality": null,
+      "evidence": [
+        "Shows unit fractions once",
+        "Explains unit fractions"
+      ],
+      "assessmentPrompt": "Can {{name}} show unit fractions and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 9,
+      "ageRangeEnd": 11
+    },
+    {
+      "id": "mt_count",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Number",
+      "name": "Counting to twenty",
+      "description": "Fixture description of Counting to twenty.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows counting to twenty once",
+        "Explains counting to twenty"
+      ],
+      "assessmentPrompt": "Can {{name}} show counting to twenty and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 4,
+      "ageRangeEnd": 6
+    },
+    {
+      "id": "mt_words",
+      "type": "LANGUAGE",
+      "subject": "English",
+      "domain": "Vocabulary",
+      "name": "Number words",
+      "description": "Fixture description of Number words.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows number words once",
+        "Explains number words"
+      ],
+      "assessmentPrompt": "Can {{name}} show number words and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 5,
+      "ageRangeEnd": 6
+    },
+    {
+      "id": "mt_algebra",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Algebra",
+      "name": "Solving equations",
+      "description": "Fixture description of Solving equations.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows solving equations once",
+        "Explains solving equations"
+      ],
+      "assessmentPrompt": "Can {{name}} show solving equations and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 13,
+      "ageRangeEnd": 15
+    },
+    {
+      "id": "mt_forces",
+      "type": "CONCEPTUAL",
+      "subject": "Science",
+      "domain": "Forces",
+      "name": "Pushes and pulls",
+      "description": "Fixture description of Pushes and pulls.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows pushes and pulls once",
+        "Explains pushes and pulls"
+      ],
+      "assessmentPrompt": "Can {{name}} show pushes and pulls and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 7,
+      "ageRangeEnd": 9
+    },
+    {
+      "id": "mt_3JgrHY221M",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Addition & Subtraction",
+      "name": "Unknown in Addition & Subtraction",
+      "description": "Fixture description of Unknown in Addition & Subtraction.",
+      "centrality": 0.3,
+      "evidence": [
+        "Shows unknown in addition & subtraction once",
+        "Explains unknown in addition & subtraction"
+      ],
+      "assessmentPrompt": "Can {{name}} show unknown in addition & subtraction and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 6,
+      "ageRangeEnd": 11
+    },
+    {
+      "id": "mt_oIzycTBeE4",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "Addition & Subtraction",
+      "name": "What the equals sign means",
+      "description": "Fixture description of What the equals sign means.",
+      "centrality": 0.5,
+      "evidence": [
+        "Shows what the equals sign means once",
+        "Explains what the equals sign means"
+      ],
+      "assessmentPrompt": "Can {{name}} show what the equals sign means and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 6,
+      "ageRangeEnd": 13
+    },
+    {
+      "id": "mt_XuHmIn2xje",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Addition & Subtraction",
+      "name": "Missing number problems (age 7+)",
+      "description": "Fixture description of Missing number problems (age 7+).",
+      "centrality": 0.2,
+      "evidence": [
+        "Shows missing number problems (age 7+) once",
+        "Explains missing number problems (age 7+)"
+      ],
+      "assessmentPrompt": "Can {{name}} show missing number problems (age 7+) and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 7,
+      "ageRangeEnd": 10
+    },
+    {
+      "id": "mt_ehGS_uVSJv",
+      "type": "CONCEPTUAL",
+      "subject": "Mathematics",
+      "domain": "Addition & Subtraction",
+      "name": "Inverse: addition undoes subtraction",
+      "description": "Fixture description of Inverse: addition undoes subtraction.",
+      "centrality": 0.4,
+      "evidence": [
+        "Shows inverse: addition undoes subtraction once",
+        "Explains inverse: addition undoes subtraction"
+      ],
+      "assessmentPrompt": "Can {{name}} show inverse: addition undoes subtraction and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 6,
+      "ageRangeEnd": 13
+    },
+    {
+      "id": "mt_yTWxkzzoOZ",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Addition & Subtraction",
+      "name": "Two-Step Word Problems",
+      "description": "Fixture description of Two-Step Word Problems.",
+      "centrality": 0.6,
+      "evidence": [
+        "Shows two-step word problems once",
+        "Explains two-step word problems"
+      ],
+      "assessmentPrompt": "Can {{name}} show two-step word problems and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 7,
+      "ageRangeEnd": 12
+    }
+  ]
+}

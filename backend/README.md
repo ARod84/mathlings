@@ -229,3 +229,33 @@ uv run python -m app.puzzles.report --catalog            # rule -> error pattern
 
 Bump `GENERATOR_VERSION` in `levels.py` whenever a change can alter the puzzle a seed produces. A
 puzzle also depends on the pinned taxonomy commit, through the error-pattern ids and hint sources.
+
+### Puzzle API
+
+`app/puzzles/service.py` (`PuzzleService`, no FastAPI) and the thin routes in
+`app/api/v1/puzzles.py` put the library on HTTP, under `/api/v1/puzzles`.
+
+| Route                                         | Body or params                                   | Returns              |
+| --------------------------------------------- | ------------------------------------------------ | -------------------- |
+| `POST /missing-number`                        | `{ level: 1–3, length: 1–4 (default 3), seed? }` | `PuzzlePublic` (201) |
+| `GET /{puzzle_id}`                            |                                                  | `PuzzlePublic`       |
+| `POST /{puzzle_id}/steps/{index}/check`       | `{ answer: 0–10000 }`                            | `CheckResult`        |
+| `GET /{puzzle_id}/steps/{index}/hints/{tier}` | tier 1–3                                         | `{ tier, text }`     |
+
+- **Stateless.** Every request rebuilds the puzzle from its id (`verified.regenerate`) and verifies
+  it again. Nothing is stored.
+- **Public shape.** `PuzzlePublic` has the equations, four shuffled `options` per step and
+  `hint_tiers`. The order of the options is fixed by the puzzle id and step, so a reload looks the
+  same. Answers, rule names, error-pattern ids and hint text stay on the server.
+- **Answers are not secrets.** A later step shows the previous answer as a visible number; that is
+  the puzzle. See the note in `app/puzzles/schemas.py` and the root README before changing it.
+- **Checking.** A wrong check never gives the answer. It names the matched mistake rules (for
+  analytics, not for the child) and the topic to step back to. Only hint tier 3 shows a worked step.
+- **Errors.** Tampered or malformed id: 404. Id from an older generator version: 410 with
+  `current_version`. Step or tier out of range: 404. Bad body or seed: 422. Generation out of
+  retries, or a taxonomy without the puzzle topics: 503.
+- **Catalog.** The mistake-rule catalog is resolved once at startup, next to the prerequisite
+  graph, and again only when the graph reloads after a re-import.
+- **Check log.** Each check writes one line to the `app.puzzles.checks` logger: puzzle id, step,
+  correct, matched rules and latency. The same fields are on the record as `puzzle_check`. No
+  personal data, and not the answer itself.
