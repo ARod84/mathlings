@@ -227,6 +227,28 @@ uv run python -m app.puzzles.report --samples 2          # example puzzles
 uv run python -m app.puzzles.report --catalog            # rule -> error pattern table
 ```
 
+Results of `--all --count 5000` against the real imported database:
+
+| Level | Verified on the first try | Average retries | Distractors linked to a taxonomy error pattern | Slowest generation |
+| ----- | ------------------------- | --------------- | ---------------------------------------------- | ------------------ |
+| 1     | 5000 of 5000 (100.0%)     | 0.0000          | 5610 of 37500 (15.0%)                          | 1.08 ms            |
+| 2     | 5000 of 5000 (100.0%)     | 0.0000          | 5751 of 37500 (15.3%)                          | 5.52 ms            |
+| 3     | 5000 of 5000 (100.0%)     | 0.0000          | 5850 of 37500 (15.6%)                          | 34.42 ms           |
+
+- **Run on:** 2026-11-12
+- **Generator version:** `1`
+- **Taxonomy commit:** `ce4eb95df6d0675762daef4d2318f9e545e73d98`
+
+Seeds 0 to 4999 per level, chain lengths 1 to 4 in turn (12,500 steps and 37,500 distractors per
+level). Everything except the timings is the same on every run; the timings are from one laptop.
+
+The linked share is low by design, not by accident. A step has at most one linked distractor, so
+15% of distractors is about 45% of steps. Only three rules have a taxonomy pattern, each applies to
+some forms only (`a − □ = c` has none), and a mistake whose result falls outside the level's range
+cannot be offered as an option. The other distractors are the off-by-one slips, the column slip at
+level 3 and near-miss fillers, none of which the taxonomy describes. A test fails if the version or
+commit above stops matching the code, so the table cannot go stale unnoticed.
+
 Bump `GENERATOR_VERSION` in `levels.py` whenever a change can alter the puzzle a seed produces. A
 puzzle also depends on the pinned taxonomy commit, through the error-pattern ids and hint sources.
 
