@@ -226,6 +226,19 @@ PUZZLE_TOPICS = [
     ),
 ]
 
+# Topics only Number Pyramid is tagged with (see shared/game-topics.json).
+PUZZLE_TOPICS += [
+    topic(
+        "mt__t4afSyZRm",
+        "Mathematics",
+        "Addition & Subtraction",
+        "Fluent adding and subtracting within 20",
+        7,
+        11,
+    ),
+    topic("mt_glPPG-kTQY", "Mathematics", "Addition & Subtraction", "Adding within 100", 6, 8),
+]
+
 PUZZLE_DEPENDENCIES = [
     edge("mt_3JgrHY221M", "mt_oIzycTBeE4"),
     edge("mt_3JgrHY221M", "mt_ehGS_uVSJv", "soft"),

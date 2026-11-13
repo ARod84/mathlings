@@ -72,7 +72,8 @@ screen draws one card per entry, and `App.tsx` passes each game its `house` from
 To add a game:
 
 1. Add its route to `Route` and `ROUTE_HASH` in `src/router.ts`.
-2. Add an entry to `GAMES` in `src/games/registry.ts`.
+2. Add an entry to `GAMES` in `src/games/registry.ts`, and the game's topics to
+   `../shared/game-topics.json` (a test fails if a registered game has none).
 3. Create `src/games/<name>/` with the logic (pure functions, or a hook with a reducer), a
    component that renders inside `GameShell` and accepts `house` and `onExit`, and tests.
 4. Render it for its route in `src/App.tsx`.

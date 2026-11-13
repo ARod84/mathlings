@@ -6,6 +6,8 @@
  * r * (r + 1) / 2 + c. Every block is the sum of the two blocks below it.
  */
 
+import { topicsByLevel } from '../gameTopics';
+
 export type Rng = () => number;
 
 /** Array read that fails loudly instead of returning undefined. */
@@ -46,6 +48,21 @@ export const LEVELS: readonly Level[] = [
   { rows: 4, maxBase: 9, mixed: true },
   { rows: 4, maxBase: 12, mixed: true },
 ];
+
+const TOPICS = topicsByLevel('number-pyramid');
+
+/**
+ * The taxonomy topics a level practises (see shared/game-topics.json).
+ *
+ * Bottom row given: the child only adds, so it is "addOnly". Scattered givens
+ * need working backwards too, so "mixed". A four-row pyramid also gets
+ * "fourRows", because its top block goes past 20.
+ */
+export function topicIdsForLevel(level: Level): string[] {
+  const ids = [...(level.mixed ? (TOPICS.mixed ?? []) : (TOPICS.addOnly ?? []))];
+  if (level.rows >= 4) ids.push(...(TOPICS.fourRows ?? []));
+  return [...new Set(ids)];
+}
 
 export interface Puzzle {
   rows: number;

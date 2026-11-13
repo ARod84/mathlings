@@ -7,6 +7,7 @@ Club site, to be merged into it later.
 | ----------------------- | ------------------------------------------------------------------------- |
 | [`frontend/`](frontend) | The games: Vite, React and TypeScript. Design system, `GameShell`, games. |
 | [`backend/`](backend)   | Python API (FastAPI): the topic database, puzzle generation and checking. |
+| [`shared/`](shared)     | Data both apps read: which taxonomy topics each game practises.           |
 
 Each folder has its own README with setup and commands.
 

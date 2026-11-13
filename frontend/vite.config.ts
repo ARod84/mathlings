@@ -6,6 +6,8 @@ export default defineConfig({
   server: {
     // One origin in development: the browser calls /api on the Vite server, which passes it on.
     proxy: { '/api': 'http://localhost:8000' },
+    // shared/ at the repo root holds data both apps read (game-topics.json).
+    fs: { allow: ['..'] },
   },
   test: {
     environment: 'jsdom',

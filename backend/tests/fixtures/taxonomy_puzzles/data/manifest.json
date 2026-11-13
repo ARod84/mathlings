@@ -3,8 +3,8 @@
   "taxonomyVersion": "fixture-v1",
   "files": {
     "topics.json": {
-      "bytes": 7185,
-      "sha256": "28a995172be95f77ab4cd86753d70855c1cca9c7c1c52235e8bb97d74cf5f3be"
+      "bytes": 8462,
+      "sha256": "39a0e1c3f8d51decf7da8a5836f69976af7be593ad2e436b39e869f1efb9f2bc"
     },
     "dependencies.json": {
       "bytes": 1408,
@@ -12,7 +12,7 @@
     },
     "teaching-research.json": {
       "bytes": 11731,
-      "sha256": "6ad9ed2e23df0d70e40087e2812de0d381903cba32986e47f67a093d2150d03a"
+      "sha256": "0a76f7ff6a0700ee510e848ab9567af3af55bab606bd489342d57d1a7d8b8d11"
     },
     "clusters.json": {
       "bytes": 531,

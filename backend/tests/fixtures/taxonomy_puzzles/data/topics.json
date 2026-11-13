@@ -1,6 +1,6 @@
 {
   "version": "fixture-v1",
-  "topicCount": 12,
+  "topicCount": 14,
   "topics": [
     {
       "id": "mt_add2",
@@ -229,6 +229,44 @@
       ],
       "ageRangeStart": 7,
       "ageRangeEnd": 12
+    },
+    {
+      "id": "mt__t4afSyZRm",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Addition & Subtraction",
+      "name": "Fluent adding and subtracting within 20",
+      "description": "Fixture description of Fluent adding and subtracting within 20.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows fluent adding and subtracting within 20 once",
+        "Explains fluent adding and subtracting within 20"
+      ],
+      "assessmentPrompt": "Can {{name}} show fluent adding and subtracting within 20 and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 7,
+      "ageRangeEnd": 11
+    },
+    {
+      "id": "mt_glPPG-kTQY",
+      "type": "PROCEDURAL",
+      "subject": "Mathematics",
+      "domain": "Addition & Subtraction",
+      "name": "Adding within 100",
+      "description": "Fixture description of Adding within 100.",
+      "centrality": 0.1,
+      "evidence": [
+        "Shows adding within 100 once",
+        "Explains adding within 100"
+      ],
+      "assessmentPrompt": "Can {{name}} show adding within 100 and explain how they did it?",
+      "standards": [
+        "fixture-curriculum:FX-1"
+      ],
+      "ageRangeStart": 6,
+      "ageRangeEnd": 8
     }
   ]
 }

@@ -1,10 +1,12 @@
 import type { HouseKey } from '../design/tokens';
 import type { Route } from '../router';
+import { allTopicIds } from './gameTopics';
 
 /*
- * Every game the home screen offers. To add a game: add an entry here, a
- * route in router.ts, a folder under src/games with the component and its
- * tests, and a line in App.tsx that renders it for the route.
+ * Every game the home screen offers. To add a game: add an entry here, its
+ * topics in the repo-root shared/game-topics.json, a route in router.ts, a
+ * folder under src/games with the component and its tests, and a line in
+ * App.tsx that renders it for the route.
  */
 
 export interface GameEntry {
@@ -15,6 +17,11 @@ export interface GameEntry {
   house: HouseKey;
   /** One line for the home screen. */
   description: string;
+  /**
+   * Taxonomy topics the game practises, across all its levels, from
+   * shared/game-topics.json. Not shown anywhere; for the adaptive work to come.
+   */
+  topicIds: readonly string[];
 }
 
 export const GAMES: readonly GameEntry[] = [
@@ -24,6 +31,7 @@ export const GAMES: readonly GameEntry[] = [
     route: 'pyramid',
     house: 'builders',
     description: 'Every block is the sum of the two below it. Fill in the gaps.',
+    topicIds: allTopicIds('number-pyramid'),
   },
   {
     id: 'missing-number',
@@ -31,6 +39,7 @@ export const GAMES: readonly GameEntry[] = [
     route: 'missing-number',
     house: 'navigators',
     description: 'Find the missing number, then use it to crack the next one.',
+    topicIds: allTopicIds('missing-number'),
   },
 ];
 
