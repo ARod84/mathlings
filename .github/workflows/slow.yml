@@ -1,0 +1,54 @@
+name: Slow tests
+
+# The tests marked `slow`: the real taxonomy import and the full adaptive simulation.
+# A schedule only runs from the default branch, and tests that branch.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1" # Mondays, 04:17 UTC
+
+concurrency:
+  group: slow-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  slow:
+    name: Slow tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+
+      # setup-uv has published no major tag since v7, only full version tags.
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install Python (the version in backend/.python-version)
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Fetch the taxonomy at the pinned commit
+        run: bash scripts/fetch_taxonomy.sh
+
+      - name: Create the database
+        run: uv run alembic upgrade head
+
+      - name: Import the taxonomy
+        run: uv run python -m app.taxonomy.importer
+
+      # The false-promotion target test is a strict expected failure: it shows as
+      # XFAIL in the summary below, and fails this job the day it starts passing.
+      # Skips are listed too, so a test that quietly skipped is visible.
+      - name: Slow tests
+        run: uv run pytest -m slow -rxXs

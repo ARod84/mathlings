@@ -1,5 +1,7 @@
 # Mathlings
 
+[![CI](https://github.com/ARod84/mathlings/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/ARod84/mathlings/actions/workflows/ci.yml?query=branch%3Adev)
+
 Short math-logic puzzle games for kids aged 7–12. A standalone precursor to the Martians Space
 Club site, to be merged into it later.
 
@@ -123,6 +125,39 @@ mistake it flags are never shown to the child. How it works, and how well, is in
 **Open item: no retention policy yet.** History is kept until someone deletes it. There is no
 expiry, no clean-up job and no rule for players who never come back. This has to be decided before
 the app is used by real children; it is deliberately not invented here.
+
+## Continuous integration
+
+GitHub Actions, in `.github/workflows/`. No secrets are needed.
+
+| Workflow   | Runs on                                         | Jobs                                                                                                                                                                                                |
+| ---------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`   | Every push and pull request to `dev` and `main` | **Backend**: `uv sync --locked`, ruff lint and format check, every migration applied to a new empty database, `pytest -m "not slow"`, and a check that `openapi.json` matches the code.             |
+|            |                                                 | **Frontend**: `npm ci`, typecheck, lint, format check, tests (one of them compares `schema.d.ts` with `openapi.json`) and build.                                                                    |
+| `slow.yml` | By hand ("Run workflow"), and every Monday      | **Slow tests**: fetches the pinned taxonomy, migrates, imports, then `pytest -m slow`. The false-promotion target shows as an expected failure, and the job fails the day that test starts passing. |
+
+A new push cancels the run still going for the same branch. The Python version comes from
+`backend/.python-version` and the Node version from `frontend/.nvmrc`. A schedule only runs from
+the default branch, so the weekly run starts once `slow.yml` is on `main`, and tests `main`.
+
+### Branch protection
+
+Not set up by the workflow; do it once in the repository settings. For `main` (repeat for `dev`
+if wanted):
+
+1. **Settings → Branches → Add branch ruleset** (or "Add classic branch protection rule").
+2. Target branch: `main`.
+3. Turn on **Require a pull request before merging**.
+4. Turn on **Require status checks to pass**, and add these two checks by name:
+   - `Backend`
+   - `Frontend`
+5. Optional: **Require branches to be up to date before merging**, so the checks ran on the
+   merged result.
+6. Save.
+
+The names are the job names in `ci.yml`. GitHub only offers a check in the search box after it
+has run at least once on the repository. Do not require `Slow tests`: it does not run on pull
+requests, so a pull request would wait for it for ever.
 
 ## Data and licenses
 
