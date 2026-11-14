@@ -7,6 +7,7 @@ import {
   type PuzzleSessionConfig,
   type SessionState,
   type SessionTiming,
+  type SinglePuzzle,
 } from '../usePuzzleSession';
 
 /*
@@ -32,6 +33,8 @@ export const FALLBACK_LEVEL: Level = 1;
 export { DEFAULT_TIMING };
 export type GameTiming = SessionTiming;
 export type SumGridPuzzle = PuzzleOf<'sum-grid'>;
+/** One grid to play on its own, outside a round (Today's Puzzle). */
+export type SingleSumGrid = SinglePuzzle<'sum-grid', Level>;
 
 /** How the puzzles of a round are picked. */
 type Plan = { kind: 'adaptive' } | { kind: 'fixed'; level: Level };
@@ -59,8 +62,11 @@ export interface SumGridGame extends Omit<PuzzleSession<'sum-grid', Plan, Level>
   chooseLevel: (level: Level) => void;
 }
 
-export function useSumGridGame(timing: GameTiming = DEFAULT_TIMING): SumGridGame {
-  const { start, ...session } = usePuzzleSession(SESSION, timing);
+export function useSumGridGame(
+  timing: GameTiming = DEFAULT_TIMING,
+  single?: SingleSumGrid,
+): SumGridGame {
+  const { start, ...session } = usePuzzleSession(SESSION, timing, single);
   return {
     ...session,
     play: useCallback(() => start({ kind: 'adaptive' }), [start]),

@@ -7,6 +7,7 @@ import {
   type PuzzleSessionConfig,
   type SessionState,
   type SessionTiming,
+  type SinglePuzzle,
 } from '../usePuzzleSession';
 
 /*
@@ -35,6 +36,8 @@ export const FALLBACK_LEVEL: Level = 1;
 export { DEFAULT_TIMING };
 export type GameTiming = SessionTiming;
 export type SequencePuzzle = PuzzleOf<'sequences'>;
+/** One sequence to play on its own, outside a round (Today's Puzzle). */
+export type SingleSequence = SinglePuzzle<'sequences', Level>;
 
 /** How the puzzles of a round are picked. */
 type Plan = { kind: 'adaptive' } | { kind: 'fixed'; level: Level };
@@ -62,8 +65,11 @@ export interface SequencesGame extends Omit<PuzzleSession<'sequences', Plan, Lev
   chooseLevel: (level: Level) => void;
 }
 
-export function useSequencesGame(timing: GameTiming = DEFAULT_TIMING): SequencesGame {
-  const { start, ...session } = usePuzzleSession(SESSION, timing);
+export function useSequencesGame(
+  timing: GameTiming = DEFAULT_TIMING,
+  single?: SingleSequence,
+): SequencesGame {
+  const { start, ...session } = usePuzzleSession(SESSION, timing, single);
   return {
     ...session,
     play: useCallback(() => start({ kind: 'adaptive' }), [start]),

@@ -6,7 +6,12 @@ import { LoadingScreen, OptionTiles, ProblemScreen, StartScreen } from '../sessi
 import { useOptionKeys } from '../session/useOptionKeys';
 import { equationLabel, equationParts, linkedTokenIndex } from './equation';
 import styles from './MissingNumber.module.css';
-import { DEFAULT_TIMING, useMissingNumberGame, type GameTiming } from './useMissingNumberGame';
+import {
+  DEFAULT_TIMING,
+  useMissingNumberGame,
+  type GameTiming,
+  type SingleChain,
+} from './useMissingNumberGame';
 
 export interface MissingNumberProps {
   house?: HouseKey;
@@ -14,6 +19,8 @@ export interface MissingNumberProps {
   onExit?: () => void;
   /** How long the pauses between steps last. Tests shorten them. */
   timing?: GameTiming;
+  /** Play this one puzzle instead of a round: no start screen, and its own words when solved. */
+  single?: SingleChain;
 }
 
 /** The labels name the number range, not a school grade. */
@@ -75,8 +82,9 @@ export function MissingNumber({
   house = 'navigators',
   onExit,
   timing = DEFAULT_TIMING,
+  single,
 }: MissingNumberProps) {
-  const game = useMissingNumberGame(timing);
+  const game = useMissingNumberGame(timing, single);
   const { state, locked } = game;
   const { phase, puzzle, stepIndex, selected, answers } = state;
   const playing = phase === 'playing' && puzzle !== null;
@@ -107,6 +115,7 @@ export function MissingNumber({
       onReset={playing && !locked && selected !== null ? game.reset : undefined}
       onNext={game.next}
       onExit={onExit}
+      solvedScreen={single?.solved}
     >
       {phase === 'choose-level' && (
         <StartScreen

@@ -63,12 +63,14 @@ browser uses one origin. To point at an API somewhere else, set `VITE_API_BASE_U
 | `#/missing-number` | Missing Number Chains        |
 | `#/sequences`      | Next in Line                 |
 | `#/sum-grid`       | Sum Grid                     |
+| `#/daily/<level>`  | Today's Puzzle at level 1–3  |
 | `#shell-demo`      | The GameShell review page    |
 
 `useRoute()` returns the current route and `navigate(route)` changes it. The game routes are
 built from `src/games/registry.ts`: an entry's `route` is its hash, `#/<route>`, and the `Route`
-type is derived from the registry's entries. Only `home` and `shell-demo` are written in
-`router.ts` itself, so adding a game needs no change there.
+type is derived from the registry's entries. Only `home`, `shell-demo` and `daily` are written in
+`router.ts` itself, so adding a game needs no change there. `#/daily` without a level, or with
+one that is not 1, 2 or 3, is level 1; `useDailyLevel()` reads it and `dailyHash(level)` writes it.
 
 If a route does nothing in development after an edit (the address changes, the screen does not),
 restart `npm run dev`. That happened once with a file written twice in quick succession: the dev
@@ -174,6 +176,76 @@ the suite, none in 35 after):
 - **Whole-round tests use `userEvent.setup({ delay: null })`.** By default user-event waits on a
   zero-length timer between the events of a click. On Windows that timer takes about 12 ms, so a
   round of thirty clicks ran at 3 to 5 seconds against the 5 second limit.
+
+## Today's Puzzle
+
+Like a daily crossword: every day, everyone gets the same puzzle, in three levels (Easy, Medium
+and Hard are levels 1 to 3 of the day's game). The backend makes it from the date alone
+(`GET /api/v1/daily`, see the backend README): the game follows a fixed rotation over Missing
+Number Chains, Next in Line and Sum Grid, and the puzzle is an ordinary verified puzzle, so the
+usual check and hint calls play it. Number Pyramid is built in the browser and is not in the
+rotation for now.
+
+| File                        | Role                                                                         |
+| --------------------------- | ---------------------------------------------------------------------------- |
+| `src/api/daily.ts`          | `getDailyPuzzle(date, level)` and `localDate()`, the device's calendar day.  |
+| `src/daily/DailyBanner.tsx` | The banner on the home screen: the game of the day and the three levels.     |
+| `src/daily/DailyPuzzle.tsx` | The `#/daily/<level>` screen: fetches the puzzle, renders the day's game.    |
+| `src/daily/progress.ts`     | What the device remembers (`localStorage` key `mathlings.daily`).            |
+| `src/daily/copy.ts`         | The words, in one place.                                                     |
+| `src/test/dailyBackend.ts`  | The MSW handler for `/daily`, issuing puzzles through a game's mock backend. |
+
+- **The date is the device's.** `localDate()` builds `YYYY-MM-DD` from `getFullYear`, `getMonth`
+  and `getDate`, never from `toISOString()`, which is UTC: at 23:30 in Buenos Aires the UTC date
+  is already tomorrow, and the child would get tomorrow's puzzle. The server accepts a date
+  within a day of its own, which covers every timezone. A test runs the banner with the clock
+  at 23:30 in `America/Argentina/Buenos_Aires` and checks the date sent.
+- **The banner** asks `/daily` once (level 1, just to learn the game of the day) and then
+  `/players/me/next` for that game. When `/next` gives a level, that button is marked
+  "suggested", subtly: a dotted ring and a small word. It is not pre-selected and the others are
+  not hidden; all three can be played, every day. When `/daily` fails the banner says "Today's
+  puzzle is resting. Try a game below!" and the game cards work as always.
+- **One puzzle, not a round.** The `#/daily/<level>` screen renders the day's game's own
+  component with the `single` prop: see "Playing one puzzle" below. There is no start screen and
+  no round of five; the progress reads `1 / 1`. On a solve the shell's solved screen says "Come
+  back tomorrow for a new puzzle!" with a "More games" button that goes home. Every check of a
+  daily puzzle carries `context: "daily"`, which the backend keeps with the attempt; ordinary play
+  sends no context. A 410 on a daily id (which should not happen for a fresh one) fetches `/daily`
+  again, once; a second one shows the usual "Try again".
+- **Completion is kept on the device only**, under the `localStorage` key `mathlings.daily`, as a
+  map from date to the levels solved that day (`{"2026-03-10": [1, 3]}`). A solved level shows a
+  check mark on its button. Nothing about completion is sent to the server.
+- **No streaks. This is deliberate.** A streak that breaks turns a missed day into a failure, and
+  this site is for children who may already find math stressful. So there is no count of days in
+  a row, no counter that resets in a way a child would notice, and never a "you lost your streak"
+  message. What the banner shows instead is "Days played this week: ●●○○○○○", seven dots from
+  Monday to Sunday of the device's local week, filled for each day any level was solved. A new
+  week simply starts with empty dots. A test looks for the word "streak" anywhere in the home
+  screen and fails if it finds it. Please do not "improve" this into a streak.
+
+### Playing one puzzle
+
+`usePuzzleSession` takes an optional third argument, a `SinglePuzzle`: a puzzle already in hand,
+played outside a round. The three server-checked games pass it through as a `single` prop
+(`MissingNumber`, `Sequences`, `SumGrid`), and their hooks (`useMissingNumberGame` and the
+others) hand it to the session. Nothing else in a game changes: the same component draws the same
+puzzle, with the same keys, hints and sounds.
+
+```ts
+interface SinglePuzzle<G, Level> {
+  puzzle: PuzzleOf<G>; // shown at once: no start screen
+  level: Level;
+  context: 'daily'; // sent with every check
+  reload: (signal?) => Promise<ApiResult<PuzzleOf<G>>>; // the same puzzle again, after a 410, once
+  onSolved?: () => void; // as soon as the last step is right
+  solved: { message: string; nextLabel: string; onNext: () => void }; // the solved screen
+}
+```
+
+In this mode the session starts in the `playing` phase, `roundSize` is 1, the puzzle finishes
+with `solved` (never `complete`, there is no round to celebrate), `next` calls `solved.onNext`,
+and `GameShell` shows `solved.message` and `solved.nextLabel` through its `solvedScreen` prop
+instead of "Puzzle solved. Great thinking!" and "Next".
 
 ## Missing Number Chains
 

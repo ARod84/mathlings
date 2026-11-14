@@ -6,7 +6,12 @@ import { LoadingScreen, OptionTiles, ProblemScreen, StartScreen } from '../sessi
 import { useOptionKeys } from '../session/useOptionKeys';
 import { formatJump, formatNumber, rowLabel, spokenNumber, visibleJumps } from './sequence';
 import styles from './Sequences.module.css';
-import { DEFAULT_TIMING, useSequencesGame, type GameTiming } from './useSequencesGame';
+import {
+  DEFAULT_TIMING,
+  useSequencesGame,
+  type GameTiming,
+  type SingleSequence,
+} from './useSequencesGame';
 
 export interface SequencesProps {
   house?: HouseKey;
@@ -14,6 +19,8 @@ export interface SequencesProps {
   onExit?: () => void;
   /** How long the pauses between steps last. Tests shorten them. */
   timing?: GameTiming;
+  /** Play this one puzzle instead of a round: no start screen, and its own words when solved. */
+  single?: SingleSequence;
 }
 
 const LEVELS: { level: Level; label: string }[] = [
@@ -67,8 +74,9 @@ export function Sequences({
   house = 'scientists',
   onExit,
   timing = DEFAULT_TIMING,
+  single,
 }: SequencesProps) {
-  const game = useSequencesGame(timing);
+  const game = useSequencesGame(timing, single);
   const { state, locked } = game;
   const { phase, puzzle, stepIndex, selected, answers } = state;
   const playing = phase === 'playing' && puzzle !== null;
@@ -118,6 +126,7 @@ export function Sequences({
       onReset={playing && !locked && selected !== null ? game.reset : undefined}
       onNext={game.next}
       onExit={onExit}
+      solvedScreen={single?.solved}
     >
       {phase === 'choose-level' && (
         <StartScreen

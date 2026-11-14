@@ -5,12 +5,13 @@ import {
   getHint,
   newPuzzle,
   type ApiResult,
+  type CheckContext,
   type Diagnosis,
   type GameId,
   type NewPuzzleRequest,
   type PuzzleOf,
 } from '../api/puzzles';
-import type { FeedbackState } from '../shell';
+import type { FeedbackState, SolvedCopy } from '../shell';
 
 /*
  * A round of server-checked puzzles, for any game the backend has a puzzle
@@ -27,6 +28,11 @@ import type { FeedbackState } from '../shell';
  * request parameters come from, and how many hint tiers a step has. Its own
  * hook (see missing-number/useMissingNumberGame.ts) is then a thin layer that
  * names the ways to start a round.
+ *
+ * There is a second way to play, besides a round: one puzzle that was fetched
+ * already (SinglePuzzle). Today's Puzzle uses it. The game starts on that
+ * puzzle with no start screen, every check carries the puzzle's context, and
+ * when it is solved the completion screen says what the caller asked for.
  *
  * An answer is a number, because that is what the check route takes.
  */
@@ -89,9 +95,33 @@ export interface PuzzleSessionConfig<G extends GameId, Plan, Level> {
   hintTiers: (puzzle: PuzzleOf<G>, stepIndex: number) => number;
 }
 
+/**
+ * "Play this one puzzle": a puzzle already in hand, played outside a round.
+ * The session starts on it (no start screen), sends `context` with every
+ * check, and shows `solved` when it is done. Define it per render if you
+ * like: the session reads the latest one.
+ */
+export interface SinglePuzzle<G extends GameId, Level> {
+  puzzle: PuzzleOf<G>;
+  level: Level;
+  /** Sent with every check, so the backend can tell this play apart. */
+  context: CheckContext;
+  /**
+   * The same puzzle again, for the one case where the server says the puzzle
+   * in hand is from an older generator version (410). Tried once; if that
+   * also fails, the child sees the usual "Try again".
+   */
+  reload: (signal?: AbortSignal) => Promise<ApiResult<PuzzleOf<G>>>;
+  /** Called once, as soon as the last step is answered correctly. */
+  onSolved?: () => void;
+  /** What the completion screen says, and what its button does. */
+  solved: SolvedCopy & { onNext: () => void };
+}
+
 /** What to do again when the child presses "Try again". */
 type Retry<Plan> =
   | { kind: 'load'; plan: Plan; puzzleIndex: number }
+  | { kind: 'reload' }
   | { kind: 'check' }
   | { kind: 'hint'; tier: number };
 
@@ -152,8 +182,18 @@ const FRESH_STEP = {
   hintLoading: false,
 } satisfies Partial<SessionState<never, never, never>>;
 
+/** Where a session begins: the start screen, or straight into a single puzzle. */
+function initialState<Puzzle, Plan, Level>(
+  single: { puzzle: Puzzle; level: Level } | undefined,
+): SessionState<Puzzle, Plan, Level> {
+  const initial = INITIAL as SessionState<Puzzle, Plan, Level>;
+  if (!single) return initial;
+  return { ...initial, phase: 'playing', puzzle: single.puzzle, level: single.level };
+}
+
 type Action<Puzzle, Plan, Level> =
   | { type: 'loading'; plan: Plan; level: Level | null; puzzleIndex: number }
+  | { type: 'reloading' }
   | { type: 'loaded'; puzzle: Puzzle; level: Level }
   | { type: 'failed' }
   | { type: 'resumed' }
@@ -182,6 +222,9 @@ function reducer<Puzzle, Plan, Level>(
         level: action.level,
         puzzleIndex: action.puzzleIndex,
       };
+    case 'reloading':
+      // The same puzzle is on its way again; the level is already known.
+      return { ...INITIAL, phase: 'loading', level: state.level };
     case 'loaded':
       return {
         ...state,
@@ -237,7 +280,7 @@ function reducer<Puzzle, Plan, Level>(
 
 export interface PuzzleSession<G extends GameId, Plan, Level> {
   state: SessionState<PuzzleOf<G>, Plan, Level>;
-  /** Number of puzzles in a round. */
+  /** Number of puzzles in a round; 1 for a single puzzle. */
   roundSize: number;
   /** Starts a round that picks its puzzles the way `plan` says. */
   start: (plan: Plan) => void;
@@ -248,7 +291,10 @@ export interface PuzzleSession<G extends GameId, Plan, Level> {
   requestHint: () => void;
   /** Clears the answer of the current step. */
   reset: () => void;
-  /** After a solved puzzle: the next one. After the round: back to the start screen. */
+  /**
+   * After a solved puzzle: the next one. After the round: back to the start
+   * screen. For a single puzzle: whatever its `solved.onNext` does.
+   */
   next: () => void;
   /** On the error screen: do the thing that failed again. */
   retry: () => void;
@@ -260,18 +306,23 @@ export interface PuzzleSession<G extends GameId, Plan, Level> {
 export function usePuzzleSession<G extends GameId, Plan, Level>(
   config: PuzzleSessionConfig<G, Plan, Level>,
   timing: SessionTiming = DEFAULT_TIMING,
+  single?: SinglePuzzle<G, Level>,
 ): PuzzleSession<G, Plan, Level> {
-  type State = SessionState<PuzzleOf<G>, Plan, Level>;
-  const [state, dispatch] = useReducer(reducer<PuzzleOf<G>, Plan, Level>, INITIAL as State);
+  const [state, dispatch] = useReducer(reducer<PuzzleOf<G>, Plan, Level>, single, initialState);
 
   // The callbacks below run after awaits, so they read the latest state from a ref.
   // A layout effect, not a plain one: the ref has to change together with the
   // page. Otherwise there is a moment when the next step is on screen while the
   // ref still says the last one is being marked, and a click then is dropped.
   const latest = useRef(state);
+  // The single puzzle too: it may be built anew on every render.
+  const singleRef = useRef(single);
   useLayoutEffect(() => {
     latest.current = state;
+    singleRef.current = single;
   });
+  // A single puzzle is fetched again at most once (see SinglePuzzle.reload).
+  const reloaded = useRef(false);
 
   // One controller for the game's lifetime: leaving the game cancels whatever is in flight.
   const abort = useRef<AbortController | null>(null);
@@ -318,18 +369,44 @@ export function usePuzzleSession<G extends GameId, Plan, Level>(
     [config, fail],
   );
 
+  /** The single puzzle, fetched again. On "Try again" after a failed reload, too. */
+  const reloadSingle = useCallback(async () => {
+    const single = singleRef.current;
+    if (!single) return;
+    dispatch({ type: 'reloading' });
+    const result = await single.reload(abort.current?.signal);
+    if (!alive()) return;
+    if (result.status === 'ok') {
+      dispatch({ type: 'loaded', puzzle: result.data, level: single.level });
+    } else {
+      fail({ kind: 'reload' });
+    }
+  }, [fail]);
+
   /**
    * What every call about an existing puzzle does when it does not succeed.
    * A puzzle from an older generator version is replaced by a fresh one,
    * picked the same way, without a word; anything else shows the friendly error.
+   * A single puzzle is fetched again instead, and only once.
    */
   const handleFailure = useCallback(
     (result: ApiResult<unknown>, retry: Retry<Plan>) => {
       const { plan, puzzleIndex } = latest.current;
-      if (result.status === 'gone' && plan !== null) void loadPuzzle(plan, puzzleIndex);
-      else fail(retry);
+      if (result.status === 'gone') {
+        if (singleRef.current) {
+          if (!reloaded.current) {
+            reloaded.current = true;
+            void reloadSingle();
+            return;
+          }
+        } else if (plan !== null) {
+          void loadPuzzle(plan, puzzleIndex);
+          return;
+        }
+      }
+      fail(retry);
     },
-    [fail, loadPuzzle],
+    [fail, loadPuzzle, reloadSingle],
   );
 
   const fetchHint = useCallback(
@@ -357,7 +434,13 @@ export function usePuzzleSession<G extends GameId, Plan, Level>(
       latest.current;
     if (!puzzle || selected === null || checking || feedback === 'correct') return;
     dispatch({ type: 'checking' });
-    const result = await checkStep(puzzle.puzzle_id, stepIndex, selected, abort.current?.signal);
+    const result = await checkStep(
+      puzzle.puzzle_id,
+      stepIndex,
+      selected,
+      abort.current?.signal,
+      singleRef.current?.context,
+    );
     if (!alive()) return;
     if (result.status !== 'ok') {
       handleFailure(result, { kind: 'check' });
@@ -388,7 +471,10 @@ export function usePuzzleSession<G extends GameId, Plan, Level>(
         timing.advanceMs,
       );
     } else {
-      const lastPuzzle = puzzleIndex === config.roundSize - 1;
+      const single = singleRef.current;
+      single?.onSolved?.();
+      // A single puzzle is 'solved', not 'complete': there is no round to celebrate.
+      const lastPuzzle = !single && puzzleIndex === config.roundSize - 1;
       timer.current = window.setTimeout(
         () => dispatch({ type: 'finished', feedback: lastPuzzle ? 'complete' : 'solved' }),
         timing.finishMs,
@@ -414,6 +500,11 @@ export function usePuzzleSession<G extends GameId, Plan, Level>(
   }, [config, fetchHint]);
 
   const next = useCallback(() => {
+    const single = singleRef.current;
+    if (single) {
+      single.solved.onNext();
+      return;
+    }
     const { plan, puzzleIndex, feedback } = latest.current;
     if (plan === null || feedback === 'complete') dispatch({ type: 'restarted' });
     else void loadPuzzle(plan, puzzleIndex + 1);
@@ -427,15 +518,19 @@ export function usePuzzleSession<G extends GameId, Plan, Level>(
       void loadPuzzle(again.plan, again.puzzleIndex);
       return;
     }
+    if (again.kind === 'reload') {
+      void reloadSingle();
+      return;
+    }
     // The puzzle is still there: go back to it, then repeat the call.
     dispatch({ type: 'resumed' });
     if (again.kind === 'check') void check();
     else void fetchHint(again.tier);
-  }, [check, fetchHint, loadPuzzle]);
+  }, [check, fetchHint, loadPuzzle, reloadSingle]);
 
   return {
     state,
-    roundSize: config.roundSize,
+    roundSize: single ? 1 : config.roundSize,
     start: useCallback((plan: Plan) => void loadPuzzle(plan, 0), [loadPuzzle]),
     select,
     check: useCallback(() => void check(), [check]),

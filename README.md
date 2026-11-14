@@ -58,6 +58,34 @@ need it, and show a "Try again" message when they cannot reach it.
   numbers. Five puzzles per round. The first hint lights up the row or column to look at. The
   backend proves for every grid that it has exactly one solution and that no step needs a guess.
 
+## Today's Puzzle
+
+Like a daily crossword: every day, everyone gets the same puzzle, in three levels (Easy, Medium,
+Hard). It sits in a banner at the top of the home screen and needs no account.
+
+- **How the date works.** The browser sends the child's local calendar date, from the device
+  clock, so "today" turns over at the child's midnight (a UTC date would turn over at 21:00 in
+  Buenos Aires). The server accepts a date within one day of its own UTC date, which covers every
+  timezone, and answers 422 to anything else.
+- **How the puzzle is made.** The game of the day follows a fixed rotation by the number of days
+  since 1 January 2026: Missing Number Chains, Next in Line, Sum Grid, and round again. The seed is
+  the SHA-256 of `daily:<date>:<game>:<level>`, reduced to the seed range, so the same date, game
+  and level give the same puzzle id everywhere, with no storage and no AI. The puzzle is an
+  ordinary verified puzzle with the game's default parameters (a chain of length 3), and the
+  ordinary check and hint routes play it. No secret goes into the seed: the answers are not
+  secrets (below).
+- **Number Pyramid is not in the rotation** for now: its puzzles are generated in the browser, and
+  the daily puzzle is made on the server so that everyone gets the same one.
+- **What is remembered.** Completion lives on the device only (`localStorage`): a check mark on
+  each level solved today, and "Days played this week", seven dots from Monday to Sunday. The
+  server sees daily checks as ordinary attempts marked `context: "daily"`; they count as evidence
+  for mastery like any other attempt.
+- **No streaks, on purpose.** A streak that breaks turns a missed day into a failure, which is the
+  wrong feeling for children who find math stressful. There is no count of days in a row, nothing
+  that resets in a way a child would notice, and never a "you lost your streak" message. The
+  week's dots start empty every Monday without a word about it. See `frontend/README.md` before
+  changing this.
+
 ## The API
 
 `backend/` serves a JSON API under `/api/v1`, with interactive docs at
@@ -68,6 +96,7 @@ need it, and show a "Try again" message when they cannot reach it.
 | Taxonomy | `GET /domains`, `/topics`, `/topics/{id}` and its `/prerequisites`, `/unlocks`, `/step-back`, `/error-patterns`, `/research`; `GET /meta/source`                                                         |
 | Puzzles  | `POST /puzzles/{game}` (`missing-number`, `sequences` or `sum-grid`), `GET /puzzles/{puzzle_id}`, `POST /puzzles/{puzzle_id}/steps/{index}/check`, `GET /puzzles/{puzzle_id}/steps/{index}/hints/{tier}` |
 | Players  | `GET /players/me/summary`, `GET /players/me/next`, `DELETE /players/me`; all need the `X-Player-Id` header (see [Privacy](#privacy))                                                                     |
+| Daily    | `GET /daily?date=YYYY-MM-DD&level=1\|2\|3`: Today's Puzzle, `{date, game, level, puzzle}`                                                                                                                |
 | Health   | `GET /health`                                                                                                                                                                                            |
 
 ### Puzzles are stateless

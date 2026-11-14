@@ -212,13 +212,15 @@ export interface SumGridBackend {
   requests: {
     new: Record<string, unknown>[];
     get: string[];
-    check: { puzzleId: string; step: number; answer: number }[];
+    check: { puzzleId: string; step: number; answer: number; context?: string }[];
     hint: { puzzleId: string; step: number; tier: number }[];
   };
   /** Make the next call to a route fail once. */
   failNext: (route: Route, failure: Failure) => void;
   /** Hold every answer back by this many milliseconds. */
   delayMs: number;
+  /** A puzzle at a level, registered as if POST had made it, without a request being recorded. */
+  issue: (level: number) => SumGridPublic;
 }
 
 function failureResponse(failure: Failure): Response {
@@ -248,6 +250,14 @@ export function createSumGridBackend(
     requests: { new: [], get: [], check: [], hint: [] },
     failNext: (route, failure) => pending[route].push(failure),
     delayMs: 0,
+    issue: (level) => {
+      const fixture = backend.byLevel[level];
+      if (!fixture) throw new Error(`no grid fixture for level ${level}`);
+      counter += 1;
+      const puzzleId = `sg-1-${level}-${counter}-test`;
+      puzzles.set(puzzleId, { level, fixture });
+      return toPublic(puzzleId, level, fixture);
+    },
   };
 
   const pause = () =>
@@ -286,12 +296,8 @@ export function createSumGridBackend(
       await pause();
       const failure = pending.new.shift();
       if (failure !== undefined) return failureResponse(failure);
-      const fixture = backend.byLevel[body.level];
-      if (!fixture) return failureResponse(404);
-      counter += 1;
-      const puzzleId = `sg-1-${body.level}-${counter}-test`;
-      puzzles.set(puzzleId, { level: body.level, fixture });
-      return HttpResponse.json(toPublic(puzzleId, body.level, fixture), { status: 201 });
+      if (!backend.byLevel[body.level]) return failureResponse(404);
+      return HttpResponse.json(backend.issue(body.level), { status: 201 });
     }),
 
     http.get('*/api/v1/puzzles/:puzzleId', async ({ params }) => {
@@ -308,8 +314,12 @@ export function createSumGridBackend(
     http.post('*/api/v1/puzzles/:puzzleId/steps/:index/check', async ({ params, request }) => {
       const puzzleId = String(params.puzzleId);
       const index = Number(params.index);
-      const { answer } = (await request.json()) as Schemas['CheckRequest'];
-      backend.requests.check.push({ puzzleId, step: index, answer });
+      const { answer, context } = (await request.json()) as Schemas['CheckRequest'];
+      backend.requests.check.push(
+        context == null
+          ? { puzzleId, step: index, answer }
+          : { puzzleId, step: index, answer, context },
+      );
       await pause();
       const failure = pending.check.shift();
       const fixture = puzzles.get(puzzleId)?.fixture;

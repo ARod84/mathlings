@@ -1,10 +1,11 @@
 import { Play } from 'lucide-react';
+import { DailyBanner } from '../daily/DailyBanner';
 import { GAMES } from '../games/registry';
 import { ROUTE_HASH } from '../router';
 import { ForgetProgress } from './ForgetProgress';
 import styles from './Home.module.css';
 
-/** The home screen: one card per game in the registry. */
+/** The home screen: Today's Puzzle, then one card per game in the registry. */
 export function Home() {
   return (
     <div className={styles.home}>
@@ -12,6 +13,8 @@ export function Home() {
         <h1 className={styles.title}>Mathlings</h1>
         <p className={styles.tagline}>Pick a game and start puzzling.</p>
       </header>
+
+      <DailyBanner />
 
       <ul className={styles.games} aria-label="Games">
         {GAMES.map((game) => (

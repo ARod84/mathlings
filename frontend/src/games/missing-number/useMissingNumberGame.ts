@@ -8,6 +8,7 @@ import {
   type PuzzleSessionConfig,
   type SessionState,
   type SessionTiming,
+  type SinglePuzzle,
 } from '../usePuzzleSession';
 
 /*
@@ -37,6 +38,8 @@ export const FALLBACK = { level: 1, length: 2 } as const;
 export { DEFAULT_TIMING, WRONG_TRIES_BEFORE_HINT };
 export type { Phase };
 export type GameTiming = SessionTiming;
+/** One chain to play on its own, outside a round (Today's Puzzle). */
+export type SingleChain = SinglePuzzle<'missing-number', Level>;
 
 /** How the puzzles of a round are picked. */
 type Plan = { kind: 'adaptive' } | { kind: 'fixed'; level: Level };
@@ -100,8 +103,11 @@ export interface MissingNumberGame {
   canHint: boolean;
 }
 
-export function useMissingNumberGame(timing: GameTiming = DEFAULT_TIMING): MissingNumberGame {
-  const { start, ...session } = usePuzzleSession(SESSION, timing);
+export function useMissingNumberGame(
+  timing: GameTiming = DEFAULT_TIMING,
+  single?: SingleChain,
+): MissingNumberGame {
+  const { start, ...session } = usePuzzleSession(SESSION, timing, single);
   return {
     ...session,
     play: useCallback(() => start({ kind: 'adaptive' }), [start]),

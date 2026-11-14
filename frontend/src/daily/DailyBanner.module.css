@@ -1,0 +1,132 @@
+/* The featured block above the game cards: dark, with the gold of the title. */
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(var(--color-gold) 0 6px, var(--color-gold-deep) 6px 16px, transparent 16px),
+    linear-gradient(170deg, var(--color-space-2), var(--color-space));
+  color: var(--color-on-dark);
+  box-shadow: var(--shadow-card);
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+}
+
+.kicker {
+  font: var(--font-weight-heavy) var(--font-size-sm) / var(--line-height-tight) var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+}
+
+.title {
+  min-height: 1lh;
+  font: var(--font-weight-heavy) var(--font-size-2xl) / var(--line-height-snug) var(--font-display);
+}
+
+.blurb {
+  font: var(--font-weight-medium) var(--font-size-md) / var(--line-height-body) var(--font-body);
+  color: var(--color-on-dark-muted);
+}
+
+.levels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+/* One block per level, the same build as the Play buttons. */
+.level {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: var(--size-control);
+  padding: var(--space-3) var(--space-2);
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-md);
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font: var(--font-weight-heavy) var(--font-size-lg) / 1 var(--font-display);
+  text-decoration: none;
+  box-shadow: var(--shadow-button);
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
+}
+
+.level:hover {
+  background: var(--color-gold);
+}
+
+.level:active {
+  transform: translateY(var(--size-press));
+  box-shadow: 0 1px 0 0 var(--color-outline);
+}
+
+.level[data-solved] {
+  background: var(--color-mint);
+}
+
+/* Subtle: a dotted ring, not a different button. The child can still pick any level. */
+.level[data-suggested] {
+  outline: 3px dotted var(--color-gold);
+  outline-offset: 3px;
+}
+
+.levelLabel {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.suggested {
+  font: var(--font-weight-medium) var(--font-size-xs) / 1 var(--font-body);
+  color: var(--color-ink);
+  opacity: 0.75;
+}
+
+.week {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--font-weight-medium) var(--font-size-sm) / var(--line-height-body) var(--font-body);
+  color: var(--color-on-dark-muted);
+}
+
+.dots {
+  display: inline-flex;
+  gap: 0.2em;
+  font-size: var(--font-size-md);
+  letter-spacing: 0.05em;
+  color: var(--color-on-dark);
+}
+
+.dots [data-played] {
+  color: var(--color-gold);
+}
+
+@media (max-width: 24rem) {
+  .banner {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .level {
+    padding-inline: var(--space-1);
+    font-size: var(--font-size-md);
+  }
+}

@@ -65,9 +65,13 @@ export type ApiResult<T> =
   /** No answer at all: offline, or the backend is not running. */
   | { status: 'network' };
 
+/** Where a check comes from, when it is not ordinary play: 'daily' for Today's Puzzle. */
+export type CheckContext = NonNullable<components['schemas']['CheckRequest']['context']>;
+
 type Outcome<T> = { data?: T; response: Response };
 
-async function toResult<T>(request: Promise<Outcome<T>>): Promise<ApiResult<T>> {
+/** An openapi-fetch outcome as an ApiResult. Shared with the other API modules. */
+export async function toResult<T>(request: Promise<Outcome<T>>): Promise<ApiResult<T>> {
   let outcome: Outcome<T>;
   try {
     outcome = await request;
@@ -113,16 +117,18 @@ export function getPuzzle(puzzleId: string, signal?: AbortSignal): Promise<ApiRe
   );
 }
 
+/** Checks one answer. `context` is sent only when given; ordinary play gives none. */
 export function checkStep(
   puzzleId: string,
   stepIndex: number,
   answer: number,
   signal?: AbortSignal,
+  context?: CheckContext,
 ): Promise<ApiResult<CheckResult>> {
   return toResult(
     api.POST('/api/v1/puzzles/{puzzle_id}/steps/{index}/check', {
       params: { path: { puzzle_id: puzzleId, index: stepIndex } },
-      body: { answer },
+      body: context === undefined ? { answer } : { answer, context },
       signal,
     }),
   );

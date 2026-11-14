@@ -2,6 +2,7 @@ import { ArrowRight, RotateCcw } from 'lucide-react';
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { OrbiPlaceholder } from './orbi/OrbiPlaceholder';
 import styles from './SolvedScreen.module.css';
+import type { SolvedCopy } from './types';
 
 interface SolvedScreenProps {
   /** 'puzzle': one puzzle solved. 'round': the last puzzle of the round solved. */
@@ -9,6 +10,8 @@ interface SolvedScreenProps {
   /** Number of puzzles in the round; used by the 'round' variant. */
   total?: number;
   onNext?: () => void;
+  /** Other words for the message and the button; the 'puzzle' variant only. */
+  copy?: SolvedCopy;
 }
 
 const SPARKS = { puzzle: 10, round: 20 } as const;
@@ -19,9 +22,10 @@ const MAX_TROPHY_BLOCKS = 12;
  * The completion screen every game shows: after each puzzle ('puzzle'), and a
  * bigger one when the whole round is done ('round').
  */
-export function SolvedScreen({ variant = 'puzzle', total = 0, onNext }: SolvedScreenProps) {
+export function SolvedScreen({ variant = 'puzzle', total = 0, onNext, copy }: SolvedScreenProps) {
   const nextRef = useRef<HTMLButtonElement>(null);
   const round = variant === 'round';
+  const words = round ? undefined : copy;
   const count = Math.max(0, Math.floor(total));
 
   // The action bar is gone at this point, so hand keyboard focus to the button.
@@ -63,12 +67,12 @@ export function SolvedScreen({ variant = 'puzzle', total = 0, onNext }: SolvedSc
           ? count > 0
             ? `You solved all ${count} puzzles. Stellar work!`
             : 'You solved every puzzle. Stellar work!'
-          : 'Puzzle solved. Great thinking!'}
+          : (words?.message ?? 'Puzzle solved. Great thinking!')}
       </p>
       {onNext && (
         <button ref={nextRef} type="button" className={styles.next} onClick={onNext}>
           {round && <RotateCcw aria-hidden="true" size={22} strokeWidth={3} />}
-          <span>{round ? 'Play again' : 'Next'}</span>
+          <span>{round ? 'Play again' : (words?.nextLabel ?? 'Next')}</span>
           {!round && <ArrowRight aria-hidden="true" size={24} strokeWidth={3} />}
         </button>
       )}

@@ -50,6 +50,7 @@ export function GameShell({
   onReset,
   onNext,
   onExit,
+  solvedScreen,
   children,
 }: GameShellProps) {
   const { muted, toggleMuted, play } = useFeedbackSound();
@@ -116,6 +117,7 @@ export function GameShell({
             variant={feedback === 'complete' ? 'round' : 'puzzle'}
             total={progress.total}
             onNext={onNext}
+            copy={feedback === 'solved' ? solvedScreen : undefined}
           />
         )}
 

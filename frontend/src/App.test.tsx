@@ -1,9 +1,11 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { GAMES, gameFor } from './games/registry';
 import { parseRoute, ROUTE_HASH } from './router';
+import { createDailyBackend } from './test/dailyBackend';
 import { createPuzzleBackend } from './test/puzzleBackend';
 import { createSequenceBackend } from './test/sequenceBackend';
 import { createSumGridBackend } from './test/sumGridBackend';
@@ -19,6 +21,14 @@ async function goTo(hash: string) {
 
 beforeEach(() => {
   window.location.hash = '';
+  // The home screen asks for Today's Puzzle and a suggested level; these tests are about the rest.
+  const sequences = createSequenceBackend();
+  server.use(
+    ...createDailyBackend('sequences', sequences.issue).handlers,
+    http.get('*/api/v1/players/me/next', () =>
+      HttpResponse.json({ detail: 'Unavailable' }, { status: 503 }),
+    ),
+  );
 });
 
 afterEach(() => {
@@ -228,6 +238,11 @@ describe('routing', () => {
     ['#/nowhere', 'home'],
     ['#/home', 'home'],
     ['#pyramid', 'pyramid'],
+    ['#/daily', 'daily'],
+    ['#/daily/2', 'daily'],
+    ['#/daily/9', 'daily'],
+    ['#daily/3', 'daily'],
+    ['#/daily/2/more', 'home'],
   ])('parseRoute(%j) is %s', (hash, route) => {
     expect(parseRoute(hash)).toBe(route);
   });
@@ -239,7 +254,7 @@ describe('routing', () => {
       expect(parseRoute(`#${game.route}`)).toBe(game.route);
     }
     expect(Object.keys(ROUTE_HASH).sort()).toEqual(
-      ['home', 'shell-demo', ...GAMES.map((game) => game.route)].sort(),
+      ['home', 'shell-demo', 'daily', ...GAMES.map((game) => game.route)].sort(),
     );
     // A game's id is not a route unless it is also its route name.
     expect(parseRoute('#/number-pyramid')).toBe('home');

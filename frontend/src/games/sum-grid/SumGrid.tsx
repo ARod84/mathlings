@@ -6,7 +6,12 @@ import { LoadingScreen, OptionTiles, ProblemScreen, StartScreen } from '../sessi
 import { useOptionKeys } from '../session/useOptionKeys';
 import { blankLabel, cellKey, gridDescription, onLine, type Solved } from './grid';
 import styles from './SumGrid.module.css';
-import { DEFAULT_TIMING, useSumGridGame, type GameTiming } from './useSumGridGame';
+import {
+  DEFAULT_TIMING,
+  useSumGridGame,
+  type GameTiming,
+  type SingleSumGrid,
+} from './useSumGridGame';
 
 export interface SumGridProps {
   house?: HouseKey;
@@ -14,6 +19,8 @@ export interface SumGridProps {
   onExit?: () => void;
   /** How long the pauses between steps last. Tests shorten them. */
   timing?: GameTiming;
+  /** Play this one puzzle instead of a round: no start screen, and its own words when solved. */
+  single?: SingleSumGrid;
 }
 
 const LEVELS: { level: Level; label: string }[] = [
@@ -35,8 +42,13 @@ const INSTRUCTIONS = {
  */
 const HIGHLIGHT_FROM_HINT_TIER = 1;
 
-export function SumGrid({ house = 'artisans', onExit, timing = DEFAULT_TIMING }: SumGridProps) {
-  const game = useSumGridGame(timing);
+export function SumGrid({
+  house = 'artisans',
+  onExit,
+  timing = DEFAULT_TIMING,
+  single,
+}: SumGridProps) {
+  const game = useSumGridGame(timing, single);
   const { state, locked } = game;
   const { phase, puzzle, stepIndex, selected, answers } = state;
   const playing = phase === 'playing' && puzzle !== null;
@@ -89,6 +101,7 @@ export function SumGrid({ house = 'artisans', onExit, timing = DEFAULT_TIMING }:
       onReset={playing && !locked && selected !== null ? game.reset : undefined}
       onNext={game.next}
       onExit={onExit}
+      solvedScreen={single?.solved}
     >
       {phase === 'choose-level' && (
         <StartScreen
