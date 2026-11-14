@@ -184,9 +184,12 @@ describe('a 2 by 2 puzzle', () => {
     expect(currentBlank()).toHaveAccessibleName('Row 1, column 2. Blank 1 of 2, with 6.');
     await user.click(action('Check'));
 
+    // The solved cell turns green first; the next blank opens after the "correct" pause.
     await waitFor(() => expect(states()[0]).toEqual(['given', 'solved', 'target']));
+    await waitFor(() =>
+      expect(currentBlank()).toHaveAccessibleName('Row 2, column 1. Blank 2 of 2.'),
+    );
     expect(states()[1]).toEqual(['current', 'given', 'target']);
-    expect(currentBlank()).toHaveAccessibleName('Row 2, column 1. Blank 2 of 2.');
     expect(
       options()
         .getAllByRole('button')
