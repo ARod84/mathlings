@@ -18,6 +18,11 @@ class CheckRequest(BaseModel):
         "sum-grid. An answer "
         "outside the bounds of the puzzle's game is a 422."
     )
+    context: Literal["daily"] | None = Field(
+        default=None,
+        description="Where this check comes from. `daily` for Today's Puzzle (GET /daily); it is "
+        "kept in the stored attempt's details as `context`. Leave out for ordinary play.",
+    )
 
 
 class ReteachTopic(BaseModel):

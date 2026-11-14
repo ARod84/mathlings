@@ -120,7 +120,7 @@ def test_cors_origin_comes_from_settings(tmp_path: Path):
 def test_every_route_has_a_tag_a_summary_and_a_response_model(client: TestClient):
     document = client.get("/openapi.json").json()
 
-    assert len(document["paths"]) == 18
+    assert len(document["paths"]) == 19
     for path, operations in document["paths"].items():
         if "/puzzles" not in path and "/players" not in path:
             assert list(operations) == ["get"], path

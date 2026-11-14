@@ -722,13 +722,13 @@ How to read it:
 `app/api/v1/puzzles.py` put every registered puzzle type on HTTP, under `/api/v1/puzzles`. The
 routes are the same for every game.
 
-| Route                                         | Body or params                                            | Returns                 |
-| --------------------------------------------- | --------------------------------------------------------- | ----------------------- |
-| `POST /{game}`                                | The game's own body: `level`, `seed?`, and its parameters | The game's puzzle (201) |
-| `GET /{puzzle_id}`                            |                                                           | The game's puzzle       |
-| `POST /{puzzle_id}/steps/{index}/check`       | `{ answer }`, a whole number within the game's bounds     | `CheckResult`           |
-| `GET /{puzzle_id}/steps/{index}/hints/{tier}` | tier 1 up to the step's number of tiers                   | `{ tier, text }`        |
-| `POST /missing-number` (deprecated)           | The chain body, below                                     | `PuzzlePublic` (201)    |
+| Route                                         | Body or params                                                  | Returns                 |
+| --------------------------------------------- | --------------------------------------------------------------- | ----------------------- |
+| `POST /{game}`                                | The game's own body: `level`, `seed?`, and its parameters       | The game's puzzle (201) |
+| `GET /{puzzle_id}`                            |                                                                 | The game's puzzle       |
+| `POST /{puzzle_id}/steps/{index}/check`       | `{ answer, context? }`; a whole number within the game's bounds | `CheckResult`           |
+| `GET /{puzzle_id}/steps/{index}/hints/{tier}` | tier 1 up to the step's number of tiers                         | `{ tier, text }`        |
+| `POST /missing-number` (deprecated)           | The chain body, below                                           | `PuzzlePublic` (201)    |
 
 For `game` = `missing-number` the body is `{ level: 1–3, length: 1–4 (default 3), seed?, focus? }`
 and the puzzle is `PuzzlePublic`. For `game` = `sequences` the body is `{ level: 1–3, seed? }` and
@@ -777,6 +777,37 @@ and four `options`.
 - **Check log.** Each check writes one line to the `app.puzzles.checks` logger: puzzle id, step,
   correct, matched rules and latency. The same fields are on the record as `puzzle_check`. No
   personal data, and not the answer itself.
+- **Context.** A check may say where it comes from: `context: "daily"` for Today's Puzzle. It is
+  kept in the stored attempt's `details` as `context` and changes nothing else; a daily attempt
+  is ordinary evidence for mastery. Ordinary play sends no context, and then `details` are
+  exactly what the puzzle type gives. Any other value is a 422.
+
+### Today's Puzzle (daily)
+
+`GET /api/v1/daily?date=YYYY-MM-DD&level=1|2|3` is one puzzle for everyone on the same day, in
+three levels, like a daily crossword. The logic is `app/puzzles/daily.py`; the route is
+`app/api/v1/daily.py`. It answers `{date, game, level, puzzle}`, where `puzzle` is the day's
+game's public shape (the same `oneOf` over the games, discriminated by `game`, as the puzzle
+routes). Nothing is stored and no AI is involved: the puzzle is an ordinary verified puzzle with a
+seed derived from the date, so its id works with the check and hint routes unchanged.
+
+- **Rotation.** A fixed schedule over the server-side games, by the number of days since
+  `EPOCH` (2026-01-01): `missing-number`, `sequences`, `sum-grid`, then round again. Number
+  Pyramid is built in the browser, so it is not in the rotation for now.
+- **Seed.** `sha256("daily:{date}:{game}:{level}")`, as an integer, reduced to the seed range.
+  The puzzle uses the game's default parameters (a chain of length 3). No secret goes in: the
+  answers are not secrets, see the root README. The same date, game and level give the same
+  puzzle id on every server.
+- **The date is the child's.** It comes from the device, so "today" is their local day (a UTC
+  date would turn over at 21:00 in Buenos Aires). The server accepts it within one day of its
+  own UTC date, either way, which covers every timezone; anything further, or malformed, is a
+  422 that says so (`date_out_of_window`). `level` outside 1 to 3 is a 422.
+- **No database.** The route reads nothing: the puzzle types were loaded at startup (or by the
+  first puzzle request after a re-import). A statement-budget test holds it to zero statements.
+  If the types could not load, it answers 503 like the puzzle routes.
+- **Recording.** The browser sends `context: "daily"` with each check of a daily puzzle (see
+  Context above). That is the only server-side trace of Today's Puzzle; completion is kept on
+  the device.
 
 ## How to add a puzzle type
 
@@ -821,7 +852,10 @@ worth fixing there instead of working around it.
 12. **OpenAPI.** Run `uv run python scripts/export_openapi.py` and commit `openapi.json`. The
     game's request and public models appear in it, and the puzzle responses become a `oneOf`
     discriminated by `game`. Then follow the frontend checklist in `frontend/README.md`.
-13. **Adaptive policy (optional).** Until the game has one, `/players/me/next` answers
+13. **Today's Puzzle (optional).** Add the game to `ROTATION` in `app/puzzles/daily.py` if it
+    should take a turn as the daily puzzle, and extend the rotation test in
+    `tests/test_daily_api.py`. Changing the order changes which game every day gets.
+14. **Adaptive policy (optional).** Until the game has one, `/players/me/next` answers
     `no_policy` with the type's defaults. To add one, see `app/adaptive/policies.py`.
 
 Shared pieces to use, not copy:

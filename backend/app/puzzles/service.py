@@ -181,11 +181,19 @@ class PuzzleService:
         return puzzle_type.to_public(puzzle)
 
     def check(
-        self, puzzle_id: str, step_index: int, answer: int, player_id: uuid.UUID | None = None
+        self,
+        puzzle_id: str,
+        step_index: int,
+        answer: int,
+        player_id: uuid.UUID | None = None,
+        context: str | None = None,
     ) -> CheckResult:
         """Check one answer. Never reveals the right answer when the child is wrong.
 
         With a player id the attempt is stored; the result is the same either way.
+        `context` says where the check comes from ("daily" for Today's Puzzle)
+        and is kept in the stored attempt's details; ordinary play sends none,
+        and then the details are exactly what the puzzle type gives.
         """
         started = time.perf_counter()
         puzzle_type, raw = self._type_of(puzzle_id)
@@ -234,6 +242,9 @@ class PuzzleService:
         )
         players = self.players
         if player_id is not None and players is not None:
+            details = puzzle_type.attempt_details(puzzle, step_index)
+            if context is not None:
+                details = {**details, "context": context}
             record = AttemptRecord(
                 puzzle_id=puzzle.puzzle_id,
                 generator_version=puzzle.generator_version,
@@ -246,7 +257,7 @@ class PuzzleService:
                 error_pattern_ids=list(outcome.error_pattern_ids),
                 reteach_topic_id=outcome.reteach_topic_id,
                 topic_ids=puzzle_type.step_topic_ids(puzzle, step_index),
-                details=puzzle_type.attempt_details(puzzle, step_index),
+                details=details,
             )
             self._store(players, lambda: players.record_attempt(player_id, record))
         return result

@@ -201,7 +201,9 @@ def build_router(registry: PuzzleRegistry) -> APIRouter:
     def check_step(
         puzzle_id: str, index: int, body: CheckRequest, puzzles: Puzzles, player_id: OptionalPlayer
     ) -> CheckResult:
-        return puzzles.check(puzzle_id, index, body.answer, player_id=player_id)
+        return puzzles.check(
+            puzzle_id, index, body.answer, player_id=player_id, context=body.context
+        )
 
     @router.get(
         "/{puzzle_id}/steps/{index}/hints/{tier}",

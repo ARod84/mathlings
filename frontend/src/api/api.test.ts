@@ -30,6 +30,7 @@ describe('generated API types', () => {
       '"/api/v1/puzzles/{puzzle_id}"',
       '"/api/v1/puzzles/{puzzle_id}/steps/{index}/check"',
       '"/api/v1/puzzles/{puzzle_id}/steps/{index}/hints/{tier}"',
+      '"/api/v1/daily"',
     ]) {
       expect(committed).toContain(path);
     }

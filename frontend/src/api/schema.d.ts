@@ -320,6 +320,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/daily": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Today's Puzzle: the same puzzle for everyone, at one of three levels
+         * @description Deterministic: the same `date`, game and `level` always give the same puzzle id, on every server. The game follows a fixed rotation by day; the puzzle uses the game's default parameters. `date` is the child's local date, from their device, and must be within a day of the server's UTC date (anything else is a 422). Play it with the ordinary check and hint routes; send `context: "daily"` with each check so the attempt is marked as Today's Puzzle.
+         */
+        get: operations["get_daily_api_v1_daily_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -341,6 +361,11 @@ export interface components {
              * @description A whole number. Each game has its own bounds (PuzzleType.answer_min and answer_max): 0 to 10000 for missing-number, -1000 to 10000 for sequences, 0 to 1000 for sum-grid. An answer outside the bounds of the puzzle's game is a 422.
              */
             answer: number;
+            /**
+             * Context
+             * @description Where this check comes from. `daily` for Today's Puzzle (GET /daily); it is kept in the stored attempt's details as `context`. Leave out for ordinary play.
+             */
+            context?: "daily" | null;
         };
         /** CheckResult */
         CheckResult: {
@@ -357,6 +382,30 @@ export interface components {
              * @description Index of the next step after a correct answer; null on the last step and after a wrong answer.
              */
             next_step: number | null;
+        };
+        /** DailyPuzzle */
+        DailyPuzzle: {
+            /**
+             * Date
+             * Format: date
+             * @description The day asked for, as the device gave it.
+             */
+            date: string;
+            /**
+             * Game
+             * @description The game of the day: the rotation in app/puzzles/daily.py.
+             */
+            game: string;
+            /**
+             * Level
+             * @description 1 (easy), 2 (medium) or 3 (hard).
+             */
+            level: number;
+            /**
+             * Puzzle
+             * @description The day's puzzle at `level`.
+             */
+            puzzle: components["schemas"]["PuzzlePublic"] | components["schemas"]["SequencePublic"] | components["schemas"]["SumGridPublic"];
         };
         /** DiagnosisPublic */
         DiagnosisPublic: {
@@ -1966,6 +2015,49 @@ export interface operations {
                 };
             };
             /** @description The player tables do not exist yet */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_daily_api_v1_daily_get: {
+        parameters: {
+            query: {
+                /** @description YYYY-MM-DD, the child's local date. Within a day of UTC today. */
+                date: string;
+                /** @description 1 easy, 2 medium, 3 hard. */
+                level: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyPuzzle"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Puzzles cannot be served right now */
             503: {
                 headers: {
                     [name: string]: unknown;

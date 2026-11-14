@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import inspect
 from sqlmodel import Session
 
+from app.api.v1 import daily as daily_api
 from app.api.v1 import players as players_api
 from app.api.v1 import puzzles as puzzles_api
 from app.api.v1 import taxonomy as taxonomy_api
@@ -58,6 +59,11 @@ OPENAPI_TAGS = [
         "name": "Players",
         "description": "Anonymous practice history, kept only when the browser sends "
         "X-Player-Id. The id is a pseudonymous identifier, not authentication.",
+    },
+    {
+        "name": "Daily",
+        "description": "Today's Puzzle: the same puzzle for everyone on the same day, in three "
+        "levels, made from the date alone. Played through the puzzle routes.",
     },
     {"name": "Meta", "description": "Service health, dataset version and attribution."},
 ]
@@ -239,6 +245,7 @@ def create_app(
     app.include_router(taxonomy_api.router)
     app.include_router(puzzles_api.build_router(registry))
     app.include_router(players_api.build_router(registry))
+    app.include_router(daily_api.build_router(registry))
 
     build_openapi = app.openapi
 

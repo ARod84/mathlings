@@ -1444,6 +1444,75 @@
           }
         }
       }
+    },
+    "/api/v1/daily": {
+      "get": {
+        "tags": [
+          "Daily"
+        ],
+        "summary": "Today's Puzzle: the same puzzle for everyone, at one of three levels",
+        "description": "Deterministic: the same `date`, game and `level` always give the same puzzle id, on every server. The game follows a fixed rotation by day; the puzzle uses the game's default parameters. `date` is the child's local date, from their device, and must be within a day of the server's UTC date (anything else is a 422). Play it with the ordinary check and hint routes; send `context: \"daily\"` with each check so the attempt is marked as Today's Puzzle.",
+        "operationId": "get_daily_api_v1_daily_get",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "YYYY-MM-DD, the child's local date. Within a day of UTC today.",
+              "title": "Date"
+            },
+            "description": "YYYY-MM-DD, the child's local date. Within a day of UTC today."
+          },
+          {
+            "name": "level",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 3,
+              "minimum": 1,
+              "description": "1 easy, 2 medium, 3 hard.",
+              "title": "Level"
+            },
+            "description": "1 easy, 2 medium, 3 hard."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyPuzzle"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Puzzles cannot be served right now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1474,6 +1543,19 @@
             "type": "integer",
             "title": "Answer",
             "description": "A whole number. Each game has its own bounds (PuzzleType.answer_min and answer_max): 0 to 10000 for missing-number, -1000 to 10000 for sequences, 0 to 1000 for sum-grid. An answer outside the bounds of the puzzle's game is a 422."
+          },
+          "context": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "daily"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context",
+            "description": "Where this check comes from. `daily` for Today's Puzzle (GET /daily); it is kept in the stored attempt's details as `context`. Leave out for ordinary play."
           }
         },
         "additionalProperties": false,
@@ -1521,6 +1603,57 @@
           "next_step"
         ],
         "title": "CheckResult"
+      },
+      "DailyPuzzle": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date",
+            "description": "The day asked for, as the device gave it."
+          },
+          "game": {
+            "type": "string",
+            "title": "Game",
+            "description": "The game of the day: the rotation in app/puzzles/daily.py."
+          },
+          "level": {
+            "type": "integer",
+            "title": "Level",
+            "description": "1 (easy), 2 (medium) or 3 (hard)."
+          },
+          "puzzle": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PuzzlePublic"
+              },
+              {
+                "$ref": "#/components/schemas/SequencePublic"
+              },
+              {
+                "$ref": "#/components/schemas/SumGridPublic"
+              }
+            ],
+            "title": "Puzzle",
+            "description": "The day's puzzle at `level`.",
+            "discriminator": {
+              "propertyName": "game",
+              "mapping": {
+                "missing-number": "#/components/schemas/PuzzlePublic",
+                "sequences": "#/components/schemas/SequencePublic",
+                "sum-grid": "#/components/schemas/SumGridPublic"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "game",
+          "level",
+          "puzzle"
+        ],
+        "title": "DailyPuzzle"
       },
       "DiagnosisPublic": {
         "properties": {
@@ -3188,6 +3321,10 @@
     {
       "name": "Players",
       "description": "Anonymous practice history, kept only when the browser sends X-Player-Id. The id is a pseudonymous identifier, not authentication."
+    },
+    {
+      "name": "Daily",
+      "description": "Today's Puzzle: the same puzzle for everyone on the same day, in three levels, made from the date alone. Played through the puzzle routes."
     },
     {
       "name": "Meta",
