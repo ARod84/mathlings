@@ -4,6 +4,7 @@ import { MissingNumber } from './games/missing-number/MissingNumber';
 import { NumberPyramid } from './games/number-pyramid/NumberPyramid';
 import { gameFor } from './games/registry';
 import { Sequences } from './games/sequences/Sequences';
+import { SumGrid } from './games/sum-grid/SumGrid';
 import { Home } from './home/Home';
 import { navigate, useRoute } from './router';
 
@@ -28,6 +29,7 @@ export function App() {
         <MissingNumber house={gameFor('missing-number').house} onExit={goHome} />
       )}
       {route === 'sequences' && <Sequences house={gameFor('sequences').house} onExit={goHome} />}
+      {route === 'sum-grid' && <SumGrid house={gameFor('sum-grid').house} onExit={goHome} />}
     </main>
   );
 }

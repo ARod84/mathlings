@@ -23,7 +23,7 @@ const BY_GAME: Readonly<Record<string, { byLevel: TopicsByLevel }>> = {
  * file) that have no screen here yet. Empty once each has an entry in
  * registry.ts.
  */
-export const GAMES_WITHOUT_A_SCREEN: readonly string[] = ['sum-grid'];
+export const GAMES_WITHOUT_A_SCREEN: readonly string[] = [];
 
 /** Ids of the games that have an entry in the shared file. */
 export const GAME_IDS_WITH_TOPICS: readonly string[] = Object.keys(BY_GAME);

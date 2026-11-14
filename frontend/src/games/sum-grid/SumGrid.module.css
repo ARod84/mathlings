@@ -1,0 +1,165 @@
+.game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+/*
+ * The grid is (size + 1) blocks wide and high: the cells plus a target at the
+ * end of every row and under every column. Sizes are worked out from the
+ * width of this area, the number of blocks across (--count) and the longest
+ * number a block may hold (--chars), both set by the component, so a 3 by 3
+ * grid with two-digit cells and three-digit targets fits a 360 px screen: the
+ * blocks shrink, then the numbers, and nothing scrolls sideways.
+ */
+.gridArea {
+  container-type: inline-size;
+  width: 100%;
+  max-width: 24rem;
+  --gap: clamp(3px, 1.6cqi, 8px);
+}
+
+.grid {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: var(--gap);
+  margin: calc(-1 * var(--gap));
+}
+
+.cell {
+  padding: 0;
+  vertical-align: middle;
+}
+
+/* A visible focus ring on the current blank, which takes focus after each step. */
+.cell:focus-visible {
+  outline: 3px solid var(--color-gold);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+.block {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border: var(--size-outline) solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--house-strong);
+  color: var(--color-on-dark);
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-heavy);
+  /* A block's inner width over the width of the longest number it may hold. */
+  font-size: clamp(
+    0.8rem,
+    calc((100cqi / var(--count) - 10px) / (max(var(--chars, 3), 2) * 0.64)),
+    var(--font-size-3xl)
+  );
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 3px 0 0 var(--color-outline);
+}
+
+/* A blank still to come: dashed, empty and muted, so the eye stays on the current one. */
+.block[data-state='blank'] {
+  border-style: dashed;
+  background: var(--color-cream);
+  box-shadow: none;
+  opacity: 0.55;
+}
+
+/* The blank being solved: solid, tinted, and ringed in gold. */
+.block[data-state='current'] {
+  border-color: var(--house-strong);
+  background: var(--house-soft);
+  color: var(--color-ink);
+  box-shadow: 0 3px 0 0 var(--house-strong);
+  outline: 3px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+.block[data-state='current'][data-filled] {
+  border-color: var(--color-outline);
+  background: var(--color-gold);
+  box-shadow: 0 3px 0 0 var(--color-outline);
+  animation: dropIn var(--duration-base) var(--ease-bounce);
+}
+
+/* Solved: filled in for good. */
+.block[data-state='solved'] {
+  border-color: var(--color-correct-text);
+  background: var(--color-correct-bg);
+  color: var(--color-correct-text);
+  box-shadow: 0 3px 0 0 var(--color-correct-text);
+}
+
+/*
+ * A target: what its row or column must add up to. Another shape from the
+ * cells (a pill with a double outline and no hard shadow), so the difference
+ * does not rest on colour.
+ */
+.block[data-kind='target'] {
+  border: 4px double var(--color-outline);
+  border-radius: var(--radius-pill);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: none;
+}
+
+/* The line the first hint points at: its cells and its target, lit together. */
+.cell[data-highlighted] .block {
+  outline: 3px solid var(--house-strong);
+  outline-offset: 2px;
+}
+
+.cell[data-highlighted] .block[data-kind='target'],
+.cell[data-highlighted] .block[data-state='blank'] {
+  background: var(--house-soft);
+  opacity: 1;
+}
+
+.cell[data-highlighted] .block[data-state='current'] {
+  /* Gold wins on the current blank; the house ring moves outwards. */
+  outline: 3px solid var(--color-gold);
+  box-shadow:
+    0 3px 0 0 var(--house-strong),
+    0 0 0 7px var(--house-soft);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@keyframes dropIn {
+  from {
+    transform: translateY(-8px) scale(0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block[data-state='current'][data-filled] {
+    animation: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .game {
+    gap: var(--space-6);
+  }
+
+  /* On a phone the grid takes most of the play area's padding for itself. */
+  .gridArea {
+    width: calc(100% + 2 * var(--space-3));
+    margin-inline: calc(-1 * var(--space-3));
+  }
+}

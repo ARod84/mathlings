@@ -6,6 +6,7 @@ import { GAMES, gameFor } from './games/registry';
 import { parseRoute, ROUTE_HASH } from './router';
 import { createPuzzleBackend } from './test/puzzleBackend';
 import { createSequenceBackend } from './test/sequenceBackend';
+import { createSumGridBackend } from './test/sumGridBackend';
 import { server } from './test/server';
 
 /** Sets the hash the way a link or the address bar would. */
@@ -44,12 +45,14 @@ describe('home screen', () => {
     }
   });
 
-  it('lists the three games with their houses', () => {
+  it('lists the four games with their houses', () => {
     expect(GAMES.map((game) => [game.title, game.route, game.house])).toEqual([
       ['Number Pyramid', 'pyramid', 'builders'],
       ['Missing Number Chains', 'missing-number', 'navigators'],
       ['Next in Line', 'sequences', 'scientists'],
+      ['Sum Grid', 'sum-grid', 'artisans'],
     ]);
+    expect(gameFor('sum-grid').description).toBe('Fill the grid so every row and column adds up.');
     expect(gameFor('sequences').description).toBe('Find the missing number in the pattern.');
     expect(gameFor('missing-number').house).toBe('navigators');
     for (const game of GAMES) expect(game.description).not.toContain('\n');
@@ -103,6 +106,39 @@ describe('routing', () => {
     debug.mockRestore();
   });
 
+  it('shows four cards, and Sum Grid opens, plays a blank and goes back', async () => {
+    const user = userEvent.setup();
+    const backend = createSumGridBackend();
+    server.use(...backend.handlers);
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    render(<App />);
+
+    expect(cards()).toHaveLength(4);
+    const card = within(cards()[3] as HTMLElement);
+    expect(card.getByRole('heading', { level: 2, name: 'Sum Grid' })).toBeInTheDocument();
+    expect(card.getByText('Fill the grid so every row and column adds up.')).toBeInTheDocument();
+    expect(cards()[3]).toHaveAttribute('data-house', 'artisans');
+
+    await user.click(card.getByRole('link', { name: 'Play Sum Grid' }));
+    await goTo(ROUTE_HASH['sum-grid']);
+    const shell = screen.getByRole('region', { name: 'Sum Grid' });
+    expect(shell).toHaveAttribute('data-house', 'artisans');
+    expect(screen.queryByRole('list', { name: 'Games' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '2 by 2' }));
+    await screen.findByTestId('sum-grid');
+    await user.click(screen.getByRole('button', { name: '6' }));
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+    await waitFor(() => expect(backend.requests.check).toHaveLength(1));
+
+    await user.click(screen.getByRole('button', { name: 'Back to games' }));
+
+    await waitFor(() => expect(screen.getByRole('list', { name: 'Games' })).toBeInTheDocument());
+    expect(window.location.hash).toBe('#/');
+    expect(screen.queryByRole('region', { name: 'Sum Grid' })).not.toBeInTheDocument();
+    debug.mockRestore();
+  });
+
   it('shows three cards, and Next in Line opens, plays a blank and goes back', async () => {
     const user = userEvent.setup();
     const backend = createSequenceBackend();
@@ -110,7 +146,7 @@ describe('routing', () => {
     const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
     render(<App />);
 
-    expect(cards()).toHaveLength(3);
+    expect(cards()).toHaveLength(4);
     const card = within(cards()[2] as HTMLElement);
     expect(card.getByRole('heading', { level: 2, name: 'Next in Line' })).toBeInTheDocument();
     expect(card.getByText('Find the missing number in the pattern.')).toBeInTheDocument();
@@ -190,8 +226,22 @@ describe('routing', () => {
     ['#shell-demo', 'shell-demo'],
     ['#/shell-demo', 'shell-demo'],
     ['#/nowhere', 'home'],
+    ['#/home', 'home'],
     ['#pyramid', 'pyramid'],
   ])('parseRoute(%j) is %s', (hash, route) => {
     expect(parseRoute(hash)).toBe(route);
+  });
+
+  it('has a route for every game in the registry, built from its route name', () => {
+    for (const game of GAMES) {
+      expect(ROUTE_HASH[game.route]).toBe(`#/${game.route}`);
+      expect(parseRoute(ROUTE_HASH[game.route])).toBe(game.route);
+      expect(parseRoute(`#${game.route}`)).toBe(game.route);
+    }
+    expect(Object.keys(ROUTE_HASH).sort()).toEqual(
+      ['home', 'shell-demo', ...GAMES.map((game) => game.route)].sort(),
+    );
+    // A game's id is not a route unless it is also its route name.
+    expect(parseRoute('#/number-pyramid')).toBe('home');
   });
 });

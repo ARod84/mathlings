@@ -35,8 +35,8 @@ self-hosted through `@fontsource/*`.
 src/
   design/   tokens.css, tokens.ts, global.css, contrast helpers and their tests
   shell/    GameShell and its parts (progress, action bar, hint bubble, solved screen, sound hook)
-  games/    registry.ts and one folder per game: number-pyramid/, missing-number/, sequences/;
-            usePuzzleSession.ts and session/ for what server-checked games share
+  games/    registry.ts and one folder per game: number-pyramid/, missing-number/, sequences/,
+            sum-grid/; usePuzzleSession.ts and session/ for what server-checked games share
   home/     the home screen: one card per game
   api/      the typed API client and the generated schema.d.ts
   test/     test setup, the MSW server and the pretend puzzle backend
@@ -62,9 +62,17 @@ browser uses one origin. To point at an API somewhere else, set `VITE_API_BASE_U
 | `#/pyramid`        | Number Pyramid               |
 | `#/missing-number` | Missing Number Chains        |
 | `#/sequences`      | Next in Line                 |
+| `#/sum-grid`       | Sum Grid                     |
 | `#shell-demo`      | The GameShell review page    |
 
-`useRoute()` returns the current route and `navigate(route)` changes it.
+`useRoute()` returns the current route and `navigate(route)` changes it. The game routes are
+built from `src/games/registry.ts`: an entry's `route` is its hash, `#/<route>`, and the `Route`
+type is derived from the registry's entries. Only `home` and `shell-demo` are written in
+`router.ts` itself, so adding a game needs no change there.
+
+If a route does nothing in development after an edit (the address changes, the screen does not),
+restart `npm run dev`. That happened once with a file written twice in quick succession: the dev
+server kept serving the first version, and the code on disk and in the tests was right all along.
 
 ## Games registry and adding a game
 
@@ -73,12 +81,11 @@ screen draws one card per entry, and `App.tsx` passes each game its `house` from
 
 To add a game:
 
-1. Add its route to `Route` and `ROUTE_HASH` in `src/router.ts`.
-2. Add an entry to `GAMES` in `src/games/registry.ts`, and the game's topics to
-   `../shared/game-topics.json` (a test fails if a registered game has none).
-3. Create `src/games/<name>/` with the logic (pure functions, or a hook with a reducer), a
+1. Add an entry to `GAMES` in `src/games/registry.ts` (its `route` becomes the hash), and the
+   game's topics to `../shared/game-topics.json` (a test fails if a registered game has none).
+2. Create `src/games/<name>/` with the logic (pure functions, or a hook with a reducer), a
    component that renders inside `GameShell` and accepts `house` and `onExit`, and tests.
-4. Render it for its route in `src/App.tsx`.
+3. Render it for its route in `src/App.tsx`.
 
 ## How to add a puzzle type
 
@@ -94,9 +101,9 @@ that needs no server, like Number Pyramid, only needs the four steps above.
    calls need nothing.
 3. **Topics.** The game's entry in `../shared/game-topics.json` was added on the backend side; the
    registry reads it.
-4. **Registry and route.** Add the route to `src/router.ts` and an entry to `GAMES` in
-   `src/games/registry.ts` (id, title, route, house, description, `topicIds`). Use the same id as
-   the backend's game name.
+4. **Registry.** Add an entry to `GAMES` in `src/games/registry.ts` (id, title, route, house,
+   description, `topicIds`). Use the same id as the backend's game name. The route becomes the
+   hash `#/<route>`; `src/router.ts` needs no change.
 5. **Session config.** In `src/games/<name>/`, write the game's hook on `usePuzzleSession`, the
    way `missing-number/useMissingNumberGame.ts` does: a `PuzzleSessionConfig` (defined once,
    outside the component) with the game id, the round size, `asksBackend`, `fixedLevel`, `choose`
@@ -128,8 +135,7 @@ The puzzle routes are the same for every game (`POST /api/v1/puzzles/{game}`, th
 `GameShapes` in `puzzles.ts` names, per game, the request body and the puzzle that comes back, and
 `newPuzzle` is typed from it. `newMissingNumber` is `newPuzzle('missing-number', ...)`. `sequences`
 ("Next in Line") is the second entry. `GAMES_WITHOUT_A_SCREEN` in `src/games/gameTopics.ts` lists
-games the backend serves that have no screen here yet: today that is `sum-grid`, which is in
-`GameShapes` for the same reason.
+games the backend serves that have no screen here yet; it is empty now.
 
 When the backend's API changes: export `openapi.json` there, then run `npm run api:types` here. A
 test fails if `schema.d.ts` is out of date. `openapi-typescript` asks for TypeScript 5 as a peer;
@@ -253,6 +259,39 @@ The child picks each missing number from four tiles. A round is five puzzles.
 `useSequencesGame.ts` is the thin layer on `usePuzzleSession`; `Sequences.tsx` only draws;
 `sequence.ts` has the pure helpers. The test fixtures are in `src/test/sequenceBackend.ts`, typed
 from the generated schema, one per level plus a growing-step row.
+
+## Sum Grid
+
+`src/games/sum-grid`: a small grid of numbers with a target at the end of every row and under
+every column, and some cells blank. The child fills the blanks one at a time, from four tiles, in
+the order the server gives: always a blank that is the only unknown left in its row or column. A
+round is five puzzles.
+
+- **Start screen.** The shared pattern: a big "Play" (the backend has no policy for this game yet
+  and says so with `no_policy`, level 1; the game plays what it is told), then "Or choose a level"
+  with "2 by 2", "3 by 3" and "Big numbers".
+- **The grid.** Cells are blocks. Targets are "goal" blocks: pills with a double outline and no
+  hard shadow, so the difference is a shape, not a colour. Blanks still to come are dashed and
+  muted; the current one is ringed in gold; a solved one fills in green and locks.
+- **Line highlight.** Nothing is highlighted at first: finding the line is part of the puzzle.
+  When the first hint opens (asked for, or opened by itself after two wrong tries), the step's
+  whole line lights up, cells and target, and stays lit for the rest of that step.
+- **Fitting the screen.** A 3 by 3 grid plus targets is four blocks across. Blocks share the
+  width, and the numbers are sized from it and from the longest number on show, so two-digit cells
+  and three-digit targets fit at 360 px without scrolling sideways.
+- **Everything else** (keys 1 to 4 and Enter, the automatic hint, hint tiers, the silent restart on
+  a 410, the friendly error, no diagnosis on screen) is `usePuzzleSession`, as in the other games.
+- **Screen readers.** The grid is a real `<table>`: rows and columns with a total at the end of
+  each are what a table is, so cell-by-cell reading comes for free and no arrow-key behaviour is
+  implied (an ARIA `grid` would promise one). Its accessible description reads the grid line by
+  line: "Row 1: 3, blank, 9. Target 18. … Column targets: 8, 11." Targets read as "Target 18",
+  waiting blanks as "blank", and the current blank as "Row 1, column 2. Blank 1 of 3.", which
+  takes focus after each correct answer. The highlighted line is not announced on its own: the
+  hint that lights it already says "Look at the top row".
+
+`useSumGridGame.ts` is the thin layer on `usePuzzleSession`; `SumGrid.tsx` only draws; `grid.ts`
+has the pure helpers. The test fixtures are in `src/test/sumGridBackend.ts`, typed from the
+generated schema, one per level.
 
 ## Number Pyramid
 

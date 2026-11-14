@@ -40,7 +40,7 @@ export interface GameShapes {
     request: components['schemas']['NewSequenceRequest'];
     puzzle: components['schemas']['SequencePublic'];
   };
-  /** Sum Grid. The backend serves it; its screen is still to come. */
+  /** Sum Grid. */
   'sum-grid': {
     request: components['schemas']['NewSumGridRequest'];
     puzzle: components['schemas']['SumGridPublic'];

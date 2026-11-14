@@ -1,18 +1,19 @@
 import type { HouseKey } from '../design/tokens';
-import type { Route } from '../router';
 import { allTopicIds } from './gameTopics';
 
 /*
  * Every game the home screen offers. To add a game: add an entry here, its
- * topics in the repo-root shared/game-topics.json, a route in router.ts, a
- * folder under src/games with the component and its tests, and a line in
- * App.tsx that renders it for the route.
+ * topics in the repo-root shared/game-topics.json, a folder under src/games
+ * with the component and its tests, and a line in App.tsx that renders it
+ * for its route. The router builds its routes from this list: an entry's
+ * `route` becomes the hash `#/<route>`, with nothing to edit in router.ts.
  */
 
-export interface GameEntry {
+interface GameDefinition {
   id: string;
   title: string;
-  route: Exclude<Route, 'home' | 'shell-demo'>;
+  /** The part of the hash after `#/`. Lower-case letters and hyphens. */
+  route: string;
   /** Accent color of the game's card and of its GameShell. */
   house: HouseKey;
   /** One line for the home screen. */
@@ -24,7 +25,7 @@ export interface GameEntry {
   topicIds: readonly string[];
 }
 
-export const GAMES: readonly GameEntry[] = [
+export const GAMES = [
   {
     id: 'number-pyramid',
     title: 'Number Pyramid',
@@ -49,9 +50,21 @@ export const GAMES: readonly GameEntry[] = [
     description: 'Find the missing number in the pattern.',
     topicIds: allTopicIds('sequences'),
   },
-];
+  {
+    id: 'sum-grid',
+    title: 'Sum Grid',
+    route: 'sum-grid',
+    house: 'artisans',
+    description: 'Fill the grid so every row and column adds up.',
+    topicIds: allTopicIds('sum-grid'),
+  },
+] as const satisfies readonly GameDefinition[];
 
-export function gameFor(route: GameEntry['route']): GameEntry {
+export type GameEntry = (typeof GAMES)[number];
+/** The route of one of the games, as a literal type: 'pyramid' | 'missing-number' | ... */
+export type GameRoute = GameEntry['route'];
+
+export function gameFor(route: GameRoute): GameEntry {
   const game = GAMES.find((entry) => entry.route === route);
   if (!game) throw new Error(`No game registered for route ${route}`);
   return game;
